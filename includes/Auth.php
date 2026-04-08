@@ -218,7 +218,7 @@ class Auth
         $sent = $this->sendResetEmail($email, $user['name'], $code);
 
         if (!$sent) {
-            return ['success' => false, 'message' => 'Failed to send email. Please try again.'];
+            return ['success' => true, 'message' => 'Failed to send email. Please try again.'];
         }
 
         return ['success' => true, 'message' => 'If that email exists, a reset code has been sent.'];
@@ -241,7 +241,7 @@ class Auth
             return ['success' => false, 'message' => 'Reset code has expired. Please request a new one.'];
         }
 
-        if (!password_verify($code, $token['code'])) {
+        if (!password_verify($code, $token['otp_token'])) {
             return ['success' => false, 'message' => 'The code you entered is incorrect.'];
         }
 
@@ -260,7 +260,7 @@ class Auth
         $email = $_SESSION['reset_verified_email'] ?? null;
         $time  = $_SESSION['reset_verified_time']  ?? 0;
 
-        if (!$email || (time() - $time) > 600) { // 10-min window after verification
+        if (!$email || (time() - $time) > 60) { // 10-min window after verification
             return ['success' => false, 'message' => 'Session expired. Please restart the reset process.'];
         }
 
@@ -272,7 +272,7 @@ class Auth
         }
 
         $hashed = password_hash($newPassword, PASSWORD_DEFAULT);
-        $this->db->update('users', ['password' => $hashed, 'updated_at' => date('Y-m-d H:i:s')], ['email' => $email]);
+        $this->db->update('users', ['password' => $hashed], ['email' => $email]);
         $this->db->delete($this->resetCodeTable, ['email' => $email]);
 
         unset($_SESSION['reset_verified_email'], $_SESSION['reset_verified_time']);
@@ -286,7 +286,7 @@ class Auth
     private function sendResetEmail(string $toEmail, string $toName, string $code): bool
     {
         $fromName  = 'Dental App';
-        $fromEmail = 'noreply@dentalapp.com';      // ← change to your domain
+        $fromEmail = 'noreply@ouraydentalmanagement.com';      // ← change to your domain
 
         $subject = 'Your Password Reset Code';
 

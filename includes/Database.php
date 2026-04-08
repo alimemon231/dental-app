@@ -21,6 +21,13 @@ class Database
     private string $password = '';
     private string $charset  = 'utf8mb4';
     private int    $port     = 3306;
+
+    // private string $host     = 'localhost';
+    // private string $dbname   = 'ouraeohl_dental_management';
+    // private string $username = 'ouraeohl_dental_manager';
+    // private string $password = 'SabaDev@2001';
+    // private string $charset  = 'utf8mb4';
+    // private int    $port     = 3306;
     /* ----------------------------------------------------- */
 
     private PDO        $pdo;
@@ -127,8 +134,6 @@ class Database
         $columns  = implode('`, `', array_keys($data));
         $placeholders = implode(', ', array_fill(0, count($data), '?'));
         $sql      = "INSERT INTO `{$table}` (`{$columns}`) VALUES ({$placeholders})";
-        echo $sql ;
-        print_r( array_values($data));
         $this->run($sql, array_values($data));
         return $this->pdo->lastInsertId();
     }

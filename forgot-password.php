@@ -176,7 +176,7 @@ $(document).ready(function () {
     var code = ''; $('.otp-input').each(function(){ code += $(this).val(); });
     if (code.length !== 6) { showMsg('danger','Please enter the full 6-digit code.'); return; }
     App.ajax({
-      url: 'api/auth/forgot-password.php', method: 'POST',
+      url: '/auth/forgot-password.php', method: 'POST',
       data: { action: 'verify_code', email: userEmail, code: code }, btn: $('#verify-code-btn'),
       onSuccess: function(d,msg){ clearInterval(countdownTimer); goStep(3); App.toast.success('Verified', msg); }
     });
@@ -191,7 +191,7 @@ $(document).ready(function () {
     if (np !== cp)     { $('#group-confirm-pass').addClass('has-error'); valid = false; }
     if (!valid) return;
     App.ajax({
-      url: 'api/auth/forgot-password.php', method: 'POST',
+      url: '/auth/forgot-password.php', method: 'POST',
       data: { action: 'reset_password', new_password: np, confirm_password: cp },
       btn: $('#reset-pass-btn'), loaderMsg: 'Resetting password…',
       onSuccess: function(d,msg){ App.toast.success('Done!','Redirecting to login…'); setTimeout(function(){ window.location.href='login.php'; },1500); }
