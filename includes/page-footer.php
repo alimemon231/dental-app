@@ -40,7 +40,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 <script src="/assets/js/app.js"></script>
 
-<!-- Auth check on every page load -->
+<!-- Auth check on  every page load -->
 <script>
 $(document).ready(function () {
   App.auth.check();
