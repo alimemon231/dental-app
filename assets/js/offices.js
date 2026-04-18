@@ -1,8 +1,7 @@
 /**
- * assets/js/patients.js
- * CRUD logic for the Patients page.
+ * assets/js/offices.js
+ * CRUD logic for the offices page.
  * This file is the template/pattern to copy when building any new module.
- * Replace 'patient' / 'patients' with your module name.
  */
 
 $(document).ready(function () {
@@ -10,26 +9,22 @@ $(document).ready(function () {
   /* ── State ── */
   var currentPage    = 1;
   var perPage        = 20;
-  var searchQuery    = '';
-  var filterGender   = '';
   var editingId      = null;   // null = adding new, number = editing
 
   /* ================================================================
      LOAD TABLE
   ================================================================ */
-  function loadPatients(page) {
+  function loadOffices(page) {
     page = page || 1;
     currentPage = page;
 
     App.ajax({
-      url:    '/api/patients/list.php',
+      url:    '/offices/list.php',
       method: 'GET',
       loader: false,
       data: {
         page:   page,
         limit:  perPage,
-        search: searchQuery,
-        gender: filterGender,
       },
       onSuccess: function (data, msg, res) {
         renderTable(data);
@@ -53,35 +48,25 @@ $(document).ready(function () {
 
     var rows = '';
     $.each(patients, function (i, p) {
-      var genderBadge = '';
-      if      (p.gender === 'male')   genderBadge = '<span class="badge badge-info">Male</span>';
-      else if (p.gender === 'female') genderBadge = '<span class="badge badge-primary">Female</span>';
-      else if (p.gender)              genderBadge = '<span class="badge badge-neutral">' + App.utils.escHtml(p.gender) + '</span>';
-      else                            genderBadge = '<span class="text-muted">—</span>';
-
       rows += '<tr>' +
         '<td><strong>#' + p.id + '</strong></td>' +
         '<td>' +
           '<div class="flex flex-align gap-3">' +
             '<div class="user-avatar" style="width:32px;height:32px;font-size:0.75rem;background:var(--color-primary-light);color:var(--color-primary)">' +
-              App.utils.escHtml((p.name || '?').charAt(0).toUpperCase()) +
-            '</div>' +
-            '<div>' +
-              '<div class="fw-500">' + App.utils.escHtml(p.name || '—') + '</div>' +
-              (p.patient_code ? '<div class="text-xs text-muted">' + App.utils.escHtml(p.patient_code) + '</div>' : '') +
+              App.utils.escHtml(p.office_name) +
             '</div>' +
           '</div>' +
         '</td>' +
-        '<td>' + genderBadge + '</td>' +
-        '<td>' + (p.date_of_birth ? App.utils.formatDate(p.date_of_birth) : '<span class="text-muted">—</span>') + '</td>' +
+        
+        
         '<td>' + App.utils.escHtml(p.phone  || '—') + '</td>' +
         '<td>' + App.utils.escHtml(p.email  || '—') + '</td>' +
-        '<td>' + App.utils.formatDate(p.created_at) + '</td>' +
+        '<td>' + App.utils.escHtml(p.address || '-') + '</td>' +
         '<td>' +
           '<div class="actions">' +
             '<button class="btn btn-ghost btn-sm btn-view" data-id="' + p.id + '" title="View"><i class="fa-solid fa-eye"></i></button>' +
             '<button class="btn btn-ghost btn-sm btn-edit" data-id="' + p.id + '" title="Edit"><i class="fa-solid fa-pen"></i></button>' +
-            '<button class="btn btn-ghost btn-sm btn-delete" data-id="' + p.id + '" data-name="' + App.utils.escHtml(p.name) + '" title="Delete" style="color:var(--color-danger)"><i class="fa-solid fa-trash"></i></button>' +
+            '<button class="btn btn-ghost btn-sm btn-delete" data-id="' + p.id + '" data-name="' + App.utils.escHtml(p.office_name) + '" title="Delete" style="color:var(--color-danger)"><i class="fa-solid fa-trash"></i></button>' +
           '</div>' +
         '</td>' +
       '</tr>';
@@ -113,29 +98,7 @@ $(document).ready(function () {
     $('#pagination-btns').html(btns);
   }
 
-  /* ================================================================
-     SEARCH & FILTER
-  ================================================================ */
-  var debouncedSearch = App.utils.debounce(function () {
-    searchQuery = $('#patient-search').val().trim();
-    loadPatients(1);
-  }, 400);
-
-  $('#patient-search').on('input', debouncedSearch);
-
-  $('#filter-gender').on('change', function () {
-    filterGender = $(this).val();
-    loadPatients(1);
-  });
-
-  $('#btn-clear-filters').on('click', function () {
-    $('#patient-search').val('');
-    $('#filter-gender').val('');
-    searchQuery  = '';
-    filterGender = '';
-    loadPatients(1);
-  });
-
+  
   /* Pagination */
   $(document).on('click', '.page-btn[data-page]', function () {
     loadPatients(parseInt($(this).data('page')));
@@ -169,8 +132,8 @@ $(document).ready(function () {
     var data      = App.form.toObject(form);
     var isEditing = !!editingId;
     var url       = isEditing
-      ? '/api/patients/update.php'
-      : '/api/patients/create.php';
+      ? '/offices/update.php'
+      : '/offices/create.php';
 
     if (isEditing) data.patient_id = editingId;
 
@@ -179,15 +142,15 @@ $(document).ready(function () {
       method:    'POST',
       data:      data,
       btn:       $('#btn-save-patient'),
-      loaderMsg: isEditing ? 'Saving changes…' : 'Creating patient…',
+      loaderMsg: isEditing ? 'Saving changes…' : 'Creating Office…',
       onSuccess: function (d, msg) {
         App.modal.close('patient-modal');
         App.toast.success('Success', msg);
-        loadPatients(currentPage);
+        loadOffices(currentPage);
       }
     });
   });
-
+  
   /* ================================================================
      VIEW PATIENT
   ================================================================ */
@@ -195,39 +158,22 @@ $(document).ready(function () {
     var id = $(this).data('id');
 
     App.ajax({
-      url:    '/api/patients/get.php?id=' + id,
+      url:    '/offices/get.php?id=' + id,
       loader: false,
       onSuccess: function (p) {
-        var html =
-          '<div class="grid-2" style="gap:var(--sp-8)">' +
-
-          '<div>' +
-            '<div class="form-section-title mb-4"><i class="fa-solid fa-user"></i> Personal Info</div>' +
-            infoRow('Full Name',    p.name || '—') +
-            infoRow('Gender',       ucFirst(p.gender) || '—') +
-            infoRow('Date of Birth',p.date_of_birth ? App.utils.formatDate(p.date_of_birth) : '—') +
-            infoRow('Blood Group',  p.blood_group || '—') +
-            infoRow('Referred By',  p.referred_by || '—') +
-          '</div>' +
-
-          '<div>' +
-            '<div class="form-section-title mb-4"><i class="fa-solid fa-address-book"></i> Contact</div>' +
+        var office_detail_html =
+            '<div class="form-section-title mb-4"><i class="fa-solid fa-user"></i> Office Information</div>' +
+            '<input type="hidden" id="view-office-id" value="'+ p.id +'">'+
+            infoRow('Office Name',    p.office_name || '—') +
             infoRow('Phone',   p.phone || '—') +
             infoRow('Email',   p.email || '—') +
-            infoRow('City',    p.city  || '—') +
-            infoRow('Address', p.address || '—') +
-          '</div>' +
+            infoRow('Address', p.address || '—');
 
-          '</div>' +
-
-          (p.allergies || p.notes ?
-            '<div class="divider"></div>' +
-            '<div class="form-section-title mb-4"><i class="fa-solid fa-notes-medical"></i> Medical Notes</div>' +
-            (p.allergies ? infoRow('Allergies', p.allergies) : '') +
-            (p.notes     ? '<div class="form-group"><div class="form-label">Notes</div><div style="font-size:var(--font-size-sm)">' + App.utils.escHtml(p.notes) + '</div></div>' : '')
-          : '');
-
-        $('#view-patient-body').html(html);
+        getNotAssigenedDoctors();
+        getNotAssigenedStaff();
+        getAssigenedDoctors(id);
+        getAssigenedStaff(id)
+        $('#view-office-details').html(office_detail_html);
         $('#btn-edit-from-view').data('id', p.id);
         App.modal.open('view-patient-modal');
       }
@@ -257,28 +203,19 @@ $(document).ready(function () {
 
   function openEditModal(id) {
     App.ajax({
-      url:    '/api/patients/get.php?id=' + id,
+      url:    '/offices/get.php?id=' + id,
       loader: false,
       onSuccess: function (p) {
-        editingId = p.id;
         resetForm();
-        $('#patient-modal-title').text('Edit Patient');
+        editingId = p.id;
+        $('#patient-modal-title').text('Edit Office');
 
         // Populate form
         $('#patient-id').val(p.id);
-        $('[name="first_name"]').val(p.first_name);
-        $('[name="last_name"]').val(p.last_name);
-        $('[name="gender"]').val(p.gender);
-        $('[name="date_of_birth"]').val(p.date_of_birth);
-        $('[name="blood_group"]').val(p.blood_group);
-        $('[name="referred_by"]').val(p.referred_by);
+        $('[name="name"]').val(p.office_name);
         $('[name="phone"]').val(p.phone);
         $('[name="email"]').val(p.email);
-        $('[name="city"]').val(p.city);
         $('[name="address"]').val(p.address);
-        $('[name="allergies"]').val(p.allergies);
-        $('[name="notes"]').val(p.notes);
-
         App.modal.open('patient-modal');
       }
     });
@@ -295,18 +232,183 @@ $(document).ready(function () {
       'Are you sure you want to delete "' + name + '"? This cannot be undone.',
       function () {
         App.ajax({
-          url:       '/api/patients/delete.php',
+          url:       '/offices/delete.php',
           method:    'POST',
-          data:      { patient_id: id },
+          data:      { id: id },
           loaderMsg: 'Deleting patient…',
           onSuccess: function (d, msg) {
             App.toast.success('Deleted', msg);
-            loadPatients(currentPage);
+            loadOffices(currentPage);
           }
         });
       }
     );
   });
+
+
+  /* ================================================================
+     Extra Functionality to support system
+  ================================================================ */
+
+
+  $(document).on('change', '#select-d-t-a', function () {
+    var doctor_id   = $(this).val();
+    var office_id = $("#view-office-id").val();
+    App.utils.confirm(
+      'Are you sure you want to add this doctor.',
+      function () {
+        App.ajax({
+          url:       '/offices/assign_doctor.php',
+          method:    'POST',
+          data:      { doctor_id: doctor_id , office_id : office_id},
+          loader: false,
+          onSuccess: function (d, msg) {
+            getNotAssigenedDoctors()
+            getAssigenedDoctors(office_id)
+            App.toast.success('Doctor Assigned', msg);
+            loadOffices(currentPage);
+          }
+        });
+      }
+    );
+  });
+
+  $(document).on('change', '#select-s-t-a', function () {
+    var doctor_id   = $(this).val();
+    var office_id = $("#view-office-id").val();
+    App.utils.confirm(
+      'Are you sure you want to add this doctor.',
+      function () {
+        App.ajax({
+          url:       '/offices/assign_doctor.php',
+          method:    'POST',
+          data:      { doctor_id: doctor_id , office_id : office_id},
+          loader: false,
+          onSuccess: function (d, msg) {
+            getNotAssigenedStaff()
+            getAssigenedStaff(office_id)
+            App.toast.success('Staff Assigned', msg);
+            loadOffices(currentPage);
+          }
+        });
+      }
+    );
+  });
+
+  function getNotAssigenedDoctors() {
+    App.ajax({
+      url:    '/offices/select_doctors.php',
+      loader: false,
+      onSuccess: function (p) {
+        var rows = '<option value="null" disabled selected> Select Doctor</option>';
+        $.each(p, function (i, p) {
+          rows += '<option value='+ p.user_id +'>'+  p.name +'</option>' ;
+        });
+        
+        $("#select-d-t-a").html(rows)
+      }
+    });
+  }
+
+  function getAssigenedDoctors(id) {
+    App.ajax({
+      url:    '/offices/select_assigned_doctors.php',
+      method:    'POST',
+      data: {id : id},
+      loader: false,
+      onSuccess: function (p) {
+        var rows = '';
+        $.each(p, function (i, p) {
+          rows += '<tr>'+
+           '<td>'+
+           ( i + 1)
+          +'</td>'+
+          '<td>'+
+            p.name 
+          +'</td>'+
+          '<td>'+
+            '<button class="btn btn-ghost btn-sm btn-remove-d" data-id="' + p.user_id + '" data-name="' + App.utils.escHtml(p.name) + '" title="Remove" style="color:var(--color-danger)"><i class="fa-solid fa-trash"></i></button>' +
+          '</td>'+
+          '</tr>';
+        });
+        
+        $("#assigened-doc-tbody").html(rows)
+      }
+    });
+  }
+
+
+  function getAssigenedStaff(id) {
+    App.ajax({
+      url:    '/offices/select_assigned_staff.php',
+      method:    'POST',
+      data: {id : id},
+      loader: false,
+      onSuccess: function (p) {
+        var rows = '';
+        $.each(p, function (i, p) {
+          rows += '<tr>'+
+           '<td>'+
+           ( i + 1)
+          +'</td>'+
+          '<td>'+
+            p.name 
+          +'</td>'+
+          '<td>'+
+            '<button class="btn btn-ghost btn-sm btn-remove-d" data-id="' + p.user_id + '" data-name="' + App.utils.escHtml(p.name) + '" title="Remove" style="color:var(--color-danger)"><i class="fa-solid fa-trash"></i></button>' +
+          '</td>'+
+          '</tr>';
+        });
+        
+        $("#assigened-staff-tbody").html(rows)
+      }
+    });
+  }
+
+
+
+  function getNotAssigenedStaff(){
+    App.ajax({
+      url:    '/offices/select_staff.php',
+      loader: false,
+      onSuccess: function (p) {
+        var rows = '<option value="null" disabled selected> Select Staff</option>';
+        $.each(p, function (i, p) {
+          rows += '<option value='+ p.user_id +'>'+  p.name +'</option>' ;
+        });
+        
+        $("#select-s-t-a").html(rows)
+      }
+    });
+  }
+
+
+  $(document).on('click', '.btn-remove-d', function () {
+    var id   = $(this).data('id');
+    var name = $(this).data('name');
+    var office_id = $("#view-office-id").val()
+
+    App.utils.confirm(
+      'Are you sure you want to remove "' + name + '"? from this office.',
+      function () {
+        App.ajax({
+          url:       '/offices/remove_user.php',
+          method:    'POST',
+          data:      { user_id: id  , office_id : office_id},
+          loaderMsg: 'Removing User…',
+          onSuccess: function (d, msg) {
+            getAssigenedDoctors(office_id);
+            getAssigenedStaff(office_id)
+            getNotAssigenedDoctors()
+            getNotAssigenedStaff()
+            App.toast.success('Removed', msg);
+            loadOffices(currentPage);
+          }
+        });
+      }
+    );
+  });
+
 
   /* ================================================================
      HELPERS
@@ -319,6 +421,6 @@ $(document).ready(function () {
   /* ================================================================
      INIT — load on page ready
   ================================================================ */
-  loadPatients(1);
+  loadOffices(1);
 
 });

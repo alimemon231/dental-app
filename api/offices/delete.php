@@ -11,12 +11,12 @@ $auth->requireAuth();
 
 if (Api::method() !== 'POST') { Api::error('Method not allowed.', 405); exit; }
 
-$id = (int)($_POST['patient_id'] ?? 0);
-if (!$id) { Api::error('Patient ID is required.'); exit; }
+$id = (int)($_POST['id'] ?? 0);
+if (!$id) { Api::error('Office ID is required.'); exit; }
 
-if (!$db->exists('patients', ['id' => $id, 'deleted_at' => null])) {
+if (!$db->exists('offices', ['id' => $id,])) {
     Api::error('Patient not found.', 404); exit;
 }
 
-$db->softDelete('patients', ['id' => $id]);
+$db->Delete('offices', ['id' => $id]);
 Api::success(null, 'Patient deleted successfully.');

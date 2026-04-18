@@ -98,16 +98,6 @@ class Auth
     public function check(): bool
     {
         if (empty($_SESSION['user_id'])) return false;
-
-        // Check session lifetime
-        if (isset($_SESSION['last_active'])) {
-            if ((time() - $_SESSION['last_active']) > $this->sessionLifetime) {
-                $this->logout();
-                return false;
-            }
-        }
-
-        $_SESSION['last_active'] = time();
         return true;
     }
 

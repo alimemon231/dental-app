@@ -29,12 +29,10 @@ if ($search) {
     );
 } else {
     $patients = $db->query(
-        "SELECT id,
-                CONCAT(first_name, ' ', last_name) AS name,
-                phone, email, gender, date_of_birth, created_at
-         FROM patients
-         WHERE deleted_at IS NULL
-         ORDER BY created_at DESC
+        "SELECT *
+         FROM users
+         WHERE user_type = 'doctor'
+         ORDER BY user_id 
          LIMIT ? OFFSET ?",
         [$limit, $offset]
     );

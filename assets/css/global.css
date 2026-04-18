@@ -643,6 +643,7 @@ table.data-table tfoot td {
   max-height: 90vh;
   overflow-y: auto;
   animation: modalIn 0.25s ease;
+  margin: auto;
 }
 @keyframes modalIn {
   from { transform: scale(0.95) translateY(10px); opacity: 0; }
@@ -670,6 +671,7 @@ table.data-table tfoot td {
 }
 .modal-lg { max-width: 720px; }
 .modal-sm { max-width: 380px; }
+.xl { max-width: 1000px; }
 
 /* ------------------------------------------------------------------ */
 /*  TOAST NOTIFICATIONS                                                 */

@@ -12,12 +12,9 @@ $id = (int)($_GET['id'] ?? 0);
 if (!$id) { Api::error('Patient ID is required.'); exit; }
 
 $patient = $db->queryOne(
-    "SELECT id, patient_code, first_name, last_name,
-            CONCAT(first_name, ' ', last_name) AS name,
-            gender, date_of_birth, blood_group, referred_by,
-            phone, email, city, address, allergies, notes, created_at
-     FROM patients
-     WHERE id = ? AND deleted_at IS NULL",
+    "SELECT *
+     FROM offices
+     WHERE id = ?",
     [$id]
 );
 

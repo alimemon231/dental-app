@@ -33,7 +33,7 @@ $navSections = [
         ['label' => 'Dashboard',    'icon' => 'fa-gauge',              'href' => '/dashboard.php',               'key' => 'dashboard'],
     ],
     'Clinic' => [
-        ['label' => 'Patients',     'icon' => 'fa-users',             'href' => '/pages/patients.php',          'key' => 'patients'],
+        ['label' => 'Dental Offices',     'icon' => 'fa-hospital',    'href' => '/offices.php',          'key' => 'patients'],
         ['label' => 'Appointments', 'icon' => 'fa-calendar-check',    'href' => '/pages/appointments.php',      'key' => 'appointments'],
         ['label' => 'Treatments',   'icon' => 'fa-stethoscope',       'href' => '/pages/treatments.php',        'key' => 'treatments'],
         ['label' => 'Prescriptions','icon' => 'fa-file-prescription', 'href' => '/pages/prescriptions.php',     'key' => 'prescriptions'],
@@ -45,18 +45,7 @@ $userInitial  = strtoupper(substr($currentUser['name'] ?? '?', 0, 1));
 $userName     = htmlspecialchars($currentUser['name']  ?? '', ENT_QUOTES);
 $userRole     = htmlspecialchars($currentUser['role']  ?? '', ENT_QUOTES);
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><?= htmlspecialchars($pageTitle) ?> — DentalPro</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link rel="stylesheet" href="/assets/css/global.css">
-  <link rel="stylesheet" href="/assets/css/layout.css">
-</head>
-<body>
-<div class="app-shell">
+
 
   <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
