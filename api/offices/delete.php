@@ -18,5 +18,6 @@ if (!$db->exists('offices', ['id' => $id,])) {
     Api::error('Patient not found.', 404); exit;
 }
 
+$db->Delete('office_users', ['office_id' => $id]);
 $db->Delete('offices', ['id' => $id]);
 Api::success(null, 'Patient deleted successfully.');

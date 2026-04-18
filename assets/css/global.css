@@ -547,7 +547,8 @@ table.data-table tfoot td {
   color: var(--color-text-muted);
 }
 .table-empty i { font-size: 2.5rem; margin-bottom: var(--sp-3); display: block; opacity: 0.4; }
-
+.item-img{max-width: 50px;}
+.main-item-image{width: 100%; border-radius: 10px;}
 /* ------------------------------------------------------------------ */
 /*  BADGES                                                              */
 /* ------------------------------------------------------------------ */
