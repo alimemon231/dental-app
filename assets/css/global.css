@@ -810,3 +810,83 @@ table.data-table tfoot td {
 .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rounded  { border-radius: var(--radius-md); }
 .shadow   { box-shadow: var(--shadow-md); }
+
+
+
+/* Budget Table Specific Styling */
+.row-index {
+    color: #888;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.office-name {
+    font-weight: 500;
+    color: var(--color-dark);
+    display: block;
+}
+
+.badge-date {
+    background: #f0f2f5;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: #555;
+    border: 1px solid #e1e4e8;
+}
+
+/* Progress Bar Container */
+.budget-progress-container {
+    min-width: 180px;
+}
+
+.amt-spent {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--color-dark);
+}
+
+.amt-total {
+    font-size: 0.8rem;
+}
+
+.progress-track {
+    width: 100%;
+    height: 8px;
+    background-color: #eee;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.progress-fill {
+    height: 100%;
+    transition: width 0.4s ease-in-out;
+    border-radius: 10px;
+}
+
+/* Status Colors */
+.bg-success { background-color: #28a745 !important; }
+.bg-warning { background-color: #ffc107 !important; }
+.bg-danger  { background-color: #dc3545 !important; }
+
+.percentage-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: right;
+    color: #6c757d;
+}
+
+.table-empty {
+    padding: 40px;
+    text-align: center;
+    color: #999;
+    font-size: 1.1rem;
+}
+
+.table-empty i {
+    display: block;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    opacity: 0.5;
+}

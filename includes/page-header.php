@@ -33,10 +33,10 @@ $navSections = [
         ['label' => 'Dashboard',    'icon' => 'fa-gauge',              'href' => '/dashboard.php',               'key' => 'dashboard'],
     ],
     'Clinic' => [
-        ['label' => 'Dental Offices',     'icon' => 'fa-hospital',    'href' => '/offices.php',          'key' => 'patients'],
-        ['label' => 'Appointments', 'icon' => 'fa-calendar-check',    'href' => '/pages/appointments.php',      'key' => 'appointments'],
-        ['label' => 'Treatments',   'icon' => 'fa-stethoscope',       'href' => '/pages/treatments.php',        'key' => 'treatments'],
-        ['label' => 'Prescriptions','icon' => 'fa-file-prescription', 'href' => '/pages/prescriptions.php',     'key' => 'prescriptions'],
+        ['label' => 'Dental Offices',     'icon' => 'fa-hospital',    'href' => '/offices.php',          'key' => 'offices'],
+        ['label' => 'Manage Doctors', 'icon' => 'fa-stethoscope',    'href' => '/doctors.php.php',      'key' => 'doctors'],
+        ['label' => 'Manage Staff',   'icon' => 'fa-users',       'href' => '/staff.php',        'key' => 'staff'],
+        ['label' => 'Prescriptions','icon' => 'fa-pills', 'href' => '/items.php',     'key' => 'items'],
     ],
 
 ];

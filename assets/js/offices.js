@@ -32,7 +32,7 @@ $(document).ready(function () {
       },
       onError: function () {
         $('#patients-tbody').html(
-          '<tr><td colspan="8"><div class="table-empty"><i class="fa-solid fa-circle-exclamation"></i> Failed to load patients.</div></td></tr>'
+          '<tr><td colspan="8"><div class="table-empty"><i class="fa-solid fa-circle-exclamation"></i> Failed to load Offices.</div></td></tr>'
         );
       }
     });
@@ -41,7 +41,7 @@ $(document).ready(function () {
   function renderTable(patients) {
     if (!patients || !patients.length) {
       $('#patients-tbody').html(
-        '<tr><td colspan="8"><div class="table-empty"><i class="fa-solid fa-user-slash"></i> No patients found.</div></td></tr>'
+        '<tr><td colspan="8"><div class="table-empty"><i class="fa-solid fa-user-slash"></i> No offices found.</div></td></tr>'
       );
       return;
     }
@@ -82,7 +82,7 @@ $(document).ready(function () {
     var from    = total ? ((current - 1) * perPage + 1) : 0;
     var to      = Math.min(current * perPage, total);
 
-    $('#patients-info').text('Showing ' + from + '–' + to + ' of ' + total + ' patients');
+    $('#patients-info').text('Showing ' + from + '–' + to + ' of ' + total + ' officess');
 
     var btns = '';
     btns += '<button class="page-btn" id="pg-prev" ' + (current <= 1 ? 'disabled' : '') + '><i class="fa-solid fa-chevron-left"></i></button>';
@@ -112,7 +112,7 @@ $(document).ready(function () {
   $('#btn-add-patient').on('click', function () {
     editingId = null;
     resetForm();
-    $('#patient-modal-title').text('Add New Patient');
+    $('#patient-modal-title').text('Add New Office');
     App.modal.open('patient-modal');
   });
 
@@ -235,7 +235,7 @@ $(document).ready(function () {
           url:       '/offices/delete.php',
           method:    'POST',
           data:      { id: id },
-          loaderMsg: 'Deleting patient…',
+          loaderMsg: 'Deleting Office…',
           onSuccess: function (d, msg) {
             App.toast.success('Deleted', msg);
             loadOffices(currentPage);

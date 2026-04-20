@@ -170,7 +170,7 @@
                     <thead>
                       <tr>
                         <th class="sortable" data-col="id">#</th>
-                        <th class="sortable" data-col="name">Doctor Name</th>
+                        <th class="sortable" data-col="name">Staff Name</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
