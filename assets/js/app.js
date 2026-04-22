@@ -278,6 +278,33 @@ App.auth = {
     });
   },
 
+  /**
+   * Verifies if the current user has a specific role.
+   * If the check fails, the user is redirected or blocked.
+   * @param {string} roleName - e.g., 'admin', 'staff'
+   */
+  role: function (roleName) {
+    App.ajax({
+      url: '/auth/check-role.php',
+      method: 'POST',
+      data: { role: roleName },
+      loader: true, // Show loader because this is a page-access check
+      silent: false, 
+      onSuccess: function (response) {
+        
+      },
+      onError: function (msg) {
+        // User does not have the role or session is invalid
+        App.toast.error('Access Denied', msg || 'You do not have permission to view this page.');
+        
+        // Redirect to dashboard or index after a short delay
+        setTimeout(function () {
+          window.location.href = App.config.baseUrl + '/dashboard.php';
+        }, 1500);
+      }
+    });
+  },
+
   currentUser: null
 };
 

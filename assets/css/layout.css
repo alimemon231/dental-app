@@ -38,9 +38,11 @@
 }
 .sidebar-logo-text {
   color: #fff;
-  font-weight: 700;
+  font-weight: 400;
   font-size: var(--font-size-md);
   line-height: 1.2;
+  margin-top: 15px;
+  text-transform: uppercase;
 }
 .sidebar-logo-sub {
   color: var(--color-sidebar-text);

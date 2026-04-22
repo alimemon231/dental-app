@@ -228,6 +228,7 @@
 
       /* 1. Check auth */
       App.auth.check();
+      App.auth.role('admin')
 
       /* 2. User info */
       App.ajax({

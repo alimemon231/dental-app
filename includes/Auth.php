@@ -11,9 +11,9 @@ require_once __DIR__ . '/Database.php';
 class Auth
 {
     private Database $db;
-    private string   $sessionName  = 'dental_app_session';
-    private int      $sessionLifetime = 7200;    // 2 hours (seconds)
-    private string   $resetCodeTable = 'otp_tokens';
+    private string $sessionName = 'dental_app_session';
+    private int $sessionLifetime = 7200;    // 2 hours (seconds)
+    private string $resetCodeTable = 'otp_tokens';
 
     public function __construct(Database $db)
     {
@@ -29,7 +29,7 @@ class Auth
         if (session_status() === PHP_SESSION_NONE) {
             session_set_cookie_params([
                 'lifetime' => 0,                      // browser-session cookie
-                'path'     => '/',
+                'path' => '/',
                 // 'domain'   => '',
                 // 'secure'   => isset($_SERVER['HTTPS']),
                 // 'httponly' => true,
@@ -73,20 +73,20 @@ class Auth
         session_regenerate_id(true);
 
         // Store minimal safe data in session
-        $_SESSION['user_id']    = $user['user_id'];
+        $_SESSION['user_id'] = $user['user_id'];
         $_SESSION['user_email'] = $user['email'];
-        $_SESSION['user_name']  = $user['name'];
-        $_SESSION['user_role']  = $user['user_type'];
-        
+        $_SESSION['user_name'] = $user['name'];
+        $_SESSION['user_role'] = $user['user_type'];
+
 
         // // Update last login in DB
         // $this->db->update('users', ['last_login' => date('Y-m-d H:i:s')], ['id' => $user['id']]);
 
         $safeUser = [
-            'id'    => $user['user_id'],
-            'name'  => $user['name'],
+            'id' => $user['user_id'],
+            'name' => $user['name'],
             'email' => $user['email'],
-            'role'  => $user['user_type'],
+            'role' => $user['user_type'],
         ];
 
         return ['success' => true, 'message' => 'Login successful.', 'user' => $safeUser];
@@ -97,7 +97,8 @@ class Auth
     ================================================================ */
     public function check(): bool
     {
-        if (empty($_SESSION['user_id'])) return false;
+        if (empty($_SESSION['user_id']))
+            return false;
         return true;
     }
 
@@ -122,18 +123,19 @@ class Auth
     ================================================================ */
     public function user(): ?array
     {
-        if (!$this->check()) return null;
+        if (!$this->check())
+            return null;
         return [
-            'id'    => $_SESSION['user_id'],
-            'name'  => $_SESSION['user_name'],
+            'id' => $_SESSION['user_id'],
+            'name' => $_SESSION['user_name'],
             'email' => $_SESSION['user_email'],
-            'role'  => $_SESSION['user_role'],
+            'role' => $_SESSION['user_role'],
         ];
     }
 
     public function userId(): ?int
     {
-        return isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
+        return isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null;
     }
 
     public function userRole(): ?string
@@ -162,6 +164,27 @@ class Auth
         }
     }
 
+    /**
+     * Fetches the office name for a single user.
+     */
+    public function officeName(int $userId): ?string
+    {
+        $this->requireAuth();
+
+        $sql = "SELECT o.office_name 
+            FROM offices o
+            INNER JOIN office_users ou ON o.id = ou.office_id
+            WHERE ou.user_id = ? ";
+
+        // Using your query method
+        $result = $this->db->query($sql, [$userId]);
+
+        
+
+        // Return the name if found, otherwise return null
+        return !empty($result) ? $result[0]['office_name'] : "No Office Assigned";
+    }
+
     /* ================================================================
        LOGOUT
     ================================================================ */
@@ -170,8 +193,15 @@ class Auth
         $_SESSION = [];
         if (ini_get('session.use_cookies')) {
             $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000, $params['path'],
-                $params['domain'], $params['secure'], $params['httponly']);
+            setcookie(
+                session_name(),
+                '',
+                time() - 42000,
+                $params['path'],
+                $params['domain'],
+                $params['secure'],
+                $params['httponly']
+            );
         }
         session_destroy();
     }
@@ -183,7 +213,7 @@ class Auth
     public function sendResetCode(string $email): array
     {
         $email = strtolower(trim($email));
-        $user  = $this->db->selectOne('users', ['email' => $email, 'status' => 'active']);
+        $user = $this->db->selectOne('users', ['email' => $email, 'status' => 'active']);
 
         // Always return success message to prevent user enumeration
         if (!$user) {
@@ -194,13 +224,13 @@ class Auth
         $this->db->delete($this->resetCodeTable, ['user_id' => $user["user_id"]]);
 
         // Generate a 6-digit numeric code
-        $code    = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $expires = date('Y-m-d H:i:s', time() + 300); // 5 minutes
 
         $this->db->insert($this->resetCodeTable, [
-            'user_id'    => $user["user_id"],
-            'email'      => $email,
-            'otp_token'       => password_hash($code, PASSWORD_DEFAULT),
+            'user_id' => $user["user_id"],
+            'email' => $email,
+            'otp_token' => password_hash($code, PASSWORD_DEFAULT),
             'created_at' => date('Y-m-d H:i:s'),
             'expires_at' => $expires,
         ]);
@@ -237,7 +267,7 @@ class Auth
 
         // Mark as verified — store a temporary flag in session
         $_SESSION['reset_verified_email'] = $email;
-        $_SESSION['reset_verified_time']  = time();
+        $_SESSION['reset_verified_time'] = time();
 
         return ['success' => true, 'message' => 'Code verified. You may now reset your password.'];
     }
@@ -248,7 +278,7 @@ class Auth
     public function resetPassword(string $newPassword, string $confirmPassword): array
     {
         $email = $_SESSION['reset_verified_email'] ?? null;
-        $time  = $_SESSION['reset_verified_time']  ?? 0;
+        $time = $_SESSION['reset_verified_time'] ?? 0;
 
         if (!$email || (time() - $time) > 60) { // 10-min window after verification
             return ['success' => false, 'message' => 'Session expired. Please restart the reset process.'];
@@ -275,20 +305,20 @@ class Auth
     ================================================================ */
     private function sendResetEmail(string $toEmail, string $toName, string $code): bool
     {
-        $fromName  = 'Dental App';
+        $fromName = 'Dental App';
         $fromEmail = 'noreply@ouraydentalmanagement.com';      // ← change to your domain
 
         $subject = 'Your Password Reset Code';
 
         $body = "Hi {$toName},\r\n\r\n"
-              . "You requested a password reset for your Dental App account.\r\n\r\n"
-              . "Your reset code is:  {$code}\r\n\r\n"
-              . "This code will expire in 5 minutes.\r\n\r\n"
-              . "If you did not request this, please ignore this email.\r\n\r\n"
-              . "Regards,\r\nDental App Team";
+            . "You requested a password reset for your Dental App account.\r\n\r\n"
+            . "Your reset code is:  {$code}\r\n\r\n"
+            . "This code will expire in 5 minutes.\r\n\r\n"
+            . "If you did not request this, please ignore this email.\r\n\r\n"
+            . "Regards,\r\nDental App Team";
 
         // Basic auth headers to improve deliverability (plain mail)
-        $headers  = "From: {$fromName} <{$fromEmail}>\r\n";
+        $headers = "From: {$fromName} <{$fromEmail}>\r\n";
         $headers .= "Reply-To: {$fromEmail}\r\n";
         $headers .= "MIME-Version: 1.0\r\n";
         $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
@@ -305,7 +335,7 @@ class Auth
     private function isAjaxRequest(): bool
     {
         return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
-               strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+            strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     }
 }
 

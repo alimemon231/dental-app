@@ -9,6 +9,8 @@ $db   = new Database();
 $auth = new Auth($db);
 $auth->requireAuth();
 
+
+
 $limit  = min((int)($_GET['limit'] ?? 20), 100);
 $page   = max((int)($_GET['page']  ?? 1), 1);
 $search = trim($_GET['search'] ?? '');
