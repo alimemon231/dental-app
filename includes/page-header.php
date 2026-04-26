@@ -54,7 +54,8 @@ else if ($currentUser['role'] == 'staff') {
       ['label' => 'Dashboard', 'icon' => 'fa-gauge', 'href' => '/dashboard.php', 'key' => 'dashboard'],
     ],
     'Clinic' => [
-      
+      ['label' => 'Orders', 'icon' => 'fa-shopping-bag', 'href' => '/emp-order.php', 'key' => 'order'],
+      ['label' => 'Items', 'icon' => 'fa-pills', 'href' => '/emp-items.php', 'key' => 'dashboard'],
     ],
 
   ];
@@ -68,7 +69,8 @@ else if ($currentUser['role'] == 'doctor') {
       ['label' => 'Dashboard', 'icon' => 'fa-gauge', 'href' => '/dashboard.php', 'key' => 'dashboard'],
     ],
     'Clinic' => [
-      
+      ['label' => 'Orders', 'icon' => 'fa-shopping-bag', 'href' => '/doc-order.php', 'key' => 'order'],
+      ['label' => 'Items', 'icon' => 'fa-pills', 'href' => '/emp-items.php', 'key' => 'dashboard'],
     ],
 
   ];

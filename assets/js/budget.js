@@ -48,47 +48,42 @@ $(document).ready(function () {
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         var rows = '';
 
-        $.each(patients, function (i, p) {
-            // 1. Date Formatting
-            var monthIndex = parseInt(p.budget_month) - 1;
-            var monthName = monthNames[monthIndex] || 'Unknown';
-            var displayDate = monthName + ' ' + p.budget_year;
+        patients.forEach(function (p, i) {
+            var expense = p.total_spent.toLocaleString(undefined, { minimumFractionDigits: 2 });
+            var budget = p.budget_amount.toLocaleString(undefined, { minimumFractionDigits: 2 });
+            var percentage = p.percentage;
+            var statusClass = p.status_class;
 
-            // 2. Progress Bar Logic
-            var expense = 39000; // Assuming your DB has this column
-            var budget = parseFloat(p.budget_amount || 0);
-            var percentage = budget > 0 ? Math.round((expense / budget) * 100) : 0;
-
-            // Determine Color Class
-            var statusClass = 'bg-success';
-            if (percentage >= 100) statusClass = 'bg-danger';
-            else if (percentage >= 80) statusClass = 'bg-warning';
+            // Create a readable month string (e.g., "April 2026")
+            var displayDate = new Date(p.budget_year, p.budget_month - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
 
             rows += '<tr>' +
                 '<td><span class="row-index">#' + (i + 1) + '</span></td>' +
                 '<td>' +
                 '<div class="office-info">' +
-                '<span class="office-name">' + App.utils.escHtml(p.office_name) + '</span>' +
+                '<span class="office-name fw-bold">' + App.utils.escHtml(p.office_name) + '</span>' +
                 '</div>' +
                 '</td>' +
                 '<td><span class="badge-date">' + displayDate + '</span></td>' +
                 '<td width="250">' +
                 '<div class="budget-progress-container">' +
-                '<div class="d-flex justify-content-between mb-1">' +
-                '<span class="amt-spent">$' + expense + '</span>' +
+                '<div class="d-flex justify-content-between mb-1" style="font-size: 0.85rem;">' +
+                '<span><b class="amt-spent">$' + expense + '</b></span>' +
                 '<span class="amt-total text-muted">/ $' + budget + '</span>' +
                 '</div>' +
-                '<div class="progress-track">' +
-                '<div class="progress-fill ' + statusClass + '" style="width: ' + Math.min(percentage, 100) + '%"></div>' +
+                '<div class="progress-track" style="background: #eee; height: 8px; border-radius: 4px; overflow: hidden;">' +
+                '<div class="progress-fill ' + statusClass + '" style="width: ' + Math.min(percentage, 100) + '%; height: 100%; transition: width 0.4s;"></div>' +
                 '</div>' +
-                '<div class="percentage-label ' + (percentage > 100 ? 'text-danger' : '') + '">' + percentage + '% Utilized</div>' +
+                '<div class="percentage-label mt-1 ' + (percentage > 100 ? 'text-danger fw-bold' : 'text-muted') + '" style="font-size: 11px;">' +
+                percentage + '% Utilized' +
+                '</div>' +
                 '</div>' +
                 '</td>' +
                 '<td>' +
                 '<div class="actions">' +
                 '<button class="btn btn-ghost btn-sm btn-view" data-id="' + p.id + '"><i class="fa-solid fa-eye"></i></button>' +
                 '<button class="btn btn-ghost btn-sm btn-edit" data-id="' + p.id + '"><i class="fa-solid fa-pen"></i></button>' +
-                '<button class="btn btn-ghost btn-sm btn-delete" data-id="' + p.id + '" style="color:var(--color-danger)"><i class="fa-solid fa-trash"></i></button>' +
+                '<button class="btn btn-ghost btn-sm btn-delete" data-id="' + p.id + '" data-name="' + p.budget_month + '" style="color:var(--color-danger)"><i class="fa-solid fa-trash"></i></button>' +
                 '</div>' +
                 '</td>' +
                 '</tr>';
@@ -182,28 +177,79 @@ $(document).ready(function () {
         var id = $(this).data('id');
 
         App.ajax({
-            url: '/staff/get.php?id=' + id,
+            url: '/budget/budget-data.php?id=' + id,
             loader: false,
-            onSuccess: function (p) {
+            onSuccess: function (data) {
+                var b = data.budget; // Budget object
+                var orders = data.orders; // Array of orders
+
+                // 1. Calculate Summary Stats for Header
+                var totalSpent = orders.reduce((sum, ord) => sum + parseFloat(ord.total_amount || 0), 0);
+                var budgetAmt = parseFloat(b.budget_amount || 0);
+                var percentage = budgetAmt > 0 ? Math.round((totalSpent / budgetAmt) * 100) : 0;
+                var monthName = new Date(b.budget_year, b.budget_month - 1).toLocaleString('default', { month: 'long' });
+
                 var html =
-                    '<div class="grid-2" style="gap:var(--sp-8)">' +
-
+                    // --- SECTION 1: BUDGET HEADER ---
+                    '<div class="grid-2 mb-6" style="gap:var(--sp-8); background: var(--bg-surface-2); padding: 20px; border-radius: 8px;">' +
                     '<div>' +
-                    '<div class="form-section-title mb-4"><i class="fa-solid fa-user"></i> Personal Info</div>' +
-                    infoRow('Office Name', p.name || '—') +
+                    '<div class="form-section-title mb-4"><i class="fa-solid fa-building"></i> Office Context</div>' +
+                    infoRow('Office', b.office_name) +
+                    infoRow('Budget Period', monthName + ' ' + b.budget_year) +
+                    '</div>' +
+                    '<div>' +
+                    '<div class="form-section-title mb-4"><i class="fa-solid fa-chart-line"></i> Utilization</div>' +
+                    '<div class="d-flex justify-content-between mb-1">' +
+                    '<span><b>$' + totalSpent.toLocaleString() + '</b> <small class="text-muted">spent</small></span>' +
+                    '<span>$' + budgetAmt.toLocaleString() + '</span>' +
+                    '</div>' +
+                    '<div class="progress-track" style="background:#ddd; height:10px; border-radius:5px; overflow:hidden;">' +
+                    '<div class="progress-fill" style="width:' + Math.min(percentage, 100) + '%; height:100%; background:var(--color-primary);"></div>' +
+                    '</div>' +
+                    '<div class="text-sm mt-2">' + percentage + '% of monthly budget used</div>' +
+                    '</div>' +
                     '</div>' +
 
-                    '<div>' +
-                    '<div class="form-section-title mb-4"><i class="fa-solid fa-address-book"></i> Contact</div>' +
-                    infoRow('Phone', p.mobile || '—') +
-                    infoRow('Email', p.email || '—') +
-                    infoRow('Address', p.address || '—') +
-                    '</div>' +
+                    // --- SECTION 2: ORDERS TABLE ---
+                    '<div class="form-section-title mb-3"><i class="fa-solid fa-list-check"></i> Orders Breakdown</div>' +
+                    '<div class="table-wrapper">' +
+                    '<table class="data-table">' +
+                    '<thead>' +
+                    '<tr>' +
+                    '<th>Order ID</th>' +
+                    '<th>Date</th>' +
+                    '<th>Created By</th>' +
+                    '<th>Status</th>' +
+                    '<th class="text-right">Amount</th>' +
+                    '</tr>' +
+                    '</thead>' +
+                    '<tbody>';
 
-                    '</div>';
+                if (orders.length === 0) {
+                    html += '<tr><td colspan="5" class="text-center text-muted">No orders found for this period.</td></tr>';
+                } else {
+                    orders.forEach(function (ord) {
+                        var statusBadge = '';
+                        // Match badge color to status
+                        if (ord.status === 'approved') statusBadge = '<span class="badge bg-success">Approved</span>';
+                        else if (ord.status === 'pending') statusBadge = '<span class="badge bg-warning">Pending</span>';
+                        else if (ord.status === 'rejected') statusBadge = '<span class="badge bg-danger">Rejected</span>';
 
+                        html += '<tr>' +
+                            '<td>#' + ord.id + '</td>' +
+                            '<td>' + ord.order_date + '</td>' +
+                            '<td>' + App.utils.escHtml(ord.creator_name) + '</td>' +
+                            '<td>' + statusBadge + '</td>' +
+                            '<td class="text-right"><b>$' + parseFloat(ord.total_amount || 0).toLocaleString() + '</b></td>' +
+                            '</tr>';
+                    });
+                }
+
+                html += '</tbody></table></div>';
+
+                // Inject and Open
                 $('#view-patient-body').html(html);
-                $('#btn-edit-from-view').data('id', id);
+                $('#btn-edit-from-view').data('id', b.id);
                 App.modal.open('view-patient-modal');
             }
         });

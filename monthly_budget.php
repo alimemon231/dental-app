@@ -77,7 +77,6 @@
                                 <th class="sortable" data-col="id">#</th>
                                 <th class="sortable" data-col="name">Office</th>
                                 <th>Budget Month</th>
-                                <th>Amount  </th>
                                 <th>Expanded Amount</th>
                                 <th>Actions</th>
                             </tr>
