@@ -4,7 +4,7 @@
  */
 require_once __DIR__ . '/../../includes/Auth.php';
 
-$db   = new Database();
+$db = new Database();
 $auth = new Auth($db);
 $auth->requireAuth();
 
@@ -13,24 +13,37 @@ if (!$auth->hasRole('admin')) {
     exit;
 }
 
-if (Api::method() !== 'POST') { Api::error('Method not allowed.', 405); exit; }
+if (Api::method() !== 'POST') {
+    Api::error('Method not allowed.', 405);
+    exit;
+}
 
 $data = [
-    'name'    => trim($_POST['name']    ?? ''),
-    'mobile'     => trim($_POST['phone']     ?? ''),
-    'email'        => $_POST['email']             ?? null,
-    'address' => $_POST['address']      ?: null,
-    'password' => $_POST['password']      ?: null,
+    'name' => trim($_POST['name'] ?? ''),
+    'mobile' => trim($_POST['phone'] ?? ''),
+    'username' => $_POST['username'] ?? null,
+    'address' => $_POST['address'] ?: null,
+    'password' => $_POST['password'] ?: null,
     'user_type' => "doctor",
     'status' => "active",
-    
+
 ];
 
-if (empty($data['name']) || empty($data['mobile']) || empty($data['email']) || empty($data['address'])|| empty($data['password'])) {
+if (empty($data['name']) || empty($data['mobile']) || empty($data['username']) || empty($data['address']) || empty($data['password'])) {
     Api::error('All fields required');
     exit;
 }
 
-$data["password"] = password_hash($data["password"] , PASSWORD_DEFAULT);
-$id = $db->insert('users', $data);
+$data["password"] = password_hash($data["password"], PASSWORD_DEFAULT);
+
+try {
+    $id = $db->insert('users', $data);
+} catch (Exception $e) {
+
+    // Something else went wrong (connection, column mismatch, etc.)
+    Api::error('An unexpected error occurred while creating the doctor please check that you not assign duplicate username.');
+
+}
+
+
 Api::success(null, 'Doctor created successfully.');

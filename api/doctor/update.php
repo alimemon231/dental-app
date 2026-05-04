@@ -9,7 +9,7 @@ $auth = new Auth($db);
 $auth->requireAuth();
 
 if (!$auth->hasRole('admin')) {
-    Api::error('You are not authorized for this operation', 403); // 403 is the standard "Forbidden" code
+    Api::error('You are not authorized for this operation', 403);
     exit;
 }
 
@@ -24,16 +24,40 @@ if (!$db->exists('users', ['user_id' => $id, 'user_type' => "doctor"])) {
 
 $data = [
     'name'    => trim($_POST['name']    ?? ''),
-    'mobile'         => trim($_POST['phone']         ?? '') ?: null,
-    'email'         => trim($_POST['email']         ?? '') ?: null,
-    'address'       => trim($_POST['address']       ?? '') ?: null,
+    'mobile'  => trim($_POST['phone']   ?? '') ?: null,
+    'username'   => trim($_POST['username']   ?? '') ?: null,
+    'address' => trim($_POST['address'] ?? '') ?: null,
 ];
 
-if (empty($data['name']) || empty($data['mobile']) || empty($data['email']) || empty($data['address'])) {
+if (empty($data['name']) || empty($data['mobile']) || empty($data['username']) || empty($data['address'])) {
     Api::error('Please fill all fields.');
     exit;
 }
 
+/* ---- Password Logic Addition ---- */
+$password   = $_POST['password'] ?? '';
+$rePassword = $_POST['re_password'] ?? '';
+
+// Only run this logic if the password field is not blank
+if (!empty($password)) {
+    if ($password !== $rePassword) {
+        Api::error('Passwords do not match.');
+        exit;
+    }
+
+    if (strlen($password) < 6) {
+        Api::error('Password must be at least 6 characters long.');
+        exit;
+    }
+
+    // Encrypt and add to the data array for update
+    $data['password'] = password_hash($password, PASSWORD_DEFAULT);
+}
+/* --------------------------------- */
+
 $db->update('users', $data, ['user_id' => $id]);
-$patient = $db->selectOne('users', ['user_id' => $id]);
-Api::success($patient, 'Docotr updated successfully.');
+
+// Fetch updated record (excluding password for security in the response)
+$patient = $db->queryOne("SELECT user_id, name, mobile, email, address, user_type FROM users WHERE user_id = ?", [$id]);
+
+Api::success($patient, 'Doctor updated successfully.');

@@ -184,7 +184,13 @@ $(document).ready(function () {
                 var orders = data.orders; // Array of orders
 
                 // 1. Calculate Summary Stats for Header
-                var totalSpent = orders.reduce((sum, ord) => sum + parseFloat(ord.total_amount || 0), 0);
+                var totalSpent = orders.reduce((sum, ord) => {
+                    // Only add to the sum if the status is exactly 'approved'
+                    if (ord.status === 'approved') {
+                        return sum + parseFloat(ord.total_amount || 0);
+                    }
+                    return sum;
+                }, 0);
                 var budgetAmt = parseFloat(b.budget_amount || 0);
                 var percentage = budgetAmt > 0 ? Math.round((totalSpent / budgetAmt) * 100) : 0;
                 var monthName = new Date(b.budget_year, b.budget_month - 1).toLocaleString('default', { month: 'long' });

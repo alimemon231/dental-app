@@ -5,12 +5,12 @@
  */
 require_once __DIR__ . '/../../includes/Auth.php';
 
-$db = new Database();
+$db   = new Database();
 $auth = new Auth($db);
 $auth->requireAuth();
 
-$limit = min((int) ($_GET['limit'] ?? 20), 100);
-$page = max((int) ($_GET['page'] ?? 1), 1);
+$limit  = min((int)($_GET['limit'] ?? 20), 100);
+$page   = max((int)($_GET['page']  ?? 1), 1);
 $search = trim($_GET['search'] ?? '');
 $offset = ($page - 1) * $limit;
 
@@ -29,20 +29,11 @@ if ($search) {
     );
 } else {
     $patients = $db->query(
-        "SELECT 
-    i.id, 
-    i.name, 
-    i.price, 
-    i.description, 
-    i.image_path,
-    GROUP_CONCAT(c.id) AS category_ids,
-    GROUP_CONCAT(c.name SEPARATOR ', ') AS category_names
-FROM items i
-LEFT JOIN item_categories ic ON i.id = ic.item_id
-LEFT JOIN categories c ON ic.category_id = c.id AND c.id IS NOT NULL
-GROUP BY i.id
-ORDER BY i.id DESC
-LIMIT ? OFFSET ?",
+        "SELECT *
+         FROM users
+         WHERE user_type = 'm-staff'
+         ORDER BY user_id 
+         LIMIT ? OFFSET ?",
         [$limit, $offset]
     );
 }

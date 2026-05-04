@@ -38,7 +38,7 @@ $orders = $db->query(
         o.status,
         u1.name as creator_name,
         COALESCE(u2.name, '-') as approver_name,
-        (SELECT SUM(price * quantity) FROM order_items WHERE order_id = o.id) as total_amount
+        (SELECT SUM(price * quantity) FROM order_items WHERE order_id = o.id ) as total_amount
      FROM orders o
      LEFT JOIN users u1 ON o.created_by = u1.user_id
      LEFT JOIN users u2 ON o.approved_by = u2.user_id

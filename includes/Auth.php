@@ -45,23 +45,23 @@ class Auth
        $auth->login('user@email.com', 'password123')
        Returns [ 'success' => true/false, 'message' => '...' ]
     ================================================================ */
-    public function login(string $email, string $password): array
+    public function login(string $username, string $password): array
     {
-        $email = strtolower(trim($email));
+        $email = strtolower(trim($username));
 
-        if (empty($email) || empty($password)) {
-            return ['success' => false, 'message' => 'Email and password are required.'];
+        if (empty($username) || empty($password)) {
+            return ['success' => false, 'message' => 'Username and password are required.'];
         }
 
-        $user = $this->db->selectOne('users', ['email' => $email, 'status' => 'active']);
+        $user = $this->db->selectOne('users', ['username' => $username, 'status' => 'active']);
 
         if (!$user) {
             // Generic message to prevent user enumeration
-            return ['success' => false, 'message' => 'Invalid email or password.'];
+            return ['success' => false, 'message' => 'Invalid username or password.'];
         }
 
         if (!password_verify($password, $user['password'])) {
-            return ['success' => false, 'message' => 'Invalid email or password.'];
+            return ['success' => false, 'message' => 'Invalid username or password.'];
         }
 
         // Rehash if needed (PHP upgrades hashing algorithm over time)
@@ -74,6 +74,7 @@ class Auth
 
         // Store minimal safe data in session
         $_SESSION['user_id'] = $user['user_id'];
+        $_SESSION['user_username'] = $user['username'];
         $_SESSION['user_email'] = $user['email'];
         $_SESSION['user_name'] = $user['name'];
         $_SESSION['user_role'] = $user['user_type'];
@@ -84,6 +85,7 @@ class Auth
 
         $safeUser = [
             'id' => $user['user_id'],
+            'username' => $user['username'],
             'name' => $user['name'],
             'email' => $user['email'],
             'role' => $user['user_type'],
@@ -127,6 +129,7 @@ class Auth
             return null;
         return [
             'id' => $_SESSION['user_id'],
+            'username' => $_SESSION['user_username'],
             'name' => $_SESSION['user_name'],
             'email' => $_SESSION['user_email'],
             'role' => $_SESSION['user_role'],

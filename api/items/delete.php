@@ -38,5 +38,6 @@ if (!empty($item['image_path'])) {
 
 // 3. Delete the record from the database
 $db->Delete('items', ['id' => $id]);
+$db->Delete('item_categories', ['item_id' => $id]);
 
 Api::success(null, 'Item and its image were deleted successfully.');

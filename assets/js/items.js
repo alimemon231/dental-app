@@ -10,6 +10,7 @@ $(document).ready(function () {
     var currentPage = 1;
     var perPage = 20;
     var editingId = null;   // null = adding new, number = editing
+    var selected_categories = [];
 
     /* ================================================================
        LOAD TABLE
@@ -60,7 +61,8 @@ $(document).ready(function () {
                 '</td>' +
 
 
-                '<td>' + App.utils.escHtml(p.price || '—') + '</td>' +
+                '<td> $' + App.utils.escHtml(p.price || '—') + '</td>' +
+                '<td>' + App.utils.escHtml(p.category_names || '—') + '</td>' +
                 '<td>' + App.utils.escHtml(p.description || '—') + '</td>' +
                 '<td>' +
                 '<div class="actions">' +
@@ -111,6 +113,7 @@ $(document).ready(function () {
     ================================================================ */
     $('#btn-add-item').on('click', function () {
         editingId = null;
+        selected_categories = [];
         resetForm();
         $('[name="image"]').attr('required', 'required');
         $('#item-modal-title').text('Add New Item');
@@ -122,6 +125,7 @@ $(document).ready(function () {
     ================================================================ */
     $('#btn-save-item').on('click', function () {
         var form = $('#item-form');
+        var categoryIds = selected_categories.map(c => c.id);
 
         // Front-end validation
         App.form.clearErrors(form);
@@ -131,6 +135,9 @@ $(document).ready(function () {
         }
 
         var data = new FormData(form[0]);
+        categoryIds.forEach(id => {
+            data.append('category_ids[]', id);
+        });
         var isEditing = !!editingId;
         var url = isEditing
             ? '/items/update.php'
@@ -167,14 +174,15 @@ $(document).ready(function () {
 
                     '<div>' +
                     '<div class="form-section-title mb-4"><i class="fa-solid fa-user"></i>  Item Info </div>' +
-                        infoRow('Item Name', p.name || '—') +
-                        infoRow('Price', p.price || '—') +
-                        infoRow('description', p.description || '—') +
+                    infoRow('Item Name', p.name || '—') +
+                    infoRow('Price', p.price || '—') +
+                    infoRow('Dscription', p.description || '—') +
+                    infoRow('Categories', p.category_names || '—') +
                     '</div>' +
 
                     '<div>' +
-                        '<img src="'+ p.image_path +'" class="main-item-image">'
-                    '</div>' +
+                    '<img src="' + p.image_path + '" class="main-item-image">'
+                '</div>' +
                     '</div>';
 
 
@@ -203,7 +211,9 @@ $(document).ready(function () {
        EDIT PATIENT
     ================================================================ */
     $(document).on('click', '.btn-edit', function () {
+        selected_categories = [];
         openEditModal($(this).data('id'));
+
     });
 
     function openEditModal(id) {
@@ -221,6 +231,24 @@ $(document).ready(function () {
                 $('[name="price"]').val(p.price);
                 $('[name="description"]').val(p.description);
                 $('[name="image"]').removeAttr('required');
+
+                if (p.category_ids && p.category_names) {
+
+                    // Split the comma-separated strings into arrays
+                    var ids = p.category_ids.toString().split(',');
+                    var names = p.category_names.split(',');
+
+                    // 3. Map them into the object format and push to selected_categories
+                    ids.forEach(function (id, index) {
+                        selected_categories.push({
+                            id: id.trim(),
+                            name: names[index] ? names[index].trim() : 'Deleted Category'
+                        });
+                    });
+                }
+
+                // 4. Refresh the UI badges
+                renderCategoryBadges();
                 App.modal.open('item-modal');
             }
         });
@@ -250,6 +278,98 @@ $(document).ready(function () {
         );
     });
 
+
+    function loadCategories() {
+
+        App.ajax({
+            url: '/categories/list.php',
+            method: 'GET',
+            loader: false,
+            onSuccess: function (data, msg, res) {
+                var html = '';
+                html += '<option value="" selected disabled> </option>'
+                $.each(data, function (i, row) {
+                    html += '<option value="' + row.id + '">' + row.name + '</option>';
+                });
+
+                $("#category-select").html(html)
+            },
+            onError: function () {
+                $('#category-select').html(
+                    '<option value="" selected disabled> Please add categories first </option>'
+                );
+            }
+        });
+    }
+
+
+
+    $('#category-select').on('select2:select', function (e) {
+        var data = e.params.data; // Get selected item data
+
+        var catId = data.id;
+        var catName = data.text;
+
+        // Prevent duplicates
+        var exists = selected_categories.find(c => c.id == catId);
+        if (exists) {
+            App.toast.info('Already Added', catName + ' is already selected.');
+            // Clear the selection so they can search again
+            $('#category-select').val(null).trigger('change');
+            return;
+        }
+
+        // 3. Add to our tracking array
+        selected_categories.push({ id: catId, name: catName });
+
+        // 4. Clear the search box immediately for the next search
+        $('#category-select').val(null).trigger('change');
+
+        // 5. Update the UI badges
+        renderCategoryBadges();
+    });
+
+    /**
+     * TRIGGER: Remove a badge when the X icon is clicked
+     */
+    $(document).on('click', '.remove-cat-badge', function () {
+        var idToRemove = $(this).data('id');
+
+        // Filter out from array
+        selected_categories = selected_categories.filter(c => c.id != idToRemove);
+
+        renderCategoryBadges();
+    });
+
+    /**
+     * Renders the badges (WordPress/WooCommerce Tag Style)
+     */
+    function renderCategoryBadges() {
+        var $container = $('#selected-categories-list');
+        $container.empty();
+
+        if (selected_categories.length === 0) {
+            $container.html('<small class="text-muted">No categories assigned.</small>');
+            return;
+        }
+
+        selected_categories.forEach(function (cat) {
+            var badge = `
+                <div class="category-tag d-flex align-items-center" 
+                     style="background: #e9ecef; border: 1px solid #ced4da; padding: 4px 10px; border-radius: 20px; font-size: 0.9rem;">
+                    <span class="me-2">${App.utils.escHtml(cat.name)}</span>
+                    <i class="fa-solid fa-circle-xmark remove-cat-badge" 
+                       data-id="${cat.id}" 
+                       style="cursor:pointer; color:#dc3545;"></i>
+                </div>
+            `;
+            $container.append(badge);
+        });
+    }
+
+
+
+
     /* ================================================================
        HELPERS
     ================================================================ */
@@ -262,5 +382,6 @@ $(document).ready(function () {
        INIT — load on page ready
     ================================================================ */
     loadItems(1);
+    loadCategories()
 
 });

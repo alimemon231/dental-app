@@ -60,7 +60,7 @@ $(document).ready(function () {
 
 
                 '<td>' + App.utils.escHtml(p.mobile || '—') + '</td>' +
-                '<td>' + App.utils.escHtml(p.email || '—') + '</td>' +
+                '<td>' + App.utils.escHtml(p.username || '—') + '</td>' +
                 '<td>' + App.utils.escHtml(p.address || '-') + '</td>' +
                 '<td>' +
                 '<div class="actions">' +
@@ -179,7 +179,7 @@ $(document).ready(function () {
                     '<div>' +
                     '<div class="form-section-title mb-4"><i class="fa-solid fa-address-book"></i> Contact</div>' +
                     infoRow('Phone', p.mobile || '—') +
-                    infoRow('Email', p.email || '—') +
+                    infoRow('Username', p.username || '—') +
                     infoRow('Address', p.address || '—') +
                     '</div>' +
 
@@ -210,8 +210,8 @@ $(document).ready(function () {
        EDIT PATIENT
     ================================================================ */
     $(document).on('click', '.btn-edit', function () {
-        $('.password-row').hide();
-        $('.password-row input').prop('disabled', true).removeAttr('required');
+       
+        $('.password-row input').removeAttr('required');
         openEditModal($(this).data('id'));
     });
 
@@ -228,7 +228,7 @@ $(document).ready(function () {
                 $('#staff-id').val(p.user_id);
                 $('[name="name"]').val(p.name);
                 $('[name="phone"]').val(p.mobile);
-                $('[name="email"]').val(p.email);
+                $('[name="username"]').val(p.username);
                 $('[name="address"]').val(p.address);
                 App.modal.open('patient-modal');
             }

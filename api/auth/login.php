@@ -15,18 +15,16 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // 2. Capture Inputs
-$email    = trim($_POST['email'] ?? '');
+$username    = trim($_POST['username'] ?? '');
 $password = $_POST['password'] ?? '';
 $remember = isset($_POST['remember']) && $_POST['remember'] === 'on';
 
 // 3. Basic Validation
-if (empty($email) || empty($password)) {
-    Response::error('Email and password are required.');
+if (empty($username) || empty($password)) {
+    Response::error('Username and password are required.');
 }
 
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    Response::error('Invalid email format.');
-}
+
 
 // 4. Initialize Database and Auth
 $db   = new Database();
@@ -40,7 +38,7 @@ $auth = new Auth($db);
  * - Session data creation
  * - Password rehashing (if needed)
  */
-$result = $auth->login($email, $password);
+$result = $auth->login($username, $password);
 
 if (!$result['success']) {
     Response::error($result['message']);

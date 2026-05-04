@@ -36,34 +36,48 @@ if ($currentUser['role'] == 'admin') {
     'Main' => [
       ['label' => 'Dashboard', 'icon' => 'fa-gauge', 'href' => '/dashboard.php', 'key' => 'dashboard'],
     ],
-    'Clinic' => [
-      ['label' => 'Dental Offices', 'icon' => 'fa-hospital', 'href' => '/offices.php', 'key' => 'offices'],
-      ['label' => 'Manage Doctors', 'icon' => 'fa-stethoscope', 'href' => '/doctors.php.php', 'key' => 'doctors'],
-      ['label' => 'Manage Staff', 'icon' => 'fa-users', 'href' => '/staff.php', 'key' => 'staff'],
-      ['label' => 'Items', 'icon' => 'fa-pills', 'href' => '/items.php', 'key' => 'items'],
-      ['label' => 'Montly Budget', 'icon' => 'fa-dollar', 'href' => '/monthly_budget.php', 'key' => 'items'],
+    'Offices Settings' => [
+      ['label' => 'Offices Setting', 'icon' => 'fa-hospital', 'href' => '/offices.php', 'key' => 'offices'],
+      ['label' => 'Budget Setting', 'icon' => 'fa-file-invoice-dollar', 'href' => '/monthly_budget.php', 'key' => 'budget'],
+      ['label' => 'Pre-auth Settings', 'icon' => 'fa-calendar-check', 'href' => '/monthly_budget.php', 'key' => 'budget'],
+    ],
+
+    'User Settings' => [
+      ['label' => 'Doctor Setting', 'icon' => 'fa-stethoscope', 'href' => '/doctors.php', 'key' => 'doctors'],
+      ['label' => 'Staff Setting', 'icon' => 'fa-users-gear', 'href' => '/staff.php', 'key' => 'staff'],
+      ['label' => 'Management Settings', 'icon' => 'fa-user-tie', 'href' => '/staff.php', 'key' => 'management'],
+    ],
+
+    'Supply Settings' => [
+      ['label' => 'Supply Items', 'icon' => 'fa-box', 'href' => '/items.php', 'key' => 'items'],
+      ['label' => 'Supply Categories', 'icon' => 'fa-boxes', 'href' => '/categories.php', 'key' => 'categories'],
+
     ],
 
   ];
 
-}
-
-else if ($currentUser['role'] == 'staff') {
+} else if ($currentUser['role'] == 'staff') {
   $navSections = [
-    'Main' => [
+
+    '' => [
       ['label' => 'Dashboard', 'icon' => 'fa-gauge', 'href' => '/dashboard.php', 'key' => 'dashboard'],
     ],
-    'Clinic' => [
-      ['label' => 'Orders', 'icon' => 'fa-shopping-bag', 'href' => '/emp-order.php', 'key' => 'order'],
-      ['label' => 'Items', 'icon' => 'fa-pills', 'href' => '/emp-items.php', 'key' => 'dashboard'],
+
+    'Preauth Settings' => [
+      ['label' => 'Add Record', 'icon' => 'fa-plus-circle', 'href' => '/emp-order.php', 'key' => 'order'],
+      ['label' => 'Verified Record', 'icon' => 'fa-check-double', 'href' => '/emp-items.php', 'key' => 'dashboard'],
+      ['label' => 'Add Appointments', 'icon' => 'fa-calendar-plus', 'href' => '/emp-items.php', 'key' => 'dashboard'],
+    ],
+
+    'Supply Settings' => [
+      ['label' => 'Order History', 'icon' => 'fa-shopping-bag', 'href' => '/emp-order.php', 'key' => 'order'],
+      ['label' => 'Supply Items', 'icon' => 'fa-pills', 'href' => '/emp-items.php', 'key' => 'dashboard'],
     ],
 
   ];
 
-   $office_name = $auth->officeName($currentUser['id']);
-}
-
-else if ($currentUser['role'] == 'doctor') {
+  $office_name = $auth->officeName($currentUser['id']);
+} else if ($currentUser['role'] == 'doctor') {
   $navSections = [
     'Main' => [
       ['label' => 'Dashboard', 'icon' => 'fa-gauge', 'href' => '/dashboard.php', 'key' => 'dashboard'],
@@ -75,7 +89,7 @@ else if ($currentUser['role'] == 'doctor') {
 
   ];
 
-   $office_name = $auth->officeName($currentUser['id']);
+  $office_name = $auth->officeName($currentUser['id']);
 }
 
 
@@ -90,10 +104,10 @@ $userRole = htmlspecialchars($currentUser['role'] ?? '', ENT_QUOTES);
   <a href="/dashboard.php" class="sidebar-logo">
     <div class="sidebar-logo-icon">
       <img src="assets/images/logo.jpg" alt="">
-      <?php if($office_name != ""){
+      <?php if ($office_name != "") {
 
         ?>
-            <h2 class="sidebar-logo-text"><?php echo $office_name ; ?></h2>
+        <h2 class="sidebar-logo-text"><?php echo $office_name; ?></h2>
         <?php
       } ?>
     </div>

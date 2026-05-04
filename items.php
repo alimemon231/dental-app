@@ -8,6 +8,18 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="assets/css/global.css">
   <link rel="stylesheet" href="assets/css/layout.css">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <style>
+    .select2 {
+      height: 40px;
+    }
+
+    #selected-categories-list{
+      display: flex;
+    }
+
+
+  </style>
 </head>
 
 <body>
@@ -34,9 +46,10 @@
           <table class="data-table" id="Items-table">
             <thead>
               <tr>
-                <th class="sortable" data-col="id">#</th>
-                <th class="sortable" data-col="name">Item Name</th>
+                <th class="sortable">#</th>
+                <th class="sortable">Item Name</th>
                 <th>Price</th>
+                <th>Categories</th>
                 <th>Description</th>
                 <th>Actions</th>
               </tr>
@@ -74,8 +87,7 @@
                   <div class="form-row">
                     <div class="form-group">
                       <label class="form-label">Item Name <span class="required">*</span></label>
-                      <input type="text" name="name" id="name" class="form-control" placeholder="e.g. Item 1"
-                        required>
+                      <input type="text" name="name" id="name" class="form-control" placeholder="e.g. Item 1" required>
                       <span class="form-error">Item name is required.</span>
                     </div>
                     <div class="form-group">
@@ -88,14 +100,34 @@
                   <div class="form-row" style="grid-template-columns: repeat(1, 1fr);">
                     <div class="form-group">
                       <label class="form-label">Description <span class="required">*</span></label>
-                      <textarea name="description" id="description" placeholder="Description about item" class="form-control" required></textarea>
+                      <textarea name="description" id="description" placeholder="Description about item"
+                        class="form-control" required></textarea>
                       <span class="form-error">Description is required</span>
                     </div>
+                  </div>
+                  <div class="form-row" style="grid-template-columns: repeat(1, 1fr);margin-top:20px;">
+
+                    <div class="form-group">
+                      <label class="form-label">Assign Categories</label>
+
+                      <!-- Select2 Field -->
+                      <select id="category-select" class="form-control">
+                        <option value="" selected disabled>Search and select categories...</option>
+                        
+                      </select>
+
+                      <!-- Tag/Badge Container -->
+                      <div id="selected-categories-list">
+                        <!-- Badges will appear here -->
+                      </div>
+                    </div>
+
                   </div>
                   <div class="form-row" style="grid-template-columns: repeat(1, 1fr);margin-top:10px;">
                     <div class="form-group">
                       <label class="form-label"> Item Image<span class="required">*</span></label>
-                      <input type="file"  class="form-control" accept=".png, .jpg, .jpeg" name="image" id="image" required>
+                      <input type="file" class="form-control" accept=".png, .jpg, .jpeg" name="image" id="image"
+                        required>
                       <span class="form-error">Image is required</span>
                     </div>
                   </div>
@@ -160,6 +192,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script src="assets/js/app.js"></script>
   <script src="assets/js/items.js"></script>
   <script>
@@ -181,7 +214,11 @@
         }
       });
 
-      
+      $('#category-select').select2({
+        placeholder: "Search categories...",
+        width: '100%'
+      });
+
     });
   </script>
 </body>

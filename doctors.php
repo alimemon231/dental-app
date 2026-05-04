@@ -37,7 +37,7 @@
                 <th class="sortable" data-col="id">#</th>
                 <th class="sortable" data-col="name">Doctor Name</th>
                 <th>Phone</th>
-                <th>Email</th>
+                <th>Username</th>
                 <th>Full Doctor Address</th>
                 <th>Actions</th>
               </tr>
@@ -88,10 +88,11 @@
                   </div>
                   <div class="form-row">
                     <div class="form-group">
-                      <label class="form-label">Email Adress <span class="required">*</span></label>
-                      <input type="email" name="email" id="email" class="form-control" placeholder="e.g doctor@mail.com"
+                      <label class="form-label">Username <span class="required">*</span></label>
+                      <input type="text" name="username" id="username" class="form-control" placeholder="e.g Andrewdoct123"
                         required>
-                      <span class="form-error">Email is required</span>
+                        <small>username must be unique</small>
+                      <span class="form-error">Username is required</span>
                     </div>
 
                     <div class="form-group">

@@ -17,8 +17,8 @@
       <div class="page-wrapper">
         <div class="page-header">
           <div class="page-header-left">
-            <h1>Manage Staff</h1>
-            <div class="page-header-sub">Manage all Staff here.</div>
+            <h1>Management Staff</h1>
+            <div class="page-header-sub">staff members that handles preauth verification for all offices</div>
           </div>
           <div class="page-header-actions">
             <button class="btn btn-primary" id="btn-add-patient">
@@ -185,7 +185,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
   <script src="assets/js/app.js"></script>
-  <script src="assets/js/staff.js"></script>
+  <script src="assets/js/m-staff.js"></script>
   <script>
     $(document).ready(function () {
 

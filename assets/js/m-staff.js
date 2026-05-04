@@ -1,6 +1,6 @@
 /**
- * assets/js/doctor.js
- * CRUD logic for the Doctor page.
+ * assets/js/staff.js
+ * CRUD logic for the Staff page.
  * This file is the template/pattern to copy when building any new module.
  */
 
@@ -14,12 +14,12 @@ $(document).ready(function () {
     /* ================================================================
        LOAD TABLE
     ================================================================ */
-    function loadDoctor(page) {
+    function loadStaff(page) {
         page = page || 1;
         currentPage = page;
 
         App.ajax({
-            url: '/doctor/list.php',
+            url: '/m-staff/list.php',
             method: 'GET',
             loader: false,
             data: {
@@ -32,7 +32,7 @@ $(document).ready(function () {
             },
             onError: function () {
                 $('#patients-tbody').html(
-                    '<tr><td colspan="8"><div class="table-empty"><i class="fa-solid fa-circle-exclamation"></i> Failed to load patients.</div></td></tr>'
+                    '<tr><td colspan="8"><div class="table-empty"><i class="fa-solid fa-circle-exclamation"></i> Failed to load Management Staff/td></tr>'
                 );
             }
         });
@@ -40,8 +40,8 @@ $(document).ready(function () {
 
     function renderTable(patients) {
         if (!patients || !patients.length) {
-            $('#doctors-tbody').html(
-                '<tr><td colspan="8"><div class="table-empty"><i class="fa-solid fa-user-slash"></i> No Doctors found.</div></td></tr>'
+            $('#staff-tbody').html(
+                '<tr><td colspan="8"><div class="table-empty"><i class="fa-solid fa-user-slash"></i> No Management Staff found.</div></td></tr>'
             );
             return;
         }
@@ -72,7 +72,7 @@ $(document).ready(function () {
                 '</tr>';
         });
 
-        $('#doctors-tbody').html(rows);
+        $('#staff-tbody').html(rows);
     }
 
     function renderPagination(meta) {
@@ -112,7 +112,7 @@ $(document).ready(function () {
     $('#btn-add-patient').on('click', function () {
         editingId = null;
         resetForm();
-        $('#patient-modal-title').text('Add New Doctor');
+        $('#patient-modal-title').text('Add New Staff');
         $('.password-row').show();
         $('.password-row input').prop('disabled', false).attr('required', 'required');
         App.modal.open('patient-modal');
@@ -121,7 +121,7 @@ $(document).ready(function () {
     /* ================================================================
        SAVE PATIENT (create or update)
     ================================================================ */
-    $('#btn-save-doctor').on('click', function () {
+    $('#btn-save-staff').on('click', function () {
         var form = $('#patient-form');
 
         // Front-end validation
@@ -134,15 +134,15 @@ $(document).ready(function () {
         var data = App.form.toObject(form);
         var isEditing = !!editingId;
         var url = isEditing
-            ? '/doctor/update.php'
-            : '/doctor/create.php';
+            ? '/staff/update.php'
+            : '/m-staff/create.php';
 
         if (data.password != data.re_password) {
             App.toast.warning('Validation', 'Passwords Not Match .');
             return;
         }
 
-        if (isEditing) data.doctor_id = editingId;
+        if (isEditing) data.staff_id = editingId;
 
         App.ajax({
             url: url,
@@ -153,7 +153,7 @@ $(document).ready(function () {
             onSuccess: function (d, msg) {
                 App.modal.close('patient-modal');
                 App.toast.success('Success', msg);
-                loadDoctor(currentPage);
+                loadStaff(currentPage);
             }
         });
     });
@@ -165,7 +165,7 @@ $(document).ready(function () {
         var id = $(this).data('id');
 
         App.ajax({
-            url: '/doctor/get.php?id=' + id,
+            url: '/m-staff/get.php?id=' + id,
             loader: false,
             onSuccess: function (p) {
                 var html =
@@ -210,21 +210,22 @@ $(document).ready(function () {
        EDIT PATIENT
     ================================================================ */
     $(document).on('click', '.btn-edit', function () {
+       
         $('.password-row input').removeAttr('required');
         openEditModal($(this).data('id'));
     });
 
     function openEditModal(id) {
         App.ajax({
-            url: '/doctor/get.php?id=' + id,
+            url: '/m-staff/get.php?id=' + id,
             loader: false,
             onSuccess: function (p) {
                 resetForm();
                 editingId = p.user_id;
-                $('#patient-modal-title').text('Edit Doctor');
+                $('#patient-modal-title').text('Edit Staff');
 
                 // Populate form
-                $('#doctor-id').val(p.user_id);
+                $('#staff-id').val(p.user_id);
                 $('[name="name"]').val(p.name);
                 $('[name="phone"]').val(p.mobile);
                 $('[name="username"]').val(p.username);
@@ -245,13 +246,13 @@ $(document).ready(function () {
             'Are you sure you want to delete "' + name + '"? This cannot be undone.',
             function () {
                 App.ajax({
-                    url: '/doctor/delete.php',
+                    url: '/m-staff/delete.php',
                     method: 'POST',
                     data: { id: id },
-                    loaderMsg: 'Deleting doctor…',
+                    loaderMsg: 'Deleting staff…',
                     onSuccess: function (d, msg) {
                         App.toast.success('Deleted', msg);
-                        loadDoctor(currentPage);
+                        loadStaff(currentPage);
                     }
                 });
             }
@@ -269,6 +270,6 @@ $(document).ready(function () {
     /* ================================================================
        INIT — load on page ready
     ================================================================ */
-    loadDoctor(1);
+    loadStaff(1);
 
 });

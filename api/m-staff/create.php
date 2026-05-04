@@ -21,7 +21,7 @@ $data = [
     'username'        => $_POST['username']             ?? null,
     'address' => $_POST['address']      ?: null,
     'password' => $_POST['password']      ?: null,
-    'user_type' => "staff",
+    'user_type' => "m-staff",
     'status' => "active",
     
 ];

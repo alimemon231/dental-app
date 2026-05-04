@@ -33,20 +33,20 @@
     <form id="login-form" autocomplete="off" novalidate>
 
       <div class="form-group" id="group-email">
-        <label class="form-label" for="email">Email Address <span class="required">*</span></label>
+        <label class="form-label" for="email">Username <span class="required">*</span></label>
         <div class="input-group">
-          <i class="fa-regular fa-envelope input-icon"></i>
+          <i class="fa-regular fa-user input-icon"></i>
           <input
-            type="email"
-            id="email"
-            name="email"
+            type="text"
+            id="username"
+            name="username"
             class="form-control"
-            placeholder="you@example.com"
-            autocomplete="email"
+            placeholder="e.g andrew123"
+            autocomplete="username"
             required
           >
         </div>
-        <span class="form-error">Please enter a valid email address.</span>
+        <span class="form-error">Please enter a valid Username address.</span>
       </div>
 
       <div class="form-group" id="group-password">
@@ -125,11 +125,11 @@ $(document).ready(function () {
     $('#auth-message').html('');
 
     // Front-end validation
-    var email    = $.trim($('#email').val());
+    var username   = $.trim($('#username').val());
     var password = $.trim($('#password').val());
     var valid    = true;
 
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!username) {
       $('#group-email').addClass('has-error');
       valid = false;
     }
@@ -143,7 +143,7 @@ $(document).ready(function () {
     App.ajax({
       url:       '/auth/login.php',
       method:    'POST',
-      data:      { email: email, password: password, remember_me: $('#remember-me').is(':checked') ? 1 : 0 },
+      data:      { username: username, password: password, remember_me: $('#remember-me').is(':checked') ? 1 : 0 },
       loader:    true,
       loaderMsg: 'Signing in…',
       btn:       $('#login-btn'),
@@ -173,7 +173,7 @@ $(document).ready(function () {
   });
 
   /* ---------- Clear error on input ---------- */
-  $('#email, #password').on('input', function () {
+  $('#username, #password').on('input', function () {
     $(this).closest('.form-group').removeClass('has-error');
   });
 
