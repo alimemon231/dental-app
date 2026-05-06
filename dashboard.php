@@ -31,7 +31,7 @@
         </div>
 
         <?php
-        if ($currentUser['role'] != 'admin') {
+        if ($currentUser['role'] == 'staff' || $currentUser['role'] == 'doctor') {
           ?>
           <!-- Stat cards -->
           <div class="grid-2 mb-8">
@@ -71,7 +71,11 @@
           </div>
 
           <?php
-        } else {
+        } else if($currentUser['role'] == 'm-staff'){
+
+        }
+        
+        else {
           ?>
           <div class="table-wrapper">
             <table class="data-table" id="order-table">

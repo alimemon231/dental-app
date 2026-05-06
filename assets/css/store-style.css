@@ -1,0 +1,230 @@
+/* Ensure your custom modab-backdrop starts hidden */
+
+
+/* 3 Cards Per Row */
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+}
+
+/* Category Filter "Small Buttons" */
+.category-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.category-pills li {
+    padding: 5px 12px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.category-pills li:hover {
+    border-color: var(--primary-color);
+    background: #f8f9fa;
+}
+
+/* Active State for Multi-check */
+.category-pills li.active {
+    background: var(--primary-color) !important;
+    color: white !important;
+    border-color: var(--primary-color) !important;
+}
+
+/* Layout for Top Bar */
+.filter-bar {
+    background: #fdfdfd;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.filter-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.search-box {
+    position: relative;
+    flex: 0 0 250px;
+}
+
+.search-box i {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+}
+
+.search-box input {
+    padding-left: 32px !important;
+}
+
+/* Product Card Improvements */
+.product-card {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #ececec;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+}
+
+.pc-img { width: 100%; height: 180px; object-fit: cover; }
+.pc-body { padding: 15px; }
+
+/* Qty Buttons */
+.qty-input {
+    display: flex;
+    border: 1px solid #ddd;
+    width: fit-content;
+    border-radius: 4px;
+}
+
+.qty-btn {
+    border: none;
+    background: #eee;
+    padding: 5px 15px;
+    cursor: pointer;
+}
+
+.qty-input input {
+    width: 45px;
+    text-align: center;
+    border: none;
+    font-weight: bold;
+}
+
+.store-body{
+    margin-top: 50px;;
+}
+
+.product-detail-flex{
+    display: flex;
+    gap: 40px;
+}
+
+.detail-img-wrapper{
+    max-width: 300px;
+}
+
+#modal-cats{
+    font-size: 13px;
+}
+
+#modal-price{
+    margin-top: 20px;
+
+}
+
+#modal-desc{
+    margin-top: 15px;
+    font-size: 15px;
+}
+
+.qty-input{
+    margin-top: 10px;
+}
+
+#btn-confirm-add{
+    margin-top: 10px;
+}
+
+
+/* Cart Row Container */
+#cart-items {
+    max-height: 450px;
+    overflow-y: auto;
+    padding-right: 5px; /* Space for scrollbar */
+}
+
+.cart-item-row {
+    padding: 12px 0;
+    transition: background 0.2s;
+    display: flex;
+}
+
+/* Image Styling */
+.cart-item-row img {
+    width: 50px; /* Fixed small width for thumbnails */
+    height: 50px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #eee;
+    margin-right: 15px;
+}
+
+/* Typography Scaling */
+.cart-item-row .fw-bold {
+    font-size: 0.95rem; /* Slightly smaller for modal fit */
+    color: #333;
+    line-height: 1.2;
+}
+
+.cart-item-row .text-muted {
+    font-size: 0.8rem; /* Smaller sub-text */
+    display: block;
+    margin-top: 2px;
+}
+
+.cart-item-row .text-end .fw-bold {
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+/* Action Button */
+.cart-item-row .btn-sm {
+    font-size: 0.85rem;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.cart-item-row .btn-sm:hover {
+    opacity: 1;
+}
+
+/* Total Section Styling */
+.border-top {
+    border-top: 2px solid #f4f4f4 !important;
+    padding-top: 15px;
+}
+
+.border-top h4 {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+/* Flex Alignment Adjustments */
+.cart-item-row > div:first-child {
+    flex: 0 0 auto; /* Don't grow the image container */
+}
+
+.cart-item-row > div:nth-child(2) {
+    flex: 1; /* Let the title and qty take remaining space */
+    padding-left: 10px;
+}
+
+.cart-item-row .text-end{
+    display: flex;
+    column-gap: 10px;
+    align-items: center;
+}

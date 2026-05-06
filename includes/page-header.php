@@ -39,13 +39,17 @@ if ($currentUser['role'] == 'admin') {
     'Offices Settings' => [
       ['label' => 'Offices Setting', 'icon' => 'fa-hospital', 'href' => '/offices.php', 'key' => 'offices'],
       ['label' => 'Budget Setting', 'icon' => 'fa-file-invoice-dollar', 'href' => '/monthly_budget.php', 'key' => 'budget'],
-      ['label' => 'Pre-auth Settings', 'icon' => 'fa-calendar-check', 'href' => '/monthly_budget.php', 'key' => 'budget'],
+    ],
+    'Pre-auth Settings' => [
+      ['label' => 'Pre-Auth Records', 'icon' => 'fa-clipboard-check', 'href' => '/adm-pre-auth.php', 'key' => 'pre_auth'],
+      ['label' => 'Procedure Settings', 'icon' => 'fa-tooth', 'href' => '/procedures.php', 'key' => 'procedures'],
+      ['label' => 'Insurance Settings', 'icon' => 'fa-shield-halved', 'href' => '/insurance.php', 'key' => 'insurance'],
     ],
 
     'User Settings' => [
       ['label' => 'Doctor Setting', 'icon' => 'fa-stethoscope', 'href' => '/doctors.php', 'key' => 'doctors'],
       ['label' => 'Staff Setting', 'icon' => 'fa-users-gear', 'href' => '/staff.php', 'key' => 'staff'],
-      ['label' => 'Management Settings', 'icon' => 'fa-user-tie', 'href' => '/staff.php', 'key' => 'management'],
+      ['label' => 'Management Settings', 'icon' => 'fa-user-tie', 'href' => '/management.php', 'key' => 'management'],
     ],
 
     'Supply Settings' => [
@@ -64,9 +68,9 @@ if ($currentUser['role'] == 'admin') {
     ],
 
     'Preauth Settings' => [
-      ['label' => 'Add Record', 'icon' => 'fa-plus-circle', 'href' => '/emp-order.php', 'key' => 'order'],
-      ['label' => 'Verified Record', 'icon' => 'fa-check-double', 'href' => '/emp-items.php', 'key' => 'dashboard'],
-      ['label' => 'Add Appointments', 'icon' => 'fa-calendar-plus', 'href' => '/emp-items.php', 'key' => 'dashboard'],
+      ['label' => 'Add Record', 'icon' => 'fa-plus-circle', 'href' => '/emp-pre-auth.php', 'key' => 'order'],
+      ['label' => 'Verified Record', 'icon' => 'fa-check-double', 'href' => '/emp-done-patient.php', 'key' => 'dashboard'],
+      ['label' => 'Add Appointments', 'icon' => 'fa-calendar-plus', 'href' => '/emp-book-appointment.php', 'key' => 'dashboard'],
     ],
 
     'Supply Settings' => [
@@ -90,6 +94,15 @@ if ($currentUser['role'] == 'admin') {
   ];
 
   $office_name = $auth->officeName($currentUser['id']);
+}else if ($currentUser['role'] == 'm-staff') {
+    // Management Staff Navigation
+    $navSections = [
+        'Approvals' => [
+            ['label' => 'Pre-Auth Requests', 'icon' => 'fa-clipboard-list', 'href' => '/m-pre-auth.php', 'key' => 'm_pre_auth'],
+        ],
+    ];
+    // M-Staff sees all offices, so we leave office_name blank or set to a generic label
+    $office_name = "Central Management";
 }
 
 

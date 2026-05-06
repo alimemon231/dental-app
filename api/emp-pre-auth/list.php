@@ -18,10 +18,14 @@ $currentUserId = $_SESSION['user_id'];
 
 // 2. The SQL Query (Filtered strictly by created_by)
 $sql = "SELECT 
-    *
-FROM `pre-auth`
-WHERE created_by = ? AND status = 'Sent'
-ORDER BY id DESC
+    pa.*, 
+    ins.name AS insurance_name, 
+    proc.name AS procedure_name
+FROM `pre-auth` pa
+LEFT JOIN `insurance` ins ON pa.p_insurance_plan = ins.id
+LEFT JOIN `procedures` proc ON pa.treatment_type = proc.id
+WHERE pa.created_by = ? AND pa.status = 'Sent'
+ORDER BY pa.id DESC
 LIMIT ? OFFSET ?";
 
 $records = $db->query($sql, [$currentUserId, $limit, $offset]);

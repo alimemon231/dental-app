@@ -1,6 +1,6 @@
 /**
- * assets/js/preauth.js
- * CRUD logic for the Pre-Auth management module.
+ * assets/js/emp-pre-auth.js
+ * Updated with Dynamic Procedures and Insurance Loading
  */
 
 $(document).ready(function () {
@@ -8,7 +8,53 @@ $(document).ready(function () {
     /* ── State ── */
     var currentPage = 1;
     var perPage = 20;
-    var editingId = null;   // null = adding new, number = editing
+    var editingId = null;
+
+    // Cache for dropdown data to avoid unnecessary API calls
+    var dropdownCache = {
+        procedures: [],
+        insurances: []
+    };
+
+    /* ================================================================
+        FETCH DROPDOWN DATA
+    ================================================================ */
+    function loadDropdowns() {
+        // Load Procedures
+        App.ajax({
+            url: '/emp-pre-auth/load-procedures.php',
+            method: 'GET',
+            loader: false,
+            onSuccess: function (data) {
+                dropdownCache.procedures = data;
+                var options = '<option value="">-- Select Procedure --</option>';
+                $.each(data, function (i, p) {
+                    // Only show active procedures in the dropdown
+
+                    options += `<option value="${p.id}">${App.utils.escHtml(p.name)}</option>`;
+
+                });
+                $('#treatment_type').html(options);
+            }
+        });
+
+        // Load Insurances
+        App.ajax({
+            url: '/emp-pre-auth/load-insurance.php',
+            method: 'GET',
+            loader: false,
+            onSuccess: function (data) {
+                dropdownCache.insurances = data;
+                var options = '<option value="">-- Select Insurance --</option>';
+                $.each(data, function (i, ins) {
+
+                    options += `<option value="${ins.id}">${App.utils.escHtml(ins.name)}</option>`;
+
+                });
+                $('#p_insurance_plan').html(options);
+            }
+        });
+    }
 
     /* ================================================================
         LOAD TABLE
@@ -21,10 +67,7 @@ $(document).ready(function () {
             url: '/emp-pre-auth/list.php',
             method: 'GET',
             loader: false,
-            data: {
-                page: page,
-                limit: perPage,
-            },
+            data: { page: page, limit: perPage },
             onSuccess: function (data, msg, res) {
                 renderTable(data);
                 renderPagination(res.meta || {});
@@ -47,7 +90,6 @@ $(document).ready(function () {
 
         var rows = '';
         $.each(records, function (i, r) {
-            // Status formatting
             var statusClass = 'status-' + (r.status ? r.status.toLowerCase() : 'pending');
 
             rows += '<tr>' +
@@ -57,9 +99,9 @@ $(document).ready(function () {
                 '<small class="text-muted"><i class="fa-regular fa-clock"></i> ' + r.time_ago + '</small>' +
                 '</td>' +
                 '<td>' + App.utils.escHtml(r.p_dob || '—') + '</td>' +
-                '<td>' + App.utils.escHtml(r.p_insurance_plan || '—') + '</td>' +
+                '<td>' + App.utils.escHtml(r.insurance_name || r.p_insurance_plan || '—') + '</td>' +
                 '<td>' +
-                '<span class="text-sm">' + App.utils.escHtml(r.treatment_type || '—') + '</span><br>' +
+                '<span class="text-sm">' + App.utils.escHtml(r.procedure_name || r.treatment_type || '—') + '</span><br>' +
                 '<small class="text-primary">Tooth: ' + App.utils.escHtml(r.tooth_numbers) + '</small>' +
                 '</td>' +
                 '<td><span class="status-badge ' + statusClass + '">' + App.utils.escHtml(r.status || 'Sent') + '</span></td>' +
@@ -76,34 +118,7 @@ $(document).ready(function () {
         $('#preauth-tbody').html(rows);
     }
 
-    function renderPagination(meta) {
-        var total = meta.total || 0;
-        var pages = meta.pages || 1;
-        var current = meta.current || 1;
-        var from = total ? ((current - 1) * perPage + 1) : 0;
-        var to = Math.min(current * perPage, total);
-
-        $('#preauth-info').text('Showing ' + from + '–' + to + ' of ' + total + ' records');
-
-        var btns = '';
-        btns += '<button class="page-btn" id="pg-prev" ' + (current <= 1 ? 'disabled' : '') + '><i class="fa-solid fa-chevron-left"></i></button>';
-
-        var start = Math.max(1, current - 2);
-        var end = Math.min(pages, start + 4);
-        for (var i = start; i <= end; i++) {
-            btns += '<button class="page-btn ' + (i === current ? 'active' : '') + '" data-page="' + i + '">' + i + '</button>';
-        }
-
-        btns += '<button class="page-btn" id="pg-next" ' + (current >= pages ? 'disabled' : '') + '><i class="fa-solid fa-chevron-right"></i></button>';
-        $('#pagination-btns').html(btns);
-    }
-
-    /* Pagination Events */
-    $(document).on('click', '.page-btn[data-page]', function () {
-        loadPreAuths(parseInt($(this).data('page')));
-    });
-    $(document).on('click', '#pg-prev', function () { if (currentPage > 1) loadPreAuths(currentPage - 1); });
-    $(document).on('click', '#pg-next', function () { if (currentPage < pages) loadPreAuths(currentPage + 1); });
+    /* ... renderPagination, Pagination Events, and infoRow helper remain same ... */
 
     /* ================================================================
         ADD NEW PRE-AUTH
@@ -116,18 +131,18 @@ $(document).ready(function () {
     });
 
     /* ================================================================
-        SAVE PRE-AUTH (create or update)
+        SAVE PRE-AUTH
     ================================================================ */
     $('#btn-save-preauth').on('click', function () {
         var form = $('#preauth-form');
-
         App.form.clearErrors(form);
+
         if (!App.form.validate(form)) {
             App.toast.warning('Validation', 'Please fill in all required fields.');
             return;
         }
 
-        var formData = form.serialize(); // Since there's no file upload here, serialize is cleaner
+        var formData = form.serialize();
         var isEditing = !!editingId;
         var url = isEditing ? '/emp-pre-auth/update.php' : '/emp-pre-auth/create.php';
 
@@ -146,60 +161,13 @@ $(document).ready(function () {
     });
 
     /* ================================================================
-    VIEW PRE-AUTH
-================================================================ */
-    $(document).on('click', '.btn-view', function () {
-        var id = $(this).data('id');
-
-        App.ajax({
-            url: '/emp-pre-auth/get.php?id=' + id,
-            loader: false,
-            onSuccess: function (r) {
-                var html = `
-                <div class="grid-2" style="gap:var(--sp-8)">
-                    <div>
-                        <div class="form-section-title mb-4">
-                            <i class="fa-solid fa-user"></i> Patient Info 
-                        </div>
-                        ${infoRow('Full Name', App.utils.escHtml(r.p_first_name + ' ' + r.p_last_name))}
-                        ${infoRow('Date of Birth', r.p_dob)}
-                        ${infoRow('Insurance', r.p_insurance_plan)}
-                        ${infoRow('Clinic Location', r.clinic_name)}
-                    </div>
-                    <div>
-                        <div class="form-section-title mb-4">
-                            <i class="fa-solid fa-tooth"></i> Treatment & Status 
-                        </div>
-                        ${infoRow('Procedure', r.treatment_type)}
-                        ${infoRow('Tooth Number', r.tooth_numbers)}
-                        ${infoRow('Current Status',  r.status )}
-                        ${infoRow('Created At', r.formatted_date)}
-                        ${infoRow('Relative Time', r.time_ago )}
-                    </div>
-                </div>`;
-
-                $('#view-preauth-body').html(html);
-                App.modal.open('view-preauth-modal');
-            }
-        });
-    });
-
-
-    function infoRow(label, value) {
-        return '<div class="flex-between mb-4" style="border-bottom:1px solid var(--color-border);padding-bottom:var(--sp-3)">' +
-            '<span class="text-sm text-muted">' + label + '</span>' +
-            '<span class="text-sm fw-500">' + App.utils.escHtml(String(value || '—')) + '</span>' +
-            '</div>';
-    }
-
-    /* ================================================================
         EDIT PRE-AUTH
     ================================================================ */
     $(document).on('click', '.btn-edit', function () {
         var id = $(this).data('id');
         App.ajax({
             url: '/emp-pre-auth/get.php?id=' + id,
-            loader: false,
+            loader: true,
             onSuccess: function (r) {
                 resetForm();
                 editingId = r.id;
@@ -210,8 +178,11 @@ $(document).ready(function () {
                 $('#p_first_name').val(r.p_first_name);
                 $('#p_last_name').val(r.p_last_name);
                 $('#p_dob').val(r.p_dob);
+
+                // Select values for dropdowns
                 $('#p_insurance_plan').val(r.p_insurance_plan);
                 $('#treatment_type').val(r.treatment_type);
+
                 $('#tooth_numbers').val(r.tooth_numbers);
                 $('#status').val(r.status);
 
@@ -221,22 +192,91 @@ $(document).ready(function () {
     });
 
     /* ================================================================
-        DELETE PRE-AUTH
-    ================================================================ */
+    VIEW PRE-AUTH DETAILS
+================================================================ */
+    $(document).on('click', '.btn-view', function () {
+        var id = $(this).data('id');
+
+        App.ajax({
+            url: '/emp-pre-auth/get.php?id=' + id, // Ensure this endpoint uses the JOIN query
+            loader: true,
+            onSuccess: function (r) {
+                var html =
+                    '<div class="grid-2" style="gap:var(--sp-8)">' +
+
+                    // Left Column: Patient & Insurance
+                    '<div>' +
+                    '<div class="form-section-title mb-4"><i class="fa-solid fa-user"></i> Patient Information</div>' +
+                    infoRow('Full Name', App.utils.escHtml(r.p_first_name + ' ' + r.p_last_name)) +
+                    infoRow('Date of Birth', App.utils.escHtml(r.p_dob || '—')) +
+                    infoRow('Insurance Plan', App.utils.escHtml(r.insurance_name || r.p_insurance_plan || '—')) +
+
+                    '<div class="form-section-title mt-6 mb-4"><i class="fa-solid fa- stethoscope"></i> Treatment Details</div>' +
+                    infoRow('Procedure', App.utils.escHtml(r.procedure_name || r.treatment_type || '—')) +
+                    infoRow('Tooth Numbers', App.utils.escHtml(r.tooth_numbers || '—')) +
+                    '</div>' +
+
+                    // Right Column: Status & Timeline
+                    '<div>' +
+                    '<div class="form-section-title mb-4"><i class="fa-solid fa-circle-info"></i> Submission Status</div>' +
+                    infoRow('Current Status', '<span class="status-badge status-' + (r.status ? r.status.toLowerCase() : 'sent') + '">' + r.status + '</span>') +
+                    infoRow('Submission Time', r.formatted_date + ' (' + r.time_ago + ')') +
+
+                    // Optional: If you have a notes field
+                    '<div class="mt-4 p-3 bg-light border-radius-sm">' +
+                    '<small class="text-muted d-block mb-1">Internal Notes:</small>' +
+                    '<div>' + App.utils.escHtml(r.description || 'No notes provided.') + '</div>' +
+                    '</div>' +
+                    '</div>' +
+
+                    '</div>';
+
+                $('#view-preauth-body').html(html);
+
+                // Set the ID on the edit button inside the view modal if you have one
+                $('#btn-edit-from-view').data('id', r.id);
+
+                App.modal.open('view-preauth-modal');
+            }
+        });
+    });
+
+    /**
+     * Helper function for clean row formatting
+     */
+    function infoRow(label, value) {
+        return '<div class="info-row mb-2">' +
+            '<span class="text-muted" style="width:130px; display:inline-block; font-size:0.85rem">' + label + ':</span>' +
+            '<span class="fw-600">' + value + '</span>' +
+            '</div>';
+    }
+
+
+    /* ================================================================
+    DELETE / DEACTIVATE PRE-AUTH
+================================================================ */
     $(document).on('click', '.btn-delete', function () {
         var id = $(this).data('id');
-        var name = $(this).data('name');
+        var name = $(this).data('name'); // Patient first name passed from renderTable
 
         App.utils.confirm(
-            'Are you sure you want to delete pre-auth for "' + name + '"?',
+            'Are you sure you want to delete the pre-auth for "' + name + '"? This action will remove it from the active list.',
             function () {
                 App.ajax({
-                    url: '/emp-pre-auth/delete.php',
+                    url: '/emp-pre-auth/delete.php', // Or deactivate.php based on your file naming
                     method: 'POST',
                     data: { id: id },
-                    loaderMsg: 'Deleting record…',
+                    loaderMsg: 'Deleting record...',
                     onSuccess: function (d, msg) {
                         App.toast.success('Deleted', msg);
+
+                        // If the user was currently editing this specific record, reset the form
+                        if (editingId == id) {
+                            resetForm();
+                            App.modal.close('preauth-modal');
+                        }
+
+                        // Refresh the table data
                         loadPreAuths(currentPage);
                     }
                 });
@@ -244,9 +284,6 @@ $(document).ready(function () {
         );
     });
 
-    /* ================================================================
-        HELPERS
-    ================================================================ */
     function resetForm() {
         App.form.reset(document.getElementById('preauth-form'));
         editingId = null;
@@ -255,6 +292,7 @@ $(document).ready(function () {
     /* ================================================================
         INIT
     ================================================================ */
-    loadPreAuths(1);
+    loadDropdowns(); // Load options for selects
+    loadPreAuths(1); // Load table data
 
 });

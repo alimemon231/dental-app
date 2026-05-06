@@ -11,8 +11,8 @@
   <style>
     /* Styling for the scrollable treatment list */
     .scrollable-select {
-        height: 120px !important;
-        overflow-y: auto;
+      height: 120px !important;
+      overflow-y: auto;
     }
   </style>
 </head>
@@ -79,12 +79,14 @@
                   <div class="form-row">
                     <div class="form-group">
                       <label class="form-label">First Name <span class="required">*</span></label>
-                      <input type="text" name="p_first_name" id="p_first_name" class="form-control" placeholder="John" required>
+                      <input type="text" name="p_first_name" id="p_first_name" class="form-control" placeholder="John"
+                        required>
                       <span class="form-error">Required.</span>
                     </div>
                     <div class="form-group">
                       <label class="form-label">Last Name <span class="required">*</span></label>
-                      <input type="text" name="p_last_name" id="p_last_name" class="form-control" placeholder="Doe" required>
+                      <input type="text" name="p_last_name" id="p_last_name" class="form-control" placeholder="Doe"
+                        required>
                       <span class="form-error">Required.</span>
                     </div>
                   </div>
@@ -94,29 +96,40 @@
                       <label class="form-label">Date of Birth <span class="required">*</span></label>
                       <input type="date" name="p_dob" id="p_dob" class="form-control" required>
                     </div>
+
                     <div class="form-group">
                       <label class="form-label">Insurance Plan <span class="required">*</span></label>
-                      <input type="text" name="p_insurance_plan" id="p_insurance_plan" class="form-control" placeholder="BlueCross / Delta" required>
+                      <select name="p_insurance_plan" id="p_insurance_plan" class="form-control" required>
+                        <option value="">Loading plans...</option>
+                      </select>
+                      <span class="form-error">Please select a plan.</span>
                     </div>
+
                   </div>
 
-                  <div class="form-section-title" style="margin-top:20px;"><i class="fa-solid fa-tooth"></i> Treatment Details</div>
-                  
+                  <div class="form-section-title" style="margin-top:20px;"><i class="fa-solid fa-tooth"></i> Treatment
+                    Details</div>
+
                   <div class="form-row" style="grid-template-columns: 2fr 1fr;">
                     <div class="form-group">
-                      <label class="form-label">Treatment Type (Select one) <span class="required">*</span></label>
+                      <label class="form-label">Treatment Type <span class="required">*</span></label>
                       <select name="treatment_type" id="treatment_type" class="form-control" required>
-                        <option value="Cleaning">Cleaning / Prophy</option>
-                        <option value="Filling">Composite Filling</option>
-                        <option value="Crown">Dental Crown</option>
-                        <option value="Root Canal">Root Canal</option>
-                        <option value="Extraction">Extraction</option>
-                        <option value="Bridge">Dental Bridge</option>
+                        <option value="">Loading procedures...</option>
                       </select>
+                      <span class="form-error">Please select a procedure.</span>
                     </div>
                     <div class="form-group">
                       <label class="form-label">Tooth Number(s) <span class="required">*</span></label>
-                      <input type="number" name="tooth_numbers" id="tooth_numbers" class="form-control" placeholder="e.g. 14" required>
+                      <select name="tooth_numbers" id="tooth_numbers" aria-placeholder="Select Number of teeths" class="form-control" required >
+                        <?php
+                          for($i = 1 ; $i <=32 ;$i++){
+
+                          ?>
+                                <option value="<?php echo $i ?>"><?php echo $i ?></option>
+                          <?php
+                          }
+                        ?>
+                      </select>
                     </div>
                   </div>
                 </div>
@@ -178,4 +191,5 @@
     });
   </script>
 </body>
+
 </html>

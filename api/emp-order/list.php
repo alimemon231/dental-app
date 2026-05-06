@@ -52,8 +52,6 @@ LEFT JOIN users u2 ON o.approved_by = u2.user_id
 LEFT JOIN order_items oi ON o.id = oi.order_id
 WHERE o.activation = 'active' 
   AND o.office_id = ? 
-  AND YEAR(o.order_date) = YEAR(CURRENT_DATE)
-  AND MONTH(o.order_date) = MONTH(CURRENT_DATE)
 GROUP BY o.id
 ORDER BY o.id DESC
 LIMIT ? OFFSET ?";

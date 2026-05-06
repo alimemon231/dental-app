@@ -1,187 +1,139 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Manage Items</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link rel="stylesheet" href="assets/css/global.css">
-  <link rel="stylesheet" href="assets/css/layout.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Store</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/global.css">
+    <link rel="stylesheet" href="assets/css/layout.css">
+    <link rel="stylesheet" href="assets/css/store-style.css">
 </head>
-
 <body>
-  <div class="app-shell">
-    <?php require_once "includes/page-header.php" ?>
-    <main class="main-content">
-      <div class="page-wrapper">
-        <div class="page-header">
-          <div class="page-header-left">
-            <h1>Manage Items</h1>
-            <div class="page-header-sub">Manage all Items here.</div>
-          </div>
-          <div class="page-header-actions">
-            
-          </div>
-        </div>
+    <div class="app-shell">
+        <?php require_once "includes/page-header.php" ?>
 
-        <!-- ============================================================
-     PATIENTS TABLE
-============================================================ -->
-        <div class="table-wrapper">
-          <table class="data-table" id="Items-table">
-            <thead>
-              <tr>
-                <th class="sortable" data-col="id">#</th>
-                <th class="sortable" data-col="name">Item Name</th>
-                <th>Price</th>
-                <th>Description</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="items-tbody">
-              <tr>
-                <td colspan="8">
-                  <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="table-pagination" id="patients-pagination">
-            <span id="patients-info" class="text-muted text-sm">—</span>
-            <div class="pagination" id="pagination-btns"></div>
-          </div>
-        </div>
+        <main class="main-content">
+            <div class="page-wrapper">
 
-        <!-- ============================================================
-     ADD / EDIT Item MODAL
-============================================================ -->
-        <div class="modal-backdrop" id="item-modal">
-          <div class="modal modal-lg">
-            <div class="modal-header">
-              <div class="modal-title" id="item-modal-title">Add New Item</div>
-              <button class="modal-close" data-close-modal="item-modal">&#x2715;</button>
-            </div>
-            <div class="modal-body">
-              <form id="item-form" novalidate>
-                <input type="hidden" name="item_id" id="item-id" value="">
-
-                <!-- Personal Info -->
-                <div class="form-section">
-                  <div class="form-section-title"><i class="fa-solid fa-pills"></i> Item Information</div>
-                  <div class="form-row">
-                    <div class="form-group">
-                      <label class="form-label">Item Name <span class="required">*</span></label>
-                      <input type="text" name="name" id="name" class="form-control" placeholder="e.g. Item 1"
-                        required>
-                      <span class="form-error">Item name is required.</span>
+                <!-- Header Section -->
+                <div class="store-header">
+                    <div>
+                        <h1>Supply Store</h1>
+                        <div class="page-header-sub">Request items for your department.</div>
                     </div>
-                    <div class="form-group">
-                      <label class="form-label">Price<span class="required">*</span></label>
-                      <input type="number" name="price" id="price" class="form-control" placeholder="+1 453-545-345"
-                        required>
-                      <span class="form-error"> Item price is required.</span>
+                    <div class="header-actions">
+                        <button id="toggle-filter-bar" class="btn btn-light">
+                            <i class="fa-solid fa-filter"></i> Filters
+                        </button>
+                        <button id="cart-btn" class="btn btn-primary">
+                            <i class="fa-solid fa-cart-shopping"></i> 
+                            Cart (<span id="cart-count">0</span>)
+                        </button>
                     </div>
-                  </div>
-                  <div class="form-row" style="grid-template-columns: repeat(1, 1fr);">
-                    <div class="form-group">
-                      <label class="form-label">Description <span class="required">*</span></label>
-                      <textarea name="description" id="description" placeholder="Description about item" class="form-control" required></textarea>
-                      <span class="form-error">Description is required</span>
-                    </div>
-                  </div>
-                  <div class="form-row" style="grid-template-columns: repeat(1, 1fr);margin-top:10px;">
-                    <div class="form-group">
-                      <label class="form-label"> Item Image<span class="required">*</span></label>
-                      <input type="file"  class="form-control" accept=".png, .jpg, .jpeg" name="image" id="image" required>
-                      <span class="form-error">Image is required</span>
-                    </div>
-                  </div>
                 </div>
-              </form>
-            </div>
-            <div class="modal-footer">
-              <button class="btn btn-ghost" data-close-modal="item-modal">Cancel</button>
-              <button class="btn btn-primary" id="btn-save-item">
-                <span class="btn-spinner"></span>
-                <span class="btn-text">Save Item</span>
-              </button>
-            </div>
-          </div>
-        </div>
 
-        <!-- ============================================================
-     VIEW PATIENT MODAL
-============================================================ -->
-        <div class="modal-backdrop" id="view-item-modal">
-          <div class="modal modal-lg">
-            <div class="modal-header">
-              <div class="modal-title">Patient Details</div>
-              <button class="modal-close" data-close-modal="view-item-modal">&#x2715;</button>
-            </div>
-            <div class="modal-body" id="view-items-body">
-              Loading…
-            </div>
-            <div class="modal-footer">
-              <button class="btn btn-ghost" data-close-modal="view-item-modal">Close</button>
-              <button class="btn btn-primary" id="btn-edit-from-view">
-                <i class="fa-solid fa-pen"></i> Edit
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </main>
-  </div>
+                <!-- TOP FILTER BAR -->
+                <div id="filter-bar" class="filter-bar" style="display: none;">
+                    <div class="filter-content">
+                        <div class="filter-item search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="store-search" class="form-control" placeholder="Search items...">
+                        </div>
 
-  <!-- Reusable confirm modal -->
-  <div class="modal-backdrop" id="confirm-modal">
-    <div class="modal modal-sm">
-      <div class="modal-header">
-        <div class="modal-title">Confirm Action</div>
-        <button class="modal-close" data-close-modal="confirm-modal">&#x2715;</button>
-      </div>
-      <div class="modal-body">
-        <p class="confirm-message">Are you sure?</p>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-ghost" id="confirm-cancel">Cancel</button>
-        <button class="btn btn-danger" id="confirm-ok">Confirm</button>
-      </div>
+                        <div class="filter-item categories">
+                            <ul id="category-filters" class="category-pills">
+                                <!-- Categories injected here via JS -->
+                            </ul>
+                        </div>
+
+                        <div class="filter-actions">
+                            <button id="clear-filters" class="btn btn-sm btn-danger">
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PRODUCT GRID -->
+                <div class="store-body">
+                    <div id="product-grid" class="product-grid"></div>
+                </div>
+
+                <!-- PRODUCT DETAIL MODAL (Using your framework structure) -->
+                <div class="modal-backdrop" id="product-modal">
+                    <div class="modal modal-lg">
+                        <div class="modal-header">
+                            <div class="modal-title">Product Details</div>
+                            <button class="modal-close" data-close-modal="product-modal">&#x2715;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="product-detail-flex">
+                                <div class="detail-img-wrapper">
+                                    <img id="modal-img" src="" style="width:100%; border-radius: 8px;">
+                                </div>
+                                <div class="detail-info">
+                                    <h2 id="modal-name"></h2>
+                                    <p id="modal-cats" class="text-muted small"></p>
+                                    <h3 id="modal-price" class="text-primary"></h3>
+                                    <p id="modal-desc"></p>
+
+                                    <div class="qty-input mt-3">
+                                        <button class="qty-btn" onclick="adjustQty(-1)">-</button>
+                                        <input type="text" id="purchase-qty" value="1" readonly>
+                                        <button class="qty-btn" onclick="adjustQty(1)">+</button>
+                                    </div>
+
+                                    <button id="btn-confirm-add" class="btn btn-success w-100 mt-2">
+                                        Add to Cart
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CART MODAL (Using your framework structure) -->
+                <div class="modal-backdrop" id="cart-modal">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <div class="modal-title">Your Cart</div>
+                            <button class="modal-close" data-close-modal="cart-modal">&#x2715;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="cart-items"></div>
+                            
+                            <div class="order-form mt-3">
+                                <div class="mb-2">
+                                    <label class="form-label">Order Date</label>
+                                    <input type="date" id="order-date" class="form-control">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Expected Receive Date</label>
+                                    <input type="date" id="expected-date" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button id="place-order" class="btn btn-primary w-100">Place Order</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
     </div>
-  </div>
 
-  <div id="toast-container"></div>
-  <div id="global-loader">
-    <div class="loader-spinner"></div>
-    <div class="loader-text">Please wait…</div>
-  </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script src="assets/js/emp-store.js"></script>
+    <script>
+        // Toggle the top filter bar visibility
+        $('#toggle-filter-bar').on('click', function() {
+            $('#filter-bar').slideToggle(200);
+        });
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-  <script src="assets/js/app.js"></script>
-  <script src="assets/js/emp-items.js"></script>
-  <script>
-    $(document).ready(function () {
-
-      /* 1. Check auth */
-      App.auth.check();
-      App.auth.role('staff')
-
-      /* 2. User info */
-      App.ajax({
-        url: '/auth/check.php', loader: false, silent: true,
-        onSuccess: function (d) {
-          if (d && d.user) {
-            $('#sidebar-user-name').text(d.user.name);
-            $('#sidebar-user-role').text(d.user.role || 'Staff');
-            $('#user-avatar-initial').text(d.user.name.charAt(0).toUpperCase());
-          }
-        }
-      });
-
-      
-    });
-  </script>
+       
+    </script>
 </body>
-
 </html>

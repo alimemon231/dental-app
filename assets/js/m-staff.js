@@ -134,7 +134,7 @@ $(document).ready(function () {
         var data = App.form.toObject(form);
         var isEditing = !!editingId;
         var url = isEditing
-            ? '/staff/update.php'
+            ? '/m-staff/update.php'
             : '/m-staff/create.php';
 
         if (data.password != data.re_password) {

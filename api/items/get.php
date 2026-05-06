@@ -1,6 +1,6 @@
 <?php
 /**
- * GET api/patients/get.php?id=5
+ * GET api/items/get.php?id=5
  */
 require_once __DIR__ . '/../../includes/Auth.php';
 
