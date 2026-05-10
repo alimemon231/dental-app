@@ -93,7 +93,7 @@
                     <div class="form-group">
                       <label class="form-label">Price<span class="required">*</span></label>
                       <input type="number" name="price" id="price" class="form-control" placeholder="+1 453-545-345"
-                        required>
+                        step="any" required>
                       <span class="form-error"> Item price is required.</span>
                     </div>
                   </div>
