@@ -1,6 +1,6 @@
 /**
- * assets/js/insurance.js
- * Logic for Insurance Company management with Active/Deactive workflow.
+ * assets/js/lab-cases.js
+ * Logic for Lab Case Type management (Teeth/Arch targets).
  */
 
 $(document).ready(function () {
@@ -11,118 +11,121 @@ $(document).ready(function () {
     /* ================================================================
         LOAD TABLE
     ================================================================ */
-    function loadInsurance() {
+    function loadLabCases() {
         App.ajax({
-            url: '/insurance/list.php',
+            url: '/lab-cases/list.php',
             method: 'GET',
             loader: false,
             onSuccess: function (data) {
                 renderTable(data);
             },
             onError: function () {
-                $('#insurance-tbody').html(
-                    '<tr><td colspan="5"><div class="table-empty"><i class="fa-solid fa-circle-exclamation"></i> Failed to load insurance providers.</div></td></tr>'
+                $('#lab-case-tbody').html(
+                    '<tr><td colspan="5"><div class="table-empty"><i class="fa-solid fa-circle-exclamation"></i> Failed to load lab case types.</div></td></tr>'
                 );
             }
         });
     }
 
-    function renderTable(insurance) {
-        if (!insurance || !insurance.length) {
-            $('#insurance-tbody').html(
-                '<tr><td colspan="5"><div class="table-empty"><i class="fa-solid fa-building-shield"></i> No insurance providers found.</div></td></tr>'
+    function renderTable(cases) {
+        if (!cases || !cases.length) {
+            $('#lab-case-tbody').html(
+                '<tr><td colspan="5"><div class="table-empty"><i class="fa-solid fa-flask"></i> No lab case types found.</div></td></tr>'
             );
             return;
         }
 
         var rows = '';
-        $.each(insurance, function (i, ins) {
-            var isDeactive = (ins.status === 'deactive');
+        $.each(cases, function (i, item) {
+            var isDeactive = (item.status === 'deactive');
             var rowClass = isDeactive ? 'row-deactivated' : '';
             var statusBadge = isDeactive 
                 ? '<span class="status-badge status-deactive">Deactive</span>' 
                 : '<span class="status-badge status-active">Active</span>';
+            
+            // Format target for better UI display
+            var targetDisplay = item.target === 'arch' 
+                ? '<i class="fa-solid fa-grip-lines"></i> Arch' 
+                : '<i class="fa-solid fa-tooth"></i> Teeth';
 
             rows += '<tr class="' + rowClass + '">' +
                 '<td><strong>' + (i + 1) + '</strong></td>' +
-                '<td>' + App.utils.escHtml(ins.name) + '</td>' +
-                '<td>' + App.utils.escHtml(ins.email || '—') + '</td>' +
-                '<td>' + App.utils.escHtml(ins.phone || '—') + '</td>' +
+                '<td>' + App.utils.escHtml(item.name) + '</td>' +
+                '<td>' + targetDisplay + '</td>' +
                 '<td>' + statusBadge + '</td>' +
                 '<td>' +
                 '<div class="actions">' +
-                '<button class="btn btn-ghost btn-sm btn-edit" data-id="' + ins.id + '" title="Edit"><i class="fa-solid fa-pen"></i></button>';
+                '<button class="btn btn-ghost btn-sm btn-edit" data-id="' + item.id + '" title="Edit"><i class="fa-solid fa-pen"></i></button>';
             
-            // Only show deactivation button if the insurance is currently active
             if (!isDeactive) {
-                rows += '<button class="btn btn-ghost btn-sm btn-deactivate" data-id="' + ins.id + '" data-name="' + App.utils.escHtml(ins.name) + '" title="Deactivate" style="color:var(--color-danger)">' +
+                rows += '<button class="btn btn-ghost btn-sm btn-deactivate" data-id="' + item.id + '" data-name="' + App.utils.escHtml(item.name) + '" title="Deactivate" style="color:var(--color-danger)">' +
                         '<i class="fa-solid fa-power-off"></i></button>';
             }
 
             rows += '</div></td></tr>';
         });
 
-        $('#insurance-tbody').html(rows);
+        $('#lab-case-tbody').html(rows);
     }
 
     /* ================================================================
-        SAVE INSURANCE (create or update)
+        SAVE CASE (Create or Update)
     ================================================================ */
-    $('#btn-save-insurance').on('click', function (e) {
+    $('#btn-save-case').on('click', function (e) {
         e.preventDefault();
-        var form = $('#insurance-form');
+        var form = $('#lab-case-form');
 
         App.form.clearErrors(form);
+        
+        // Basic Validation
         if (!App.form.validate(form)) {
-            App.toast.warning('Validation', 'Please provide an insurance company name.');
+            App.toast.warning('Validation', 'Please fill in all required fields.');
             return;
         }
 
         var formData = new FormData(form[0]); 
         var isEditing = !!editingId;
-        var url = isEditing ? '/insurance/update.php' : '/insurance/create.php';
+        var url = isEditing ? '/lab-cases/update.php' : '/lab-cases/create.php';
 
-        if (isEditing) formData.append('insurance_id', editingId);
+        if (isEditing) formData.append('case_id', editingId);
 
         App.ajax({
             url: url,
             method: 'POST',
             data: formData,
-            btn: $('#btn-save-insurance'),
-            loaderMsg: isEditing ? 'Updating...' : 'Adding...',
+            btn: $('#btn-save-case'),
+            loaderMsg: isEditing ? 'Updating Case...' : 'Adding Case...',
             onSuccess: function (d, msg) {
                 App.toast.success('Success', msg);
                 resetForm();
-                loadInsurance();
+                loadLabCases();
             }
         });
     });
 
     /* ================================================================
-        EDIT INSURANCE (Populate side form)
+        EDIT CASE (Populate Form)
     ================================================================ */
     $(document).on('click', '.btn-edit', function () {
         var id = $(this).data('id');
         
         App.ajax({
-            url: '/insurance/get.php?id=' + id,
+            url: '/lab-cases/get.php?id=' + id,
             loader: true,
-            onSuccess: function (ins) {
-                editingId = ins.id;
+            onSuccess: function (data) {
+                editingId = data.id;
                 
-                $('#insurance-id').val(ins.id);
-                $('#name').val(ins.name);
-                $('#email').val(ins.email);
-                $('#phone').val(ins.phone);
-                $('#notes').val(ins.description);
+                $('#case-id').val(data.id);
+                $('#name').val(data.name);
+                $('#target').val(data.target);
                 
                 // Set the status dropdown and show it
-                $('#status').val(ins.status || 'active');
+                $('#status').val(data.status || 'active');
                 $('#status-group').show();
 
-                // Change UI to Edit Mode
-                $('.sticky-side .form-section-title').html('<i class="fa-solid fa-pen"></i> Edit Insurance');
-                $('#btn-save-insurance .btn-text').text('Update Insurance');
+                // Update UI to Edit Mode
+                $('#form-title').html('<i class="fa-solid fa-pen"></i> Edit Case Type');
+                $('#btn-save-case .btn-text').text('Update Case Type');
                 $('#btn-cancel-edit').show();
                 
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -136,24 +139,24 @@ $(document).ready(function () {
     });
 
     /* ================================================================
-        DEACTIVATE INSURANCE (Quick Action)
+        DEACTIVATE CASE (Quick Action)
     ================================================================ */
     $(document).on('click', '.btn-deactivate', function () {
         var id = $(this).data('id');
         var name = $(this).data('name');
 
         App.utils.confirm(
-            'Are you sure you want to deactivate "' + name + '"? New patients cannot be linked to this provider.',
+            'Are you sure you want to deactivate "' + name + '"? It will no longer appear in new lab orders.',
             function () {
                 App.ajax({
-                    url: '/insurance/deactivate.php',
+                    url: '/lab-cases/deactivate.php',
                     method: 'POST',
                     data: { id: id },
                     loaderMsg: 'Deactivating...',
                     onSuccess: function (d, msg) {
                         App.toast.success('Status Updated', msg);
                         if(editingId == id) resetForm();
-                        loadInsurance();
+                        loadLabCases();
                     }
                 });
             }
@@ -165,20 +168,20 @@ $(document).ready(function () {
     ================================================================ */
     function resetForm() {
         editingId = null;
-        $('#insurance-id').val('');
-        $('#insurance-form')[0].reset();
-        App.form.clearErrors($('#insurance-form'));
+        $('#case-id').val('');
+        $('#lab-case-form')[0].reset();
+        App.form.clearErrors($('#lab-case-form'));
         
         // Reset UI back to "Add" Mode
         $('#status-group').hide();
-        $('.sticky-side .form-section-title').html('<i class="fa-solid fa-plus-circle"></i> Add New Insurance');
-        $('#btn-save-insurance .btn-text').text('Add Insurance Provider');
+        $('#form-title').html('<i class="fa-solid fa-flask"></i> Add New Case Type');
+        $('#btn-save-case .btn-text').text('Add Case Type');
         $('#btn-cancel-edit').hide();
     }
 
     /* ================================================================
         INIT
     ================================================================ */
-    loadInsurance();
+    loadLabCases();
 
 });

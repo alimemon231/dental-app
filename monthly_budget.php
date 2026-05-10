@@ -32,7 +32,7 @@
                 <div class="card mb-6">
                     <div class="flex flex-align gap-4" style="flex-wrap:wrap">
                         <select class="form-control" id="year" style="max-width:240px">
-                            <option value="null" selected disabled>Select Year</option>
+                            <option value="" selected disabled>Select Year</option>
                             <?php
 
                             $currentYear = (int) date("Y");
@@ -45,7 +45,7 @@
                         </select>
 
                         <select class="form-control" id="month" style="max-width:240px">
-                            <option value="null" selected disabled>Select Month</option>
+                            <option value="" selected disabled>Select Month</option>
                             <?php
 
 
@@ -58,6 +58,11 @@
                             }
                             ?>
                         </select>
+
+                        <select id="s-office" class="form-control" style="max-width:240px" required>
+                            <option value="" selected disabled>Select Office</option>
+                        </select>
+
                         <button class="btn btn-ghost btn-sm" id="btn-clear-filters">
                             <i class="fa-solid fa-xmark"></i> Clear
                         </button>
@@ -163,8 +168,8 @@
                                         <div class="form-group">
                                             <label class="form-label">Total budget <span
                                                     class="required">*</span></label>
-                                            <input type="number" name="budget_amount" id="bbudget-amount" class="form-control"
-                                                placeholder="e.g 2300" required>
+                                            <input type="number" name="budget_amount" id="bbudget-amount"
+                                                class="form-control" placeholder="e.g 2300" required>
                                             <span class="form-error">Please add amount.</span>
                                         </div>
                                     </div>

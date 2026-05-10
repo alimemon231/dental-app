@@ -10,7 +10,7 @@ $(document).ready(function () {
     loadClinics();
     loadAdminData(1);
 
-   // 2. Event Listeners
+    // 2. Event Listeners
     $('#btn-search').on('click', function () {
         loadAdminData(1);
     });
@@ -20,9 +20,42 @@ $(document).ready(function () {
         $('#filter-clinic').val('');
         $('#filter-start-date').val('');
         $('#filter-end-date').val('');
-        $('#filter-status').val('');
+        
+        // Reset Multiselect Statuses
+        $('.status-checkbox').prop('checked', false);
+        $('#status-display span').text('Select Statuses').addClass('text-muted');
+        $('#status-options').hide();
+
         loadAdminData(1);
     });
+
+    // --- Custom Status Multiselect Logic ---
+    $(document).on('click', '#status-display', function (e) {
+        e.stopPropagation();
+        $('#status-options').toggle();
+    });
+
+    $(document).on('click', function () {
+        $('#status-options').hide();
+    });
+
+    $('#status-options').on('click', function (e) {
+        e.stopPropagation();
+    });
+
+    $(document).on('change', '.status-checkbox', function () {
+        let selected = [];
+        $('.status-checkbox:checked').each(function () {
+            selected.push($(this).val());
+        });
+
+        if (selected.length > 0) {
+            $('#status-display span').text(selected.length + ' Statuses Selected').removeClass('text-muted');
+        } else {
+            $('#status-display span').text('Select Statuses').addClass('text-muted');
+        }
+    });
+    // ---------------------------------------
 
     // Print Listener
     $('#btn-print').on('click', function () {
@@ -64,14 +97,20 @@ function loadClinics() {
  */
 function loadAdminData(page = 1) {
     currentPage = page;
-    
+
+    // Collect multi-select statuses
+    let selectedStatuses = [];
+    $('.status-checkbox:checked').each(function () {
+        selectedStatuses.push($(this).val());
+    });
+
     const filters = {
         page: currentPage,
-        patient_name: $('#filter-patient').val(), // New filter
+        patient_name: $('#filter-patient').val(),
         clinic_id: $('#filter-clinic').val(),
-        start_date: $('#filter-start-date').val(), // New filter
-        end_date: $('#filter-end-date').val(),     // New filter
-        status: $('#filter-status').val()
+        start_date: $('#filter-start-date').val(),
+        end_date: $('#filter-end-date').val(),
+        status: selectedStatuses // Now passing an array
     };
 
     $('#admin-tbody').html('<tr><td colspan="6" class="text-center"><i class="fa-solid fa-spinner fa-spin"></i> Fetching pipeline data...</td></tr>');
@@ -88,12 +127,9 @@ function loadAdminData(page = 1) {
 
 /**
  * Print Functionality
- * Extracts the table and prints it with minimal styling
  */
 function printPipelineTable() {
     const tableHtml = $('#admin-table').clone();
-    
-    // Remove the 'Actions' column from the printed version
     tableHtml.find('th:last-child, td:last-child').remove();
 
     const printWindow = window.open('', '_blank', 'height=600,width=900');
@@ -105,11 +141,10 @@ function printPipelineTable() {
     printWindow.document.write('<p>Report Generated: ' + new Date().toLocaleString() + '</p>');
     printWindow.document.write(tableHtml[0].outerHTML);
     printWindow.document.write('</body></html>');
-    
+
     printWindow.document.close();
     printWindow.focus();
-    
-    // Give CSS time to load before triggering print dialog
+
     setTimeout(() => {
         printWindow.print();
         printWindow.close();
@@ -119,9 +154,6 @@ function printPipelineTable() {
 /**
  * Renders the 4-stage visual pipeline table
  */
-/**
- * Renders the 4-stage visual pipeline table with cascade logic
- */
 function renderAdminTable(records) {
     if (!records || records.length === 0) {
         $('#admin-tbody').html('<tr><td colspan="6" class="table-empty">No records found matching your filters.</td></tr>');
@@ -130,18 +162,11 @@ function renderAdminTable(records) {
 
     let html = '';
     records.forEach(r => {
-        const status = r.status; // Sent, Approved, Rejected, Scheduled, Completed
+        const status = r.status; 
         const hasDate = !!r.appointment_date;
 
-        // --------------------------------------------------------
-        // STAGE 1: SENT (Entry Point)
-        // Rule: Always Green
-        // --------------------------------------------------------
         const colSent = `<td class="stage-cell stage-success">Sent<br><small>${r.created_at_date}</small></td>`;
 
-        // --------------------------------------------------------
-        // STAGE 2: DECISION (Approved / Rejected)
-        // --------------------------------------------------------
         let colDecision;
         if (status === 'Rejected') {
             colDecision = `<td class="stage-cell stage-danger">Rejected<br><small>By: ${App.utils.escHtml(r.approver_name || 'Admin')}</small></td>`;
@@ -151,9 +176,6 @@ function renderAdminTable(records) {
             colDecision = `<td class="stage-cell stage-pending"><i class="fa-solid fa-minus"></i></td>`;
         }
 
-        // --------------------------------------------------------
-        // STAGE 3: BOOKING (Scheduled)
-        // --------------------------------------------------------
         let colBooked;
         if (status === 'Rejected') {
             colBooked = `<td class="stage-cell stage-danger"><i class="fa-solid fa-xmark"></i></td>`;
@@ -163,9 +185,6 @@ function renderAdminTable(records) {
             colBooked = `<td class="stage-cell stage-pending"><i class="fa-solid fa-minus"></i></td>`;
         }
 
-        // --------------------------------------------------------
-        // STAGE 4: RESULT (Completed)
-        // --------------------------------------------------------
         let colCompleted;
         if (status === 'Rejected') {
             colCompleted = `<td class="stage-cell stage-danger"><i class="fa-solid fa-xmark"></i></td>`;
@@ -222,7 +241,6 @@ function viewLifecycleDetails(id) {
         onSuccess: function (data, message) {
             updateProgressBar(data.status);
             
-            // Build a more comprehensive detail view
             let infoHtml = `
                 <div class="modal-detail-section">
                     <h4 class="section-title"><i class="fa-solid fa-user-shield"></i> Patient & Insurance</h4>
@@ -271,7 +289,6 @@ function viewLifecycleDetails(id) {
  */
 function updateProgressBar(status) {
     const stages = ['Sent', 'Approved', 'Scheduled', 'Completed'];
-    // Handle 'Rejected' case: Treat it as stage 2 for position but visually different if needed
     const effectiveStatus = (status === 'Rejected') ? 'Approved' : status; 
     const currentIdx = stages.indexOf(effectiveStatus);
     

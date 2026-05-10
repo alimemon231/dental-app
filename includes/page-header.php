@@ -46,6 +46,11 @@ if ($currentUser['role'] == 'admin') {
       ['label' => 'Insurance Settings', 'icon' => 'fa-shield-halved', 'href' => '/insurance.php', 'key' => 'insurance'],
     ],
 
+    'Lab Settings' => [
+      ['label' => 'Lab Records', 'icon' => 'fa-microscope', 'href' => '/adm-lab-monitor.php', 'key' => 'lab_monitor'],
+      ['label' => 'Lab Case Settings', 'icon' => 'fa-gears', 'href' => '/lab_cases.php', 'key' => 'lab_settings'],
+    ],
+
     'User Settings' => [
       ['label' => 'Doctor Setting', 'icon' => 'fa-stethoscope', 'href' => '/doctors.php', 'key' => 'doctors'],
       ['label' => 'Staff Setting', 'icon' => 'fa-users-gear', 'href' => '/staff.php', 'key' => 'staff'],
@@ -71,6 +76,12 @@ if ($currentUser['role'] == 'admin') {
       ['label' => 'Add Record', 'icon' => 'fa-plus-circle', 'href' => '/emp-pre-auth.php', 'key' => 'order'],
       ['label' => 'Verified Record', 'icon' => 'fa-check-double', 'href' => '/emp-done-patient.php', 'key' => 'dashboard'],
       ['label' => 'Add Appointments', 'icon' => 'fa-calendar-plus', 'href' => '/emp-book-appointment.php', 'key' => 'dashboard'],
+    ],
+
+    'Lab Settings' => [
+      ['label' => 'Add Record', 'icon' => 'fa-microscope', 'href' => '/emp-lab.php', 'key' => 'lab'],
+      ['label' => 'Scheduled Labs', 'icon' => 'fa-calendar-check', 'href' => '/emp-labs-done.php', 'key' => 'dashboard'],
+      
     ],
 
     'Supply Settings' => [
@@ -99,6 +110,7 @@ if ($currentUser['role'] == 'admin') {
     $navSections = [
         'Approvals' => [
             ['label' => 'Pre-Auth Requests', 'icon' => 'fa-clipboard-list', 'href' => '/m-pre-auth.php', 'key' => 'm_pre_auth'],
+            ['label' => 'Schedule Labs', 'icon' => 'fa-microscope', 'href' => '/m-book-lab.php', 'key' => 'm_pre_auth'],
         ],
     ];
     // M-Staff sees all offices, so we leave office_name blank or set to a generic label

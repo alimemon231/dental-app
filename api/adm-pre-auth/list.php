@@ -21,17 +21,17 @@ $limit  = min((int) ($_GET['limit'] ?? 15), 100);
 $page   = max((int) ($_GET['page'] ?? 1), 1);
 $offset = ($page - 1) * $limit;
 
-$patientName = trim($_GET['patient_name'] ?? ''); // New Filter
+$patientName = trim($_GET['patient_name'] ?? '');
 $clinicId    = $_GET['clinic_id'] ?? null;
-$startDate   = $_GET['start_date'] ?? null;       // New Filter
-$endDate     = $_GET['end_date'] ?? null;         // New Filter
-$status      = $_GET['status'] ?? null;
+$startDate   = $_GET['start_date'] ?? null;
+$endDate     = $_GET['end_date'] ?? null;
+$status      = $_GET['status'] ?? null; // Can be a string or an array
 
 // 3. Build Dynamic WHERE Clause
 $where = ["1=1"];
 $params = [];
 
-// New: Patient Name Filter (Searches across First and Last Name)
+// Patient Name Filter
 if (!empty($patientName)) {
     $where[] = "(pa.p_first_name LIKE ? OR pa.p_last_name LIKE ?)";
     $params[] = '%' . $patientName . '%';
@@ -43,22 +43,34 @@ if (!empty($clinicId)) {
     $params[] = (int)$clinicId;
 }
 
-// New: Start Date Filter (Targets created_at)
+// Start Date Filter
 if (!empty($startDate)) {
     $where[] = "DATE(pa.created_at) >= ?";
     $params[] = $startDate;
 }
 
-// New: End Date Filter (Targets created_at)
+// End Date Filter
 if (!empty($endDate)) {
     $where[] = "DATE(pa.created_at) <= ?";
     $params[] = $endDate;
 }
 
+// --- ENHANCED: Handle Multiple Statuses ---
 if (!empty($status)) {
-    $where[] = "pa.status = ?";
-    $params[] = $status;
+    if (is_array($status)) {
+        // Create placeholders (?, ?, ?) for the array length
+        $placeholders = implode(',', array_fill(0, count($status), '?'));
+        $where[] = "pa.status IN ($placeholders)";
+        foreach ($status as $s) {
+            $params[] = $s;
+        }
+    } else {
+        // Standard single status logic
+        $where[] = "pa.status = ?";
+        $params[] = $status;
+    }
 }
+// ------------------------------------------
 
 $whereSql = implode(" AND ", $where);
 
@@ -91,7 +103,7 @@ $countSql = "SELECT COUNT(*) as total FROM `pre-auth` pa WHERE $whereSql";
 $totalCount = $db->queryOne($countSql, $params)['total'];
 $totalPages = ceil($totalCount / $limit);
 
-// 6. Data Formatting for JS Stages (Kept original logic)
+// 6. Data Formatting for JS Stages
 foreach ($records as &$r) {
     $r['time_ago'] = timeAgo($r['created_at']);
     $r['created_at_date'] = date('m/d/Y', strtotime($r['created_at']));

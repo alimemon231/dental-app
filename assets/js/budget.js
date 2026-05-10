@@ -343,6 +343,7 @@ $(document).ready(function () {
                 });
 
                 $("#office").html(rows)
+                $("#s-office").html(rows)
             }
         });
     }
@@ -358,11 +359,13 @@ $(document).ready(function () {
     $(document).on('click', '#btn-clear-filters', function () {
         $("#month").val("");
         $("#year").val("");
+        $("#s-office").val("");
     });
 
     $(document).on('click', '#search-button', function () {
         var month = $("#month").val();
         var year = $("#year").val();
+        var office = $("#s-office").val();
         var page = 1;
 
         App.ajax({
@@ -373,11 +376,13 @@ $(document).ready(function () {
                 page: page,
                 limit: perPage,
                 month: month,
-                year: year
+                year: year,
+                office : office
             },
             onSuccess: function (data, msg, res) {
                 $("#month").val("");
                 $("#year").val("");
+                $("#s-office").val("");
                 renderTable(data);
                 renderPagination(res.meta || {});
             },

@@ -4,10 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Pre-Auth Monitor</title>
+    <title>Admin - Lab Case Monitor</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="assets/css/global.css">
     <link rel="stylesheet" href="assets/css/layout.css">
+    <link rel="stylesheet" href="assets/css/lab-monitor-custom.css">
     <style>
         /* Progress Bar Styles */
         .progress-track {
@@ -123,98 +124,97 @@
             <div class="page-wrapper">
                 <div class="page-header">
                     <div class="page-header-left">
-                        <h1>Pre-Auth Pipeline Monitor</h1>
-                        <div class="page-header-sub">Global tracking for all insurance authorizations and schedules.
+                        <h1>Lab Pipeline Monitor</h1>
+                        <div class="page-header-sub">Advanced tracking for clinical lab cases across all locations.
                         </div>
                     </div>
                 </div>
 
                 <div class="card mb-6 no-print">
-                    <div class="flex flex-align gap-4" style="flex-wrap:wrap">
-
-                        <div style="flex: 1; min-width: 200px;">
-                            <input type="text" class="form-control" id="filter-patient"
-                                placeholder="Search Patient Name...">
+                    <div class="grid-4 gap-4">
+                        <div>
+                            <label class="form-label">Patient Name</label>
+                            <input type="text" class="form-control" id="filter-patient" placeholder="Search Patient...">
+                        </div>
+                        <div>
+                            <label class="form-label">Clinic Location</label>
+                            <select class="form-control" id="filter-clinic">
+                                <option value="">All Clinics</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Doctor / Provider</label>
+                            <select class="form-control" id="filter-provider">
+                                <option value="">All Providers</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Lab Case Type</label>
+                            <select class="form-control" id="filter-lab-type">
+                                <option value="">All Types</option>
+                            </select>
                         </div>
 
-                        <select class="form-control" id="filter-clinic" style="max-width:200px">
-                            <option value="">All Clinics</option>
-                        </select>
-
-                        <div class="flex flex-align gap-2">
-                            <label class="text-xs font-bold">From:</label>
-                            <input type="date" id="filter-start-date" class="form-control" style="max-width:150px">
+                        <div>
+                            <label class="form-label">Sent From</label>
+                            <input type="date" id="filter-start-date" class="form-control">
                         </div>
-                        <div class="flex flex-align gap-2">
-                            <label class="text-xs font-bold">To:</label>
-                            <input type="date" id="filter-end-date" class="form-control" style="max-width:150px">
+                        <div>
+                            <label class="form-label">Sent To</label>
+                            <input type="date" id="filter-end-date" class="form-control">
                         </div>
 
-                        <div class="custom-multiselect" style="position:relative; min-width:200px;">
-                            <div class="form-control" id="status-display"
-                                style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                                <span class="text-muted">Select Statuses</span>
-                                <i class="fa-solid fa-chevron-down"></i>
+                        <div style="grid-column: span 2">
+                            <label class="form-label">Status Filter</label>
+                            <div class="custom-multiselect" style="position:relative;">
+                                <div class="form-control" id="status-display"
+                                    style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                                    <span class="text-muted">Select Multiple Statuses</span>
+                                    <i class="fa-solid fa-chevron-down"></i>
+                                </div>
+                                <div id="status-options" class="card shadow-sm"
+                                    style="display:none; position:absolute; top:100%; left:0; width:100%; z-index:100; padding:10px; max-height:250px; overflow-y:auto; background: #fff;">
+                                    <label class="flex flex-align gap-2 mb-2"><input type="checkbox"
+                                            class="status-checkbox" value="Sent"> Sent to Lab</label>
+                                    <label class="flex flex-align gap-2 mb-2"><input type="checkbox"
+                                            class="status-checkbox" value="Received"> Received at Clinic</label>
+                                    <label class="flex flex-align gap-2 mb-2"><input type="checkbox"
+                                            class="status-checkbox" value="Scheduled"> Scheduled with Patient</label>
+                                    <label class="flex flex-align gap-2 mb-0"><input type="checkbox"
+                                            class="status-checkbox" value="Done"> Procedure Completed</label>
+                                </div>
                             </div>
-                            <div id="status-options" class="card shadow-sm"
-                                style="display:none; position:absolute; top:100%; left:0; width:100%; z-index:100; padding:10px; max-height:250px; overflow-y:auto;">
-                                <label class="flex flex-align gap-2 mb-2" style="cursor:pointer">
-                                    <input type="checkbox" class="status-checkbox" value="Sent"> Pending (Sent)
-                                </label>
-                                <label class="flex flex-align gap-2 mb-2" style="cursor:pointer">
-                                    <input type="checkbox" class="status-checkbox" value="Approved"> Approved
-                                </label>
-                                <label class="flex flex-align gap-2 mb-2" style="cursor:pointer">
-                                    <input type="checkbox" class="status-checkbox" value="Rejected"> Rejected
-                                </label>
-                                <label class="flex flex-align gap-2 mb-2" style="cursor:pointer">
-                                    <input type="checkbox" class="status-checkbox" value="Scheduled"> Scheduled
-                                </label>
-                                <label class="flex flex-align gap-2 mb-0" style="cursor:pointer">
-                                    <input type="checkbox" class="status-checkbox" value="Completed"> Completed
-                                </label>
-                            </div>
                         </div>
+                    </div>
 
-                        <button class="btn btn-primary btn-sm" id="btn-search">
-                            <i class="fa-solid fa-magnifying-glass"></i> Search
-                        </button>
-                        <button class="btn btn-ghost btn-sm" id="btn-clear">
-                            <i class="fa-solid fa-xmark"></i> Clear
-                        </button>
+                    <div class="flex flex-justify-end gap-2 mt-4">
+                        <button class="btn btn-ghost btn-sm" id="btn-clear"><i class="fa-solid fa-xmark"></i>
+                            Clear</button>
                         <button class="btn btn-success btn-sm" id="btn-print">
-                            <i class="fa-solid fa-print"></i> Print Table
+                            <i class="fa-solid fa-print"></i> Print Report
                         </button>
+                        <button class="btn btn-primary btn-sm" id="btn-search"><i
+                                class="fa-solid fa-magnifying-glass"></i> Filter Results</button>
                     </div>
                 </div>
 
-                <!-- MONITORING TABLE -->
                 <div class="table-wrapper">
-                    <table class="data-table" id="admin-table">
+                    <table class="data-table" id="lab-monitor-table">
                         <thead>
                             <tr>
-                                <th style="min-width: 200px;">Patient & Treatment</th>
+                                <th style="min-width: 180px;">Patient & Provider</th>
                                 <th class="text-center">1. Sent</th>
-                                <th class="text-center">2. Decision</th>
-                                <th class="text-center">3. Booking</th>
-                                <th class="text-center">4. Result</th>
-                                <th>Actions</th>
+                                <th class="text-center">2. Arrival</th>
+                                <th class="text-center">3. Booked</th>
+                                <th class="text-center">4. Finished</th>
+                                <th class="text-right">Action</th>
                             </tr>
                         </thead>
-                        <tbody id="admin-tbody">
-                            <!-- JS Rendered -->
+                        <tbody id="lab-monitor-tbody">
                         </tbody>
                     </table>
-
-                    <div class="table-pagination">
-                        <span id="patients-info" class="text-muted text-sm">Showing 0 of 0 records</span>
-                        <div class="pagination" id="pagination-btns">
-                            <!-- JS Pagination -->
-                        </div>
-                    </div>
                 </div>
 
-                <!-- VIEW DETAILS MODAL -->
                 <div class="modal-backdrop" id="view-modal">
                     <div class="modal modal-lg">
                         <div class="modal-header">
@@ -234,20 +234,13 @@
                         </div>
                     </div>
                 </div>
-
             </div>
         </main>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="assets/js/app.js"></script>
-    <script src="assets/js/adm-pre-auth.js"></script>
-    <script>
-        $(document).ready(function () {
-            App.auth.check();
-            App.auth.role('admin');
-        });
-    </script>
+    <script src="assets/js/adm-lab-monitor.js"></script>
 </body>
 
 </html>

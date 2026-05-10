@@ -25,6 +25,7 @@ if (Api::method() !== 'POST') {
 $data = [
     'name'   => trim($_POST['name'] ?? ''),
     'email'  => trim($_POST['email'] ?? ''),
+    'phone'  => trim($_POST['phone'] ?? ''),
     'description'  => trim($_POST['description'] ?? ''),
     'status' => 'active' // Default status on creation
 ];
@@ -53,6 +54,7 @@ try {
         'id'     => $id,
         'name'   => $data['name'],
         'email'  => $data['email'],
+        'phone'  => $data['phone'],
         'notes'  => $data['description'],
         'status' => $data['status']
     ];

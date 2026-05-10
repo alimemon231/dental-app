@@ -80,6 +80,11 @@
                 <input type="email" name="email" id="email" class="form-control" placeholder="provider@insurance.com">
               </div>
 
+               <div class="form-group mb-4">
+                <label class="form-label">Contact Number (Optional)</label>
+                <input type="tel" name="phone" id="phone" class="form-control" placeholder="+1 456 564 665">
+              </div>
+
               <div class="form-group mb-4">
                 <label class="form-label">Notes</label>
                 <textarea name="notes" id="notes" class="form-control" placeholder="Claim submission details..." rows="3"></textarea>
@@ -109,7 +114,8 @@
                 <tr>
                   <th width="50">#</th>
                   <th>Insurance Name</th>
-                  <th>Contact Info</th>
+                  <th>Contact Email</th>
+                  <th>Phone</th>
                   <th width="100">Status</th>
                   <th width="120">Actions</th>
                 </tr>

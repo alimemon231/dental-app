@@ -31,6 +31,7 @@ if (!$insurance_id) {
 $data = [
     'name'        => trim($_POST['name'] ?? ''),
     'email'       => trim($_POST['email'] ?? ''),
+    'phone'       => trim($_POST['phone'] ?? ''),
     'description' => trim($_POST['notes'] ?? $_POST['description'] ?? ''), // Maps 'notes' from front-end to DB 'description'
     'status'      => trim($_POST['status'] ?? 'active') 
 ];

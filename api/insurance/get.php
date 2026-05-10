@@ -19,7 +19,7 @@ if (!$id) {
 // 2. Fetch Insurance Data
 // Using 'description' as requested for the DB column
 $insurance = $db->queryOne(
-    "SELECT id, name, email, description, status
+    "SELECT id, name, email, phone , description, status
      FROM insurance
      WHERE id = ?",
     [$id]
