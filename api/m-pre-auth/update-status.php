@@ -26,6 +26,7 @@ if (Api::method() !== 'POST') {
 $preAuthId     = (int)($_POST['id'] ?? 0);
 $newStatus     = trim($_POST['status'] ?? ''); // 'Approved' or 'Rejected'
 $reviewerId    = $_SESSION['user_id']; 
+$expiery  = $_POST['expiry_date'];
 
 // 3. Basic Validation
 if (!$preAuthId || !in_array($newStatus, ['Approved', 'Rejected'])) {
@@ -52,7 +53,8 @@ try {
     // We update status, the reviewer ID, and the timestamp
     $updateData = [
         'status'      => $newStatus,
-        'approved_by' => $reviewerId, // Storing the m-staff user_id
+        'approved_by' => $reviewerId,
+        'approval_expire_date' => $expiery, 
     ];
 
     $db->update("pre-auth", $updateData, ['id' => $preAuthId]);

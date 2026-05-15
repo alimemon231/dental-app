@@ -188,6 +188,35 @@
                     </div>
                 </div>
 
+                <div class="grid-3 mb-4" id="progress-cards">
+                    <div class="sticky-side" id="card-approval-container">
+                        <div class="form-section-title mb-4">
+                            <i class="fa-solid fa-check-double"></i> <span>Approval Rate</span>
+                        </div>
+                        <div id="card-approval-content">
+                            <div class="text-center text-muted p-3">-- Loading Stats --</div>
+                        </div>
+                    </div>
+
+                    <div class="sticky-side" id="card-scheduled-container">
+                        <div class="form-section-title mb-4">
+                            <i class="fa-solid fa-calendar-check"></i> <span>Scheduling Rate</span>
+                        </div>
+                        <div id="card-scheduled-content">
+                            <div class="text-center text-muted p-3">-- Loading Stats --</div>
+                        </div>
+                    </div>
+
+                    <div class="sticky-side" id="card-completion-container">
+                        <div class="form-section-title mb-4">
+                            <i class="fa-solid fa-flag-checkered"></i> <span>Pipeline Completion</span>
+                        </div>
+                        <div id="card-completion-content">
+                            <div class="text-center text-muted p-3">-- Loading Stats --</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- MONITORING TABLE -->
                 <div class="table-wrapper">
                     <table class="data-table" id="admin-table">

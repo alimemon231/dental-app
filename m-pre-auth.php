@@ -71,7 +71,6 @@
                 </div>
 
 
-                <!-- Generic Confirmation Modal for Approvals/Rejections -->
                 <div class="modal-backdrop" id="confirm-modal">
                     <div class="modal modal-sm">
                         <div class="modal-header">
@@ -79,8 +78,16 @@
                             <button class="modal-close" data-close-modal="confirm-modal">&#x2715;</button>
                         </div>
                         <div class="modal-body">
-                            <!-- The dynamic icon and message will be injected here -->
                             <div id="confirm-body-content"></div>
+
+                            <div id="approval-expiry-container" class="mt-4 p-3 bg-light border-radius-sm"
+                                style="display:none; border: 1px solid #ddd;">
+                                <label class="form-label font-bold text-xs mb-2 d-block">SET APPROVAL EXPIRY
+                                    DATE</label>
+                                <input type="date" id="approval-expiry-date" class="form-control">
+                                <small class="text-muted d-block mt-1">This date will be saved with the approval
+                                    record.</small>
+                            </div>
                         </div>
                         <div class="modal-footer">
                             <button class="btn btn-ghost" data-close-modal="confirm-modal"

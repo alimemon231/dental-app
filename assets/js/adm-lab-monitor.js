@@ -74,21 +74,21 @@ function initDropdowns() {
     // Clinics
     App.ajax({
         url: '/offices/list.php',
-        onSuccess: function(data) {
+        onSuccess: function (data) {
             data.forEach(o => $('#filter-clinic').append(`<option value="${o.id}">${o.office_name}</option>`));
         }
     });
     // Providers
     App.ajax({
         url: '/doctor/list.php',
-        onSuccess: function(data) {
+        onSuccess: function (data) {
             data.forEach(p => $('#filter-provider').append(`<option value="${p.user_id}">Dr. ${p.name}</option>`));
         }
     });
     // Lab Types
     App.ajax({
         url: '/lab-cases/list.php',
-        onSuccess: function(data) {
+        onSuccess: function (data) {
             data.forEach(t => $('#filter-lab-type').append(`<option value="${t.id}">${t.name}</option>`));
         }
     });
@@ -124,6 +124,7 @@ function loadLabMonitor(page = 1) {
         onSuccess: function (response) {
             renderLabTable(response.records);
             renderPagination(response.total_records, response.total_pages, response.records.length);
+            updateStatsCards(response);
         }
     });
 }
@@ -139,21 +140,34 @@ function renderLabTable(records) {
 
     let html = '';
     records.forEach(r => {
-        // Stage 1: Sent (Always success if in list)
-        const stage1 = `<td class="stage-cell stage-success">Sent<br><small>${App.utils.formatDate(r.date_sent)}</small></td>`;
-        
-        // Stage 2: Arrived (date_received)
-        const stage2 = r.date_received 
+
+        // Define status weights
+        const statusMap = {
+            'Sent': 1,
+            'Received': 2,
+            'Scheduled': 3,
+            'Done': 4
+        };
+        const currentWeight = statusMap[r.status] || 0;
+
+
+        // Stage 1: Sent (Weight 1+)
+        const stage1 = (currentWeight >= 1)
+            ? `<td class="stage-cell stage-success">Sent<br><small>${App.utils.formatDate(r.date_sent)}</small></td>`
+            : `<td class="stage-cell stage-pending"><i class="fa-solid fa-clock"></i></td>`;
+
+        // Stage 2: Arrived (Weight 2+)
+        const stage2 = (currentWeight >= 2)
             ? `<td class="stage-cell stage-success">Arrived<br><small>${App.utils.formatDate(r.date_received)}</small></td>`
             : `<td class="stage-cell stage-pending"><i class="fa-solid fa-clock"></i></td>`;
 
-        // Stage 3: Booked (date_scheduled)
-        const stage3 = r.date_scheduled 
+        // Stage 3: Booked (Weight 3+)
+        const stage3 = (currentWeight >= 3)
             ? `<td class="stage-cell stage-success">Booked<br><small>${App.utils.formatDate(r.date_scheduled)}</small></td>`
             : `<td class="stage-cell stage-pending"><i class="fa-solid fa-calendar-minus"></i></td>`;
 
-        // Stage 4: Result (status === 'Done')
-        const stage4 = (r.status === 'Done')
+        // Stage 4: Result (Weight 4)
+        const stage4 = (currentWeight === 4)
             ? `<td class="stage-cell stage-success">Done<br><small>${App.utils.formatDate(r.date_complete)}</small></td>`
             : `<td class="stage-cell stage-pending"><i class="fa-solid fa-vial"></i></td>`;
 
@@ -198,7 +212,7 @@ function viewLabLifecycle(id) {
         data: { id: id },
         onSuccess: function (data) {
             updateProgressBar(data.status);
-            
+
             let infoHtml = `
                 <div class="modal-detail-section">
                     <h4 class="section-title"><i class="fa-solid fa-flask"></i> Case Information</h4>
@@ -207,6 +221,9 @@ function viewLabLifecycle(id) {
                         <div class="detail-item"><strong>Case Type:</strong> <span>${data.type_name}</span></div>
                         <div class="detail-item"><strong>Provider:</strong> <span>Dr. ${data.doctor_name}</span></div>
                         <div class="detail-item"><strong>Office:</strong> <span>${data.office_name}</span></div>
+                        <div class="detail-item"><strong>Next Procidure:</strong> <span>${data.next_step_name}</span></div>
+                        <div class="detail-item"><strong>Lab :</strong> <span>${data.lab_partner_name}</span></div>
+                    </div>
                     </div>
                 </div>
                 <div class="modal-detail-section">
@@ -223,7 +240,7 @@ function viewLabLifecycle(id) {
                     <div class="notes-box">${data.notes || 'No internal notes found for this lab case.'}</div>
                 </div>
             `;
-            
+
             $('#view-details-body').html(infoHtml);
             App.modal.open('view-modal');
         }
@@ -236,13 +253,13 @@ function viewLabLifecycle(id) {
 function updateProgressBar(status) {
     const stages = ['Sent', 'Received', 'Scheduled', 'Done'];
     const currentIdx = stages.indexOf(status);
-    
+
     let html = '';
     stages.forEach((label, idx) => {
         let stateClass = '';
         if (idx < currentIdx) stateClass = 'completed';
         else if (idx === currentIdx) stateClass = 'active';
-        
+
         // Ensure "Done" shows as completed when active
         if (status === 'Done') stateClass = 'completed';
 
@@ -254,6 +271,100 @@ function updateProgressBar(status) {
     });
     $('#modal-progress-bar').html(html);
 }
+
+
+/**
+ * Main wrapper called inside loadLabMonitor onSuccess
+ */
+/**
+ * Main wrapper called inside loadLabMonitor onSuccess
+ */
+function updateStatsCards(response) {
+    const records = response.records || [];
+    const total = response.total_records || records.length;
+
+    if (total === 0) {
+        renderEmptyCards();
+        return;
+    }
+
+    // Define status weights for consistent calculation
+    const statusWeight = {
+        'Sent': 1,
+        'Received': 2,
+        'Scheduled': 3,
+        'Done': 4
+    };
+
+    // 1. Calculate Completion (Only those explicitly marked 'Done')
+    // Logic: Status weight must be 4
+    const completedCount = records.filter(r => statusWeight[r.status] === 4).length;
+    renderPipelineCard(completedCount, total);
+
+    // 2. Calculate Booking Efficiency
+    // Logic: Status weight must be 3 or 4 (Scheduled or Done)
+    const bookedCount = records.filter(r => statusWeight[r.status] >= 3).length;
+    renderEfficiencyCard(bookedCount, total);
+}
+
+function renderPipelineCard(count, total) {
+    const percent = Math.round((count / total) * 100);
+    const color = getProgressColor(percent);
+
+    const html = `
+        <div class="d-flex justify-content-between mb-1">
+            <span><b>${count}</b> <small class="text-muted">completed</small></span>
+            <span class="font-bold">${percent}%</span>
+        </div>
+        <div class="progress-bar-container" style="background:#eee; height:8px; border-radius:4px; overflow:hidden;">
+            <div style="width:${percent}%; background:${color}; height:100%; transition: width 0.5s ease;"></div>
+        </div>
+        <div class="text-xs text-muted mt-2 text-right">Total Cases: ${total}</div>
+    `;
+    $('#card-pipeline-content').html(html);
+}
+
+function renderEfficiencyCard(count, total) {
+    const percent = Math.round((count / total) * 100);
+    const color = getProgressColor(percent);
+
+    const html = `
+        <div class="d-flex justify-content-between mb-1">
+            <span><b>${count}</b> <small class="text-muted">booked</small></span>
+            <span class="font-bold">${percent}%</span>
+        </div>
+        <div class="progress-bar-container" style="background:#eee; height:8px; border-radius:4px; overflow:hidden;">
+            <div style="width:${percent}%; background:${color}; height:100%; transition: width 0.5s ease;"></div>
+        </div>
+        <div class="text-xs text-muted mt-2 text-right">Target: ${total} appts</div>
+    `;
+    $('#card-efficiency-content').html(html);
+}
+
+/**
+ * Dynamic Color Interpolator
+ * 0% = Dark Red, 50% = Yellow/Orange, 100% = Deep Green
+ */
+function getProgressColor(percent) {
+    let r, g, b = 0;
+    if (percent < 50) {
+        // Red to Yellow (increase Green)
+        r = 200;
+        g = Math.round(5.1 * percent);
+    } else {
+        // Yellow to Green (decrease Red)
+        r = Math.round(510 - 5.1 * percent);
+        g = 200;
+    }
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+function renderEmptyCards() {
+    const empty = '<div class="text-center text-muted p-3">No data for current filters</div>';
+    $('#card-pipeline-content').html(empty);
+    $('#card-efficiency-content').html(empty);
+}
+
 
 /**
  * Print Report Functionality

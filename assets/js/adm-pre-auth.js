@@ -121,6 +121,7 @@ function loadAdminData(page = 1) {
         onSuccess: function (response) {
             renderAdminTable(response.records);
             renderPagination(response.total_records, response.total_pages, response.records.length);
+            updateAuthStatsCards(response);
         }
     });
 }
@@ -129,26 +130,94 @@ function loadAdminData(page = 1) {
  * Print Functionality
  */
 function printPipelineTable() {
+    // 1. Clone the Table and remove the "Action" column
     const tableHtml = $('#admin-table').clone();
     tableHtml.find('th:last-child, td:last-child').remove();
 
-    const printWindow = window.open('', '_blank', 'height=600,width=900');
+    // 2. Clone the Progress Cards
+    // We target the containers we created: Approval, Scheduled, and Completion
+    const card1 = $('#card-approval-container').clone();
+    const card2 = $('#card-scheduled-container').clone();
+    const card3 = $('#card-completion-container').clone();
+
+    const printWindow = window.open('', '_blank', 'height=800,width=1000');
+    
     printWindow.document.write('<html><head><title>Pre-Auth Pipeline Report</title>');
     printWindow.document.write('<link rel="stylesheet" href="assets/css/global.css">');
-    printWindow.document.write('<style>body{padding:20px} table{width:100%; border-collapse:collapse;} th,td{border:1px solid #ddd; padding:8px; text-align:left;} .stage-success{background:#6ef787 !important; color:#2b8a3e;} .stage-danger{background:#ee5050 !important; color:#fff;} .stage-pending{background:#eddc87 !important;}</style>');
+    
+    // 3. Add Custom Print Styles
+    printWindow.document.write(`
+        <style>
+            body { padding: 40px; font-family: sans-serif; }
+            h1 { margin-bottom: 5px; color: #333; }
+            .print-date { margin-bottom: 30px; color: #666; font-size: 14px; }
+            
+            /* Stats Cards Layout for Print */
+            .stats-row { 
+                display: flex; 
+                gap: 20px; 
+                margin-bottom: 40px; 
+                width: 100%;
+            }
+            .stats-row > div { 
+                flex: 1; 
+                border: 1px solid #eee; 
+                padding: 15px; 
+                border-radius: 8px;
+                background: #fcfcfc;
+            }
+            
+            /* Progress Bar Styling for Print (Force colors) */
+            .progress-bar-container {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                background: #eee !important;
+            }
+            .progress-bar-container div {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            // /* Table Styling */
+            // table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            // th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 12px; }
+            // th { background: #f4f4f4 !important; -webkit-print-color-adjust: exact; }
+            
+            // /* Pipeline Cell Colors */
+            // .stage-success { background: #6ef787 !important; color: #2b8a3e !important; -webkit-print-color-adjust: exact; }
+            // .stage-danger { background: #ee5050 !important; color: #fff !important; -webkit-print-color-adjust: exact; }
+            // .stage-pending { background: #eddc87 !important; -webkit-print-color-adjust: exact; }
+            
+            // .form-section-title { font-weight: bold; margin-bottom: 10px; display: block; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+            // .text-muted { color: #888; }
+            // .font-bold { font-weight: bold; }
+        </style>
+    `);
+    
     printWindow.document.write('</head><body>');
     printWindow.document.write('<h1>Pre-Authorization Pipeline Report</h1>');
-    printWindow.document.write('<p>Report Generated: ' + new Date().toLocaleString() + '</p>');
+    printWindow.document.write('<p class="print-date">Report Generated: ' + new Date().toLocaleString() + '</p>');
+
+    // 4. Inject the Stats Cards in a Row
+    printWindow.document.write('<div class="stats-row">');
+    printWindow.document.write(card1[0].outerHTML);
+    printWindow.document.write(card2[0].outerHTML);
+    printWindow.document.write(card3[0].outerHTML);
+    printWindow.document.write('</div>');
+
+    // 5. Inject the Table
     printWindow.document.write(tableHtml[0].outerHTML);
+    
     printWindow.document.write('</body></html>');
 
     printWindow.document.close();
     printWindow.focus();
 
+    // Use a slight delay to ensure styles and clones are fully rendered before print dialog
     setTimeout(() => {
         printWindow.print();
         printWindow.close();
-    }, 500);
+    }, 750);
 }
 
 /**
@@ -259,6 +328,7 @@ function viewLifecycleDetails(id) {
                         <div class="detail-item"><strong>Clinic:</strong> <span>${data.office_name}</span></div>
                         <div class="detail-item"><strong>Tooth #s:</strong> <span>${data.tooth_numbers || 'N/A'}</span></div>
                         <div class="detail-item"><strong>Submitted By:</strong> <span>${data.staff_name}</span></div>
+                         <div class="detail-item"><strong>Approval Expiry Date:</strong> <span>${data.approval_expire_date}</span></div>
                     </div>
                 </div>
 
@@ -267,6 +337,7 @@ function viewLifecycleDetails(id) {
                     <div class="detail-grid">
                         <div class="detail-item"><strong>Date Sent:</strong> <span>${data.created_at_fmt}</span></div>
                         <div class="detail-item"><strong>Decision By:</strong> <span>${data.approver_name || 'Pending'}</span></div>
+                        <div class="detail-item"><strong>Approval Expiry Date:</strong> <span>${data.approval_expire_date}</span></div>
                         <div class="detail-item"><strong>Appointment:</strong> <span class="${data.appointment_date_fmt ? 'text-success font-bold' : ''}">${data.appointment_date || 'Not Scheduled Yet'}</span></div>
                         <div class="detail-item"><strong>Status:</strong> <span class="badge badge-${data.status.toLowerCase()}">${data.status}</span></div>
                     </div>
@@ -283,6 +354,76 @@ function viewLifecycleDetails(id) {
         }
     });
 }
+
+
+/**
+ * Main wrapper called inside loadAdminData onSuccess
+ */
+function updateAuthStatsCards(response) {
+    const records = response.records || [];
+    const total = response.total_records || records.length;
+
+    if (total === 0) {
+        renderAuthEmptyCards();
+        return;
+    }
+
+    // 1. Approval Logic: Case is Approved, Scheduled, or Completed
+    const approvedCount = records.filter(r => ['Approved', 'Scheduled', 'Completed'].includes(r.status)).length;
+    renderStatCard('#card-approval-content', approvedCount, total, 'Approved');
+
+    // 2. Scheduling Logic: Case is Scheduled or Completed
+    const scheduledCount = records.filter(r => ['Scheduled', 'Completed'].includes(r.status)).length;
+    renderStatCard('#card-scheduled-content', scheduledCount, total, 'Scheduled');
+
+    // 3. Completion Logic: Case is exactly Completed
+    const completedCount = records.filter(r => r.status === 'Completed').length;
+    renderStatCard('#card-completion-content', completedCount, total, 'Completed');
+}
+
+/**
+ * Generic Renderer for Auth Stat Cards
+ */
+function renderStatCard(container, count, total, label) {
+    const percent = total > 0 ? Math.round((count / total) * 100) : 0;
+    const displayColor = getAuthProgressColor(percent);
+
+    const html = `
+        <div class="d-flex justify-content-between mb-1">
+            <span><b>${count}</b> <small class="text-muted">${label}</small></span>
+            <span class="font-bold">${percent}%</span>
+        </div>
+        <div class="progress-bar-container" style="background:#eee; height:8px; border-radius:4px; overflow:hidden;">
+            <div style="width:${percent}%; background:${displayColor}; height:100%; transition: width 0.5s ease;"></div>
+        </div>
+        <div class="text-xs text-muted mt-2 text-right">Total Sent: ${total}</div>
+    `;
+    $(container).html(html);
+}
+
+/**
+ * Dynamic Color Interpolator (Red to Green)
+ */
+function getAuthProgressColor(percent) {
+    let r, g, b = 0;
+    if (percent < 50) {
+        r = 200; 
+        g = Math.round(5.1 * percent); 
+    } else {
+        r = Math.round(510 - 5.1 * percent);
+        g = 200;
+    }
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+/**
+ * Null State Renderer
+ */
+function renderAuthEmptyCards() {
+    const empty = '<div class="text-center text-muted p-3">No data available</div>';
+    $('#card-approval-content, #card-scheduled-content, #card-completion-content').html(empty);
+}
+
 
 /**
  * Updates the Visual Progress Bar in the Modal

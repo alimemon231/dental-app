@@ -29,6 +29,7 @@ function renderTable(records) {
                     <td><strong>${App.utils.escHtml(r.p_first_name + ' ' + r.p_last_name)}</strong></td>
                     <td>${App.utils.escHtml(r.p_dob || '—')}</td>
                     <td><small>${App.utils.escHtml(r.approver_name || 'Management')}</small></td>
+                    <td><small>${App.utils.escHtml(r.approval_expire_date || '-')}</small></td>
                     <td>${r.formatted_date || '—'}</td>
                     <td><span class="status-badge ${statusClass}">Approved</span></td>
                     <td>

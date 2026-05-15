@@ -29,7 +29,8 @@ $case_type_id    = trim($_POST['case_type_id'] ?? '');
 $impression_type = trim($_POST['impression_type'] ?? '');
 $u_arch          = trim($_POST['u_arch'] ?? '');
 $l_arch          = trim($_POST['l_arch'] ?? '');
-$next_visit      = trim($_POST['next_visit'] ?? ''); // Procedure ID
+$lab_proider      = trim($_POST['lab_provider'] ?? '');
+$next_visit      = trim($_POST['next_visit'] ?? '');
 $notes           = trim($_POST['notes'] ?? '');
 
 // 2. Validation
@@ -66,6 +67,7 @@ $labData = [
     'l_arch'          => $l_arch,        // Full or Tooth numbers
     'impression_type' => $impression_type,
     'next_visit'      => $next_visit,    // Procedure ID
+    'lab_provider'    => $lab_proider,
     'notes'           => $notes,
     'sent_by'         => $currentUserId,
     'date_sent'       => date('Y-m-d H:i:s'),

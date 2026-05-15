@@ -8,7 +8,7 @@ $(document).ready(function () {
 
     /* ── State ── */
     var currentPage = 1;
-    var perPage = 20;
+    var pageLimit = 1;
     var editingId = null;   // null = adding new, number = editing
     var selected_categories = [];
 
@@ -25,11 +25,11 @@ $(document).ready(function () {
             loader: false,
             data: {
                 page: page,
-                limit: perPage,
             },
             onSuccess: function (data, msg, res) {
-                renderTable(data);
-                renderPagination(res.meta || {});
+                pageLimit = data.meta.offset;
+                renderTable(data.records);
+                renderPagination(data.meta || {});
             },
             onError: function () {
                 $('#items-tbody').html(
@@ -50,7 +50,7 @@ $(document).ready(function () {
         var rows = '';
         $.each(patients, function (i, p) {
             rows += '<tr>' +
-                '<td><strong>#' + (i + 1) + '</strong></td>' +
+                '<td><strong>#' + (pageLimit +1) + '</strong></td>' +
                 '<td>' +
                 '<div class="flex flex-align gap-3">' +
                 '<img src="' + p.image_path + '" class="item-img">' +
@@ -63,7 +63,7 @@ $(document).ready(function () {
 
                 '<td> $' + App.utils.escHtml(p.price || '—') + '</td>' +
                 '<td>' + App.utils.escHtml(p.category_names || '—') + '</td>' +
-                '<td>' + App.utils.escHtml(p.description || '—') + '</td>' +
+                '<td>' + App.utils.escHtml(p.description ? p.description.split(' ').slice(0, 10).join(' ') + (p.description.split(' ').length > 10 ? '...' : '') : '—') + '</td>' +
                 '<td>' +
                 '<div class="actions">' +
                 '<button class="btn btn-ghost btn-sm btn-view" data-id="' + p.id + '" title="View"><i class="fa-solid fa-eye"></i></button>' +
@@ -72,41 +72,58 @@ $(document).ready(function () {
                 '</div>' +
                 '</td>' +
                 '</tr>';
+            pageLimit++    
         });
 
         $('#items-tbody').html(rows);
     }
 
     function renderPagination(meta) {
+        // 1. Extract values from the meta object sent by PHP
         var total = meta.total || 0;
-        var pages = meta.pages || 1;
-        var current = meta.current || 1;
-        var from = total ? ((current - 1) * perPage + 1) : 0;
-        var to = Math.min(current * perPage, total);
+        var pages = meta.total_pages || 1; // Backend sends total_pages
+        var perPage = meta.limit || 35;    // Backend sends limit (35)
 
+        // 2. Calculate "Showing X–Y of Z" logic
+        // (current - 1) * 35 + 1 gives the starting number
+        var from = total ? ((currentPage - 1) * perPage + 1) : 0;
+        // Math.min ensures we don't show "Showing 36-70 of 50"
+        var to = Math.min(currentPage * perPage, total);
+
+        // 3. Update the text display
         $('#patients-info').text('Showing ' + from + '–' + to + ' of ' + total + ' patients');
 
+        // 4. Generate Button HTML
         var btns = '';
-        btns += '<button class="page-btn" id="pg-prev" ' + (current <= 1 ? 'disabled' : '') + '><i class="fa-solid fa-chevron-left"></i></button>';
 
-        // Show max 5 page buttons
-        var start = Math.max(1, current - 2);
-        var end = Math.min(pages, start + 4);
-        for (var i = start; i <= end; i++) {
-            btns += '<button class="page-btn ' + (i === current ? 'active' : '') + '" data-page="' + i + '">' + i + '</button>';
-        }
+        // Previous Button
+        btns += '<button class="page-btn" id="pg-prev" ' + (currentPage <= 1 ? 'disabled' : '') + '><i class="fa-solid fa-chevron-left"></i></button>';
 
-        btns += '<button class="page-btn" id="pg-next" ' + (current >= pages ? 'disabled' : '') + '><i class="fa-solid fa-chevron-right"></i></button>';
+
+
+        // Next Button
+        btns += '<button class="page-btn" id="pg-next" ' + (currentPage >= pages ? 'disabled' : '') + '><i class="fa-solid fa-chevron-right"></i></button>';
+
+        // 5. Inject into Container
         $('#pagination-btns').html(btns);
     }
 
 
     /* Pagination */
-    $(document).on('click', '.page-btn[data-page]', function () {
-        loadPatients(parseInt($(this).data('page')));
+
+    $(document).on('click', '#pg-prev', function () {
+        $('html, body').animate({
+            scrollTop: $("#Items-table").offset().top - 100 // -100 for some padding at the top
+        }, 500);
+        if (currentPage > 1) loadItems(currentPage - 1);
     });
-    $(document).on('click', '#pg-prev', function () { if (currentPage > 1) loadPatients(currentPage - 1); });
-    $(document).on('click', '#pg-next', function () { loadPatients(currentPage + 1); });
+
+    $(document).on('click', '#pg-next', function () {
+        $('html, body').animate({
+            scrollTop: $("#Items-table").offset().top - 100 // -100 for some padding at the top
+        }, 500);
+        loadItems(currentPage + 1);
+    });
 
     /* ================================================================
        ADD NEW PATIENT

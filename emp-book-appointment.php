@@ -29,6 +29,7 @@
                 <th>Patient Name</th>
                 <th>DOB</th>
                 <th>Approved By</th>
+                 <th>Approval Expired On</th>
                 <th>Created At</th>
                 <th>Status</th>
                 <th>Actions</th>

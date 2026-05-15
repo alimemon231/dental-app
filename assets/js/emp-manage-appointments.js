@@ -93,6 +93,7 @@ function handleViewDetails() {
             <div class="detail-item"><strong>DOB:</strong> <span>${App.utils.escHtml(data.p_dob || '—')}</span></div>
             <div class="detail-item"><strong>Clinic:</strong> <span>${App.utils.escHtml(data.office_name || '—')}</span></div>
             <div class="detail-item"><strong>Staff:</strong> <span>${App.utils.escHtml(data.staff_name || '—')}</span></div>
+            <div class="detail-item"><strong>Approval Expire Date:</strong> <span>${App.utils.escHtml(data.approval_expire_date || '—')}</span></div>
         </div>
     </div>
 

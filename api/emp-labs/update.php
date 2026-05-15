@@ -19,6 +19,7 @@ $updateData = [
     'u_arch'          => trim($_POST['u_arch'] ?? ''),
     'l_arch'          => trim($_POST['l_arch'] ?? ''),
     'next_visit'      => trim($_POST['next_visit'] ?? ''),
+    'lab_provider'      => trim($_POST['lab_provider'] ?? ''),
     'notes'           => trim($_POST['notes'] ?? '')
 ];
 

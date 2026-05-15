@@ -60,18 +60,21 @@ $(document).on('click', '.btn-approve', function () {
     // Setup Modal UI
     $('#confirm-title').text('Approve Pre-Auth');
     $('#confirm-ok').text('Approve Request').removeClass('btn-danger').addClass('btn-success');
+    
+    // Show the date container for approvals
+    $('#approval-expiry-container').show();
+    $('#approval-expiry-date').val(''); // Clear previous value
 
     $('#confirm-body-content').html(`
         <div class="text-center">
             <i class="fa-solid fa-circle-check text-success mb-3" style="font-size:3rem"></i>
             <p>Are you sure you want to <strong>APPROVE</strong> the request for <b>${App.utils.escHtml(name)}</b>?</p>
-            <p class="text-muted text-sm mt-2">This will notify the clinic and mark the record as verified.</p>
         </div>
     `);
 
-    // Unbind previous clicks and set new action
     $('#confirm-ok').off('click').on('click', function () {
-        updateStatus(id, 'Approved');
+        const expiryDate = $('#approval-expiry-date').val();
+        updateStatus(id, 'Approved', expiryDate); // Pass date to the update function
         App.modal.close('confirm-modal');
     });
 
@@ -84,6 +87,7 @@ $(document).on('click', '.btn-reject', function () {
     const name = $(this).data('name');
 
     // Setup Modal UI
+    $('#approval-expiry-container').hide();
     $('#confirm-title').text('Reject Pre-Auth');
     $('#confirm-ok').text('Reject Request').removeClass('btn-success').addClass('btn-danger');
 
@@ -107,13 +111,17 @@ $(document).on('click', '.btn-reject', function () {
 /**
  * Common function to hit the API
  */
-function updateStatus(id, newStatus) {
+/**
+ * Common function to hit the API
+ */
+function updateStatus(id, newStatus, expiryDate = null) {
     App.ajax({
         url: '/m-pre-auth/update-status.php',
         method: 'POST',
         data: {
             id: id,
-            status: newStatus
+            status: newStatus,
+            expiry_date: expiryDate // Now sending the date to the server
         },
         loaderMsg: 'Updating status...',
         onSuccess: function (res, msg) {

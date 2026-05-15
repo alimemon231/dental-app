@@ -18,6 +18,7 @@ $(document).ready(function () {
                         ${infoRow('Patient Name', `<strong>${r.p_name}</strong>`)}
                         ${infoRow('Clinic Location', r.office_location)}
                         ${infoRow('Doctor', 'Dr. ' + r.doctor_name)}
+                        ${infoRow('Lab',  r.lab_partner_name)}
                         ${infoRow('Case Type', r.case_type_name)}
                     </div>
 
@@ -34,7 +35,7 @@ $(document).ready(function () {
                         <div class="form-section-title"><i class="fa-solid fa-tooth"></i> Clinical Details</div>
                         ${infoRow('Impression', r.impression_type)}
                         ${infoRow('Arch / Teeth', r.display_arch)}
-                        ${infoRow('Next Procedure', r.next_visit_procedure)}
+                        ${infoRow('Next Procedure', r.next_visit_step_name)}
                     </div>
 
                     <div>

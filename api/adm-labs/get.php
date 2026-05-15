@@ -28,17 +28,24 @@ if ($id <= 0) {
  * Joins with users, offices, and case_type to get full names
  */
 $sql = "SELECT 
-            l.*, 
-            o.office_name, 
-            u.name AS doctor_name,
-            ct.name AS type_name,
-            u_creator.name AS creator_name
-        FROM labs l
-        LEFT JOIN offices o ON l.office_id = o.id
-        LEFT JOIN users u ON l.provider = u.user_id
-        LEFT JOIN users u_creator ON l.sent_by = u_creator.user_id
-        LEFT JOIN case_type ct ON l.case_type = ct.id
-        WHERE l.id = ?";
+    l.*, 
+    o.office_name, 
+    u.name AS doctor_name,
+    ct.name AS type_name,
+    u_creator.name AS creator_name,
+    
+    ls.name AS next_step_name,
+    lp.name AS lab_partner_name
+FROM labs l
+LEFT JOIN offices o ON l.office_id = o.id
+LEFT JOIN users u ON l.provider = u.user_id
+LEFT JOIN users u_creator ON l.sent_by = u_creator.user_id
+LEFT JOIN case_type ct ON l.case_type = ct.id
+-- Map next_visit to the lab_steps table
+LEFT JOIN lab_steps ls ON l.next_visit = ls.id
+-- Map lab_provider to the labs_patner table
+LEFT JOIN labs_patner lp ON l.lab_provider = lp.id
+WHERE l.id = ?";
 
 $data = $db->queryOne($sql, [$id,]);
 
@@ -63,7 +70,7 @@ $formattedData = [
     // Date Formats for the Table & Modal
     'date_sent'        => $data['date_sent'] ? date('m/d/Y', strtotime($data['date_sent'])) : 'N/A',
     'date_received'    => $data['date_received'] ? date('m/d/Y', strtotime($data['date_received'])) : null,
-    'date_scheduled'   => $data['date_scheduled'] ? date('m/d/Y g:i A', strtotime($data['date_scheduled'])) : null,
+    'date_scheduled'   => $data['date_scheduled'] ? date('m/d/Y', strtotime($data['date_scheduled'])) : null,
     'date_completed'   => $data['date_complete'] ? date('m/d/Y', strtotime($data['date_complete'])) : null,
     
     // Additional Metadata for Modal

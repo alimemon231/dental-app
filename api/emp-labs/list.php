@@ -30,24 +30,26 @@ $officeId = $office ? $office['office_id'] : 0;
  * Filter: office_id AND status = 'Sent'
  */
 $sql = "SELECT 
-            l.id,
-            l.p_name,
-            l.u_arch,
-            l.l_arch,
-            l.impression_type,
-            l.status,
-            l.date_sent,
-            u.name AS doctor_name,
-            ct.name AS case_type_name,
-            proc.name AS next_visit_procedure
-        FROM labs l
-        LEFT JOIN users u ON l.provider = u.user_id
-        LEFT JOIN case_type ct ON l.case_type = ct.id
-        LEFT JOIN procedures proc ON l.next_visit = proc.id
-        WHERE l.office_id = ? 
-          AND l.status = 'Sent'
-        ORDER BY l.id DESC
-        LIMIT ? OFFSET ?";
+    l.id,
+    l.p_name,
+    l.u_arch,
+    l.l_arch,
+    l.impression_type,
+    l.status,
+    l.date_sent,
+    u.name AS doctor_name,
+    ct.name AS case_type_name,
+    ls.name AS next_visit_step,    -- Now from lab_steps
+    lp.name AS lab_partner_name    -- Now from labs_patner
+FROM labs l
+LEFT JOIN users u ON l.provider = u.user_id
+LEFT JOIN case_type ct ON l.case_type = ct.id
+LEFT JOIN lab_steps ls ON l.next_visit = ls.id        -- Linked to lab_steps
+LEFT JOIN labs_patner lp ON l.lab_provider = lp.id    -- Linked to labs_patner
+WHERE l.office_id = ? 
+  AND l.status = 'Sent'
+ORDER BY l.id DESC
+LIMIT ? OFFSET ?";
 
 $records = $db->query($sql, [$officeId, $limit, $offset]);
 

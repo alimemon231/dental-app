@@ -198,6 +198,26 @@
                     </div>
                 </div>
 
+                <div class="grid-2 mb-4">
+                    <div class="sticky-side" id="card-pipeline-container">
+                        <div class="form-section-title mb-4">
+                            <i class="fa-solid fa-vial-circle-check"></i> <span>Case Completion</span>
+                        </div>
+                        <div id="card-pipeline-content">
+                            <div class="text-center text-muted p-3">-- Loading Stats --</div>
+                        </div>
+                    </div>
+
+                    <div class="sticky-side" id="card-efficiency-container">
+                        <div class="form-section-title mb-4">
+                            <i class="fa-solid fa-calendar-check"></i> <span>Booking Rate</span>
+                        </div>
+                        <div id="card-efficiency-content">
+                            <div class="text-center text-muted p-3">-- Loading Stats --</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="table-wrapper">
                     <table class="data-table" id="lab-monitor-table">
                         <thead>

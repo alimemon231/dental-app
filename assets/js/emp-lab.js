@@ -46,7 +46,7 @@ $(document).ready(function () {
 
 
         App.ajax({
-            url: '/procedures/list.php', // Reusing your existing procedure loader
+            url: '/lab-steps/list.php', // Reusing your existing procedure loader
             method: 'GET',
             loader: false,
             onSuccess: function (data) {
@@ -55,6 +55,19 @@ $(document).ready(function () {
                     options += `<option value="${p.id}">${App.utils.escHtml(p.name)}</option>`;
                 });
                 $('#next_visit').html(options);
+            }
+        });
+
+        App.ajax({
+            url: '/labs-settings/list.php', // Reusing your existing procedure loader
+            method: 'GET',
+            loader: false,
+            onSuccess: function (data) {
+                var options = '<option value="">-- Select Lab  --</option>';
+                $.each(data, function (i, p) {
+                    options += `<option value="${p.id}">${App.utils.escHtml(p.name)}</option>`;
+                });
+                $('#lab_provider').html(options);
             }
         });
     }
@@ -156,7 +169,7 @@ $(document).ready(function () {
                 <td>Dr. ${App.utils.escHtml(r.doctor_name)}</td>
                 <td>${App.utils.escHtml(r.case_type_name)}</td>
                 <td>${App.utils.escHtml(r.impression_type)}</td>
-                <td>${App.utils.escHtml(r.next_visit_procedure)}</td>
+                <td>${App.utils.escHtml(r.next_visit_step)}</td>
                 <td><span class="status-badge status-${r.status.toLowerCase()}">${r.status}</span></td>
                 <td>
                     <div class="actions">
@@ -260,6 +273,7 @@ $(document).ready(function () {
                 $('#doctor_id').val(r.provider);
                 $('#impression_type').val(r.impression_type);
                 $('#next_visit').val(r.next_visit);
+                $('#lab_provider').val(r.lab_provider);
                 $('textarea[name="notes"]').val(r.notes);
 
                 // 2. Handle Case Type & UI Toggle
@@ -322,6 +336,7 @@ $(document).ready(function () {
                     infoRow('Patient Name', App.utils.escHtml(r.p_name)) +
                     infoRow('Provider', 'Dr. ' + App.utils.escHtml(r.doctor_name)) +
                     infoRow('Office', App.utils.escHtml(r.office_name)) +
+                    infoRow('Lab ', App.utils.escHtml(r.lab_partner_name)) +
 
                     '<div class="form-section-title mt-6 mb-4"><i class="fa-solid fa-tooth"></i> Clinical Details</div>' +
                     infoRow('Case Type', App.utils.escHtml(r.case_type_name)) +
@@ -334,10 +349,10 @@ $(document).ready(function () {
                     '<div>' +
                     '<div class="form-section-title mb-4"><i class="fa-solid fa-circle-info"></i> Workflow Status</div>' +
                     infoRow('Current Status', '<span class="status-badge status-' + r.status.toLowerCase() + '">' + r.status + '</span>') +
-                    infoRow('Date Sent', App.utils.escHtml(r.formatted_date)) +
+                    infoRow('Date Sent', App.utils.escHtml(r.date_sent)) +
 
                     '<div class="form-section-title mt-6 mb-4"><i class="fa-solid fa-calendar-check"></i> Follow-up</div>' +
-                    infoRow('Next Procedure', App.utils.escHtml(r.next_visit_procedure || '—')) +
+                    infoRow('Next Procedure', App.utils.escHtml(r.next_visit_step_name || '—')) +
 
                     // Notes Section
                     '<div class="mt-4 p-3 bg-light border-radius-sm" style="border-left: 3px solid var(--color-primary)">' +

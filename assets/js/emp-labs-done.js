@@ -43,7 +43,7 @@ $(document).ready(function () {
                     '<div class="form-section-title mb-4"><i class="fa-solid fa-user-doctor"></i> General Information</div>' +
                     infoRow('Patient Name', App.utils.escHtml(r.p_name)) +
                     infoRow('Provider', 'Dr. ' + App.utils.escHtml(r.doctor_name)) +
-                    infoRow('Office', App.utils.escHtml(r.office_name)) +
+                    infoRow('Lab', App.utils.escHtml(r.lab_partner_name)) +
 
                     '<div class="form-section-title mt-6 mb-4"><i class="fa-solid fa-tooth"></i> Clinical Details</div>' +
                     infoRow('Case Type', App.utils.escHtml(r.case_type_name)) +
@@ -61,7 +61,7 @@ $(document).ready(function () {
                     infoRow('Date Scheduled', App.utils.escHtml(r.date_scheduled)) +
 
                     '<div class="form-section-title mt-6 mb-4"><i class="fa-solid fa-calendar-check"></i> Follow-up</div>' +
-                    infoRow('Next Procedure', App.utils.escHtml(r.next_visit_procedure || '—')) +
+                    infoRow('Next Procedure', App.utils.escHtml(r.next_visit_step_name || '—')) +
 
                     // Notes Section
                     '<div class="mt-4 p-3 bg-light border-radius-sm" style="border-left: 3px solid var(--color-primary); padding-left:12px;">' +

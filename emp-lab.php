@@ -187,11 +187,22 @@ require_once "includes/Auth.php";
 
                                     <div class="form-row mt-4">
                                         <div class="form-group">
-                                            <label class="form-label">Next Visit <span class="required">*</span></label>
-                                            <select name="next_visit" id="next_visit" class="form-control" required>
-                                                <option value="">-- Select Procedure --</option>
+                                            <label class="form-label">Select Lab<span class="required">*</span></label>
+                                            <select name="lab_provider" id="lab_provider" class="form-control" required>
+                                                <option value="">-- Select Lab --</option>
                                             </select>
                                         </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Next Visit <span class="required">*</span></label>
+                                            <select name="next_visit" id="next_visit" class="form-control" required>
+                                                <option value="">-- Select Next Step --</option>
+                                            </select>
+                                        </div>
+                                       
+                                    </div>
+
+                                    <div class="form-row mt-4" style="grid-template-columns: repeat(1, 1fr);">
                                         <div class="form-group">
                                             <label class="form-label">Lab Notes</label>
                                             <textarea name="notes" class="form-control" rows="2"
