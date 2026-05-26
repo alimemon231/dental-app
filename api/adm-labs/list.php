@@ -33,9 +33,9 @@ $statuses    = $_GET['statuses'] ?? null; // Comma separated string from JS
 $where = ["1=1"];
 $params = [];
 
-// Search Filter
+// Search Filter (Corrected to map the related patient name column)
 if (!empty($patientName)) {
-    $where[] = "l.p_name LIKE ?";
+    $where[] = "p.name LIKE ?";
     $params[] = '%' . $patientName . '%';
 }
 
@@ -77,29 +77,35 @@ if (!empty($statuses)) {
 
 $whereSql = implode(" AND ", $where);
 
+// 5. Total Count for Pagination (Executed early before appending pagination parameters)
+$countSql = "SELECT COUNT(*) as total 
+             FROM labs l 
+             LEFT JOIN patient p ON l.p_id = p.id 
+             WHERE $whereSql";
+$totalCount = $db->queryOne($countSql, $params)['total'];
+$totalPages = ceil($totalCount / $limit);
+
 /**
- * 4. Main Query
+ * 4. Main Query (Updated with Patient Mapping table Join and SQL Pagination execution)
  */
 $sql = "SELECT 
             l.*, 
+            p.name AS patient_name,
             o.office_name, 
             u.name AS doctor_name,
             ct.name AS type_name
         FROM labs l
+        LEFT JOIN patient p ON l.p_id = p.id
         LEFT JOIN offices o ON l.office_id = o.id
         LEFT JOIN users u ON l.provider = u.user_id
         LEFT JOIN case_type ct ON l.case_type = ct.id
         WHERE $whereSql
-        ORDER BY l.id DESC";
+        ORDER BY l.id DESC
+        LIMIT ? OFFSET ?";
 
-// Pagination Params
-$queryData = array_merge($params, []);
+// Pagination Params merged safely into the array parameters
+$queryData = array_merge($params, [$limit, $offset]);
 $records = $db->query($sql, $queryData);
-
-// 5. Total Count for Pagination
-$countSql = "SELECT COUNT(*) as total FROM labs l WHERE $whereSql";
-$totalCount = $db->queryOne($countSql, $params)['total'];
-$totalPages = ceil($totalCount / $limit);
 
 /**
  * 6. Format Dates for JS Table
@@ -123,6 +129,7 @@ foreach ($records as &$r) {
         ? date('m/d/Y', strtotime($r['date_complete'])) 
         : null;
 }
+unset($r); // Clear reference pointer
 
 // 7. Standard JSON Response
 Api::success([

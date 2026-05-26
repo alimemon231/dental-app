@@ -11,7 +11,7 @@ $auth = new Auth($db);
 $auth->requireAuth();
 
 // 1. Role Check: Only staff or admin can finalize appointments
-if ($auth->userRole() !== 'staff' && $auth->userRole() !== 'admin') {
+if ($auth->userRole() !== 'staff' && $auth->userRole() !== 'admin' && $auth->userRole() !== 'doctor') {
     Api::error('Unauthorized access. Staff privileges required.', 403);
     exit;
 }
@@ -35,8 +35,8 @@ if (!$preAuthId) {
 try {
     // 4. Fetch the existing record to ensure it belongs to this user/office
     // and is currently in 'Scheduled' status
-    $sql = "SELECT id, status, p_first_name, p_last_name FROM `pre-auth` WHERE id = ? AND created_by = ?";
-    $record = $db->queryOne($sql, [$preAuthId, $currentUserId]);
+    $sql = "SELECT id, status FROM `pre-auth` WHERE id = ?";
+    $record = $db->queryOne($sql, [$preAuthId]);
 
     if (!$record) {
         Api::error('Record not found or you do not have permission to modify it.', 404);
@@ -60,7 +60,7 @@ try {
     Api::success([
         'id' => $preAuthId,
         'new_status' => 'Completed'
-    ], "Procedure for {$record['p_first_name']} {$record['p_last_name']} marked as Completed.");
+    ], "Procedure marked as Completed.");
 
 } catch (Exception $e) {
     Api::error('Server Error: ' . $e->getMessage());

@@ -8,11 +8,133 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="assets/css/global.css">
   <link rel="stylesheet" href="assets/css/layout.css">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   <style>
-    /* Styling for the scrollable treatment list */
     .scrollable-select {
       height: 120px !important;
       overflow-y: auto;
+    }
+
+    /* Treatment repeat layout row tuning */
+    .treatment-row {
+      border-bottom: 1px dashed var(--color-border);
+      padding-bottom: var(--sp-4);
+      margin-bottom: var(--sp-4);
+    }
+
+    .treatment-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+      margin-bottom: 0;
+    }
+
+    .btn-remove-row {
+      background: #fee2e2;
+      color: #ef4444;
+      border: 1px solid #fca5a5;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 38px;
+      width: 38px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-remove-row:hover {
+      background: #fecaca;
+      color: #dc2626;
+    }
+
+    /* Sync Select2 with custom form engine styling */
+    .select2-container--default .select2-selection--single {
+      height: 38px !important;
+      border: 1px solid var(--color-border) !important;
+      border-radius: var(--radius-md) !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+      line-height: 36px !important;
+      padding-left: var(--sp-3) !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+      height: 36px !important;
+    }
+
+    /* Custom Row Highlighting Variants for Pre-Authorization Tracking Grid Tables */
+    .alert-warning-row {
+      background-color: #eabd0c !important;
+      /* Soft pastel amber warning context tint */
+    }
+
+    .alert-warning-row:hover {
+      background-color: #fef3c7 !important;
+    }
+
+    .alert-danger-row {
+      background-color: #f3c1c1 !important;
+      /* Soft pastel red danger context tint */
+    }
+
+    .alert-danger-row:hover {
+      background-color: #fee2e2 !important;
+    }
+
+    /* ================================================================
+    TABLE CONTROL HEADER ACTIONS STYLING MATRIX
+================================================================ */
+    .table-controls-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #ffffff;
+      padding: var(--sp-4) var(--sp-5);
+      border-radius: var(--radius-md) var(--radius-md) 0 0;
+      border: 1px solid #e2e8f0;
+      border-bottom: none;
+      margin-top: var(--sp-4);
+    }
+
+    .table-controls-container .section-title {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    /* Custom Interactive Micro-Control Buttons Definition Layout */
+    .btn-refresh-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #f8fafc;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+      padding: 7px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-refresh-control:hover {
+      background: #f1f5f9;
+      color: var(--color-primary, #2563eb);
+      border-color: #94a3b8;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .btn-refresh-control:active {
+      transform: scale(0.97);
+      background: #e2e8f0;
+    }
+
+    .btn-refresh-control i {
+      font-size: 0.9rem;
+      transition: transform 0.15s ease;
     }
   </style>
 </head>
@@ -34,6 +156,15 @@
           </div>
         </div>
 
+        <div class="table-controls-container">
+          <div class="controls-right">
+            <button type="button" id="btn-refresh-table" class="btn-refresh-control"
+              title="Hot Reload Live Records Pipeline">
+              <i class="fa-solid fa-rotate"></i> <span>Refresh Data</span>
+            </button>
+          </div>
+        </div>
+        
         <div class="table-wrapper">
           <table class="data-table" id="preauth-table">
             <thead>
@@ -42,7 +173,7 @@
                 <th class="sortable">Patient Name</th>
                 <th>DOB</th>
                 <th>Insurance Plan</th>
-                <th>Treatment</th>
+                <th>Treatment(s)</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -61,9 +192,6 @@
           </div>
         </div>
 
-        <!-- ============================================================
-             ADD / EDIT PRE-AUTH MODAL
-        ============================================================ -->
         <div class="modal-backdrop" id="preauth-modal">
           <div class="modal modal-lg">
             <div class="modal-header">
@@ -76,25 +204,14 @@
 
                 <div class="form-section">
                   <div class="form-section-title"><i class="fa-solid fa-user-shield"></i> Patient & Insurance Info</div>
-                  <div class="form-row">
-                    <div class="form-group">
-                      <label class="form-label">First Name <span class="required">*</span></label>
-                      <input type="text" name="p_first_name" id="p_first_name" class="form-control" placeholder="John"
-                        required>
-                      <span class="form-error">Required.</span>
-                    </div>
-                    <div class="form-group">
-                      <label class="form-label">Last Name <span class="required">*</span></label>
-                      <input type="text" name="p_last_name" id="p_last_name" class="form-control" placeholder="Doe"
-                        required>
-                      <span class="form-error">Required.</span>
-                    </div>
-                  </div>
 
                   <div class="form-row">
                     <div class="form-group">
-                      <label class="form-label">Date of Birth <span class="required">*</span></label>
-                      <input type="date" name="p_dob" id="p_dob" class="form-control" required>
+                      <label class="form-label">Select Patient Record <span class="required">*</span></label>
+                      <select name="patient_id" id="patient-select" class="form-control" required style="width: 100%;">
+                        <option value="">Search by patient name...</option>
+                      </select>
+                      <span class="form-error">Please designate a valid patient profile.</span>
                     </div>
 
                     <div class="form-group">
@@ -104,34 +221,45 @@
                       </select>
                       <span class="form-error">Please select a plan.</span>
                     </div>
-
                   </div>
 
-                  <div class="form-section-title" style="margin-top:20px;"><i class="fa-solid fa-tooth"></i> Treatment
-                    Details</div>
+                  <div class="form-section-title"
+                    style="margin-top:20px; display: flex; justify-content: space-between; align-items: center;">
+                    <span><i class="fa-solid fa-tooth"></i> Treatment Matrix Details</span>
+                    <button type="button" class="btn btn-sm btn-secondary" id="btn-add-treatment-row">
+                      <i class="fa-solid fa-plus"></i> Add Procedure Row
+                    </button>
+                  </div>
 
-                  <div class="form-row" style="grid-template-columns: 2fr 1fr;">
-                    <div class="form-group">
-                      <label class="form-label">Treatment Type <span class="required">*</span></label>
-                      <select name="treatment_type" id="treatment_type" class="form-control" required>
-                        <option value="">Loading procedures...</option>
-                      </select>
-                      <span class="form-error">Please select a procedure.</span>
-                    </div>
-                    <div class="form-group">
-                      <label class="form-label">Tooth Number(s) <span class="required">*</span></label>
-                      <select name="tooth_numbers" id="tooth_numbers" aria-placeholder="Select Number of teeths" class="form-control" required >
-                        <?php
-                          for($i = 1 ; $i <=32 ;$i++){
+                  <div id="treatments-container">
+                    <div class="form-row treatment-row"
+                      style="grid-template-columns: 2fr 1fr 40px; gap: var(--sp-3); align-items: flex-end;">
+                      <div class="form-group">
+                        <label class="form-label">Treatment Type <span class="required">*</span></label>
+                        <select name="treatment_type[]" class="form-control treatment-type-select" required>
+                          <option value="">Loading procedures...</option>
+                        </select>
+                        <span class="form-error">Please select a procedure.</span>
+                      </div>
 
-                          ?>
-                                <option value="<?php echo $i ?>"><?php echo $i ?></option>
-                          <?php
-                          }
-                        ?>
-                      </select>
+                      <div class="form-group">
+                        <label class="form-label">Tooth Number <span class="required">*</span></label>
+                        <select name="tooth_numbers[]" class="form-control" required>
+                          <?php for ($i = 1; $i <= 32; $i++): ?>
+                            <option value="<?php echo $i ?>"><?php echo $i ?></option>
+                          <?php endfor; ?>
+                        </select>
+                      </div>
+
+                      <div class="form-group" style="display: flex; justify-content: center;">
+                        <button type="button" class="btn-remove-row" style="visibility: hidden;"
+                          title="Delete Procedure">
+                          <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                      </div>
                     </div>
                   </div>
+
                 </div>
               </form>
             </div>
@@ -145,7 +273,6 @@
           </div>
         </div>
 
-        <!-- VIEW MODAL -->
         <div class="modal-backdrop" id="view-preauth-modal">
           <div class="modal modal-lg">
             <div class="modal-header">
@@ -169,13 +296,14 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script src="assets/js/app.js"></script>
   <script src="assets/js/emp-pre-auth.js"></script>
   <script>
     $(document).ready(function () {
       /* 1. Check auth - Role is now STAFF */
       App.auth.check();
-      App.auth.role('staff');
+      App.auth.role(['staff' , 'doctor']);
 
       /* 2. User info UI update */
       App.ajax({

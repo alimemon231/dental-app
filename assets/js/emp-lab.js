@@ -12,6 +12,33 @@ $(document).ready(function () {
     var caseTypesCache = []; // To store case type metadata (target type)
 
     /* ================================================================
+        FUNCTION 1: INITIALIZE PATIENT LOOKUP FROM LAB ROUTE
+    ================================================================ */
+    function initPatientLookup() {
+        App.ajax({
+            url: '/emp-pre-auth/patients-list.php',
+            method: 'GET',
+            loader: false,
+            onSuccess: function (res) {
+                var dataset = res.data || res;
+
+                var options = '<option value="">-- Search Patients --</option>';
+                $.each(dataset, function (i, item) {
+                    options += `<option value="${item.id}">${App.utils.escHtml(item.name)} (DOB: ${item.dob || '—'})</option>`;
+                });
+
+                $('#patient-select')
+                    .html(options)
+                    .select2({
+                        placeholder: "Search patients...",
+                        allowClear: true,
+                        width: '100%'
+                    });
+            }
+        });
+    }
+
+    /* ================================================================
         FETCH DROPDOWN DATA
     ================================================================ */
     function loadDropdowns() {
@@ -31,7 +58,7 @@ $(document).ready(function () {
 
         // 2. Load Case Types
         App.ajax({
-            url: '/lab-cases/list.php', // You will need this to fetch case types
+            url: '/lab-cases/list.php',
             method: 'GET',
             loader: false,
             onSuccess: function (data) {
@@ -44,9 +71,9 @@ $(document).ready(function () {
             }
         });
 
-
+        // 3. Load Next Visit Steps
         App.ajax({
-            url: '/lab-steps/list.php', // Reusing your existing procedure loader
+            url: '/lab-steps/list.php',
             method: 'GET',
             loader: false,
             onSuccess: function (data) {
@@ -58,8 +85,9 @@ $(document).ready(function () {
             }
         });
 
+        // 4. Load Lab Partners
         App.ajax({
-            url: '/labs-settings/list.php', // Reusing your existing procedure loader
+            url: '/labs-settings/list.php',
             method: 'GET',
             loader: false,
             onSuccess: function (data) {
@@ -139,7 +167,7 @@ $(document).ready(function () {
     }
 
     /* ================================================================
-        LOAD TABLE
+        LOAD TABLE GRID DATA
     ================================================================ */
     function loadLabCases(page) {
         page = page || 1;
@@ -148,47 +176,59 @@ $(document).ready(function () {
         App.ajax({
             url: '/emp-labs/list.php',
             method: 'GET',
+            loader: false,
             data: { page: page, limit: perPage },
-            onSuccess: function (data, msg, res) {
+            onSuccess: function (data) {
                 renderTable(data);
-                // renderPagination is handled by your global App/Helper logic
+            },
+            onError: function () {
+                $('#lab-tbody').html(
+                    '<tr><td colspan="7"><div class="table-empty"><i class="fa-solid fa-circle-exclamation"></i> Failed to load lab records.</div></td></tr>'
+                );
             }
         });
     }
 
     function renderTable(records) {
-        if (!records || !records.length) {
-            $('#lab-tbody').html('<tr><td colspan="7"><div class="table-empty">No lab cases found.</div></td></tr>');
+        if (!records || records.length === 0) {
+            $('#lab-tbody').html('<tr><td colspan="7" class="text-center text-muted">No lab cases found for this workspace.</td></tr>');
             return;
         }
 
-        var rows = '';
-        $.each(records, function (i, r) {
-            rows += `<tr>
-                <td><strong>${App.utils.escHtml(r.p_name)}</strong></td>
-                <td>Dr. ${App.utils.escHtml(r.doctor_name)}</td>
-                <td>${App.utils.escHtml(r.case_type_name)}</td>
-                <td>${App.utils.escHtml(r.impression_type)}</td>
-                <td>${App.utils.escHtml(r.next_visit_step)}</td>
-                <td><span class="status-badge status-${r.status.toLowerCase()}">${r.status}</span></td>
+        let rows = '';
+        records.forEach(r => {
+            const statusLower = (r.status || 'Sent').toLowerCase();
+            const statusClass = 'status-' + statusLower;
+
+            rows += `
+            <tr style="transition: background-color 0.2s ease;">
+                <td><strong>#${r.id}</strong></td>
                 <td>
-                    <div class="actions">
-            <button class="btn btn-ghost btn-sm btn-receive" data-id="${r.id}" title="Mark Received" style="color:var(--color-success)">
-                <i class="fa-solid fa-square-check"></i>
-            </button>
-            
-            <button class="btn btn-ghost btn-sm btn-view" data-id="${r.id}" title="View">
-                <i class="fa-solid fa-eye"></i>
-            </button>
-            
-            <button class="btn btn-ghost btn-sm btn-edit" data-id="${r.id}" title="Edit">
-                <i class="fa-solid fa-pen-to-square"></i>
-            </button>
-            
-            <button class="btn btn-ghost btn-sm btn-delete" data-id="${r.id}" data-name="${App.utils.escHtml(r.p_name)}" title="Delete" style="color:var(--color-danger)">
-                <i class="fa-solid fa-trash"></i>
-            </button>
-        </div>
+                    <div class="fw-600">${App.utils.escHtml(r.patient_name || '—')}</div>
+                    <small class="text-muted"><i class="fa-regular fa-calendar"></i> Sent: ${r.formatted_date}</small>
+                </td>
+                <td>Dr. ${App.utils.escHtml(r.doctor_name || '—')}</td>
+                <td>${App.utils.escHtml(r.case_type_name || '—')}</td>
+                <td>
+                    <div class="text-sm"><strong>${App.utils.escHtml(r.display_arch)}</strong></div>
+                    <small class="text-muted">${App.utils.escHtml(r.impression_type || '—')}</small>
+                </td>
+                <td>
+                    <div class="text-sm">${App.utils.escHtml(r.next_visit_step || '—')}</div>
+                    <small class="text-primary">${App.utils.escHtml(r.lab_partner_name || '—')}</small>
+                </td>
+                <td><span class="status-badge ${statusClass}">${App.utils.escHtml(r.status || 'Sent')}</span></td>
+                <td>
+                    <div class="actions" style="display: flex; gap: 4px;">
+                        <button class="btn btn-ghost btn-sm btn-receive" data-id="${r.id}" title="Mark Received" style="color:var(--color-success)">
+                            <i class="fa-solid fa-square-check"></i>
+                        </button>
+                        <button class="btn btn-ghost btn-sm btn-view" data-id="${r.id}" title="View Case Details"><i class="fa-solid fa-eye"></i></button>
+                        <button class="btn btn-ghost btn-sm btn-edit" data-id="${r.id}" title="Modify Entry"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn btn-ghost btn-sm btn-delete" data-id="${r.id}" data-name="${App.utils.escHtml(r.patient_name)}" title="Delete Permanently" style="color:var(--color-danger)">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>`;
         });
@@ -224,11 +264,19 @@ $(document).ready(function () {
         }
 
         // 3. Determine URL and Data
-        // If editingId is set (from the .btn-edit click), we update; otherwise, create.
         var url = editingId ? '/emp-labs/update.php' : '/emp-labs/create.php';
 
-        // Serialize form data
+        // Serialize form data safely
         var formData = form.serializeArray();
+
+        // Security check: Match backend patient lookup key constraints
+        var patientLookup = formData.find(item => item.name === 'patient_id');
+        if (!patientLookup) {
+            var selectedPatientVal = $('#patient-select').val();
+            if (selectedPatientVal) {
+                formData.push({ name: 'patient_id', value: selectedPatientVal });
+            }
+        }
 
         // If we are editing, manually push the ID into the data array
         if (editingId) {
@@ -239,23 +287,22 @@ $(document).ready(function () {
         App.ajax({
             url: url,
             method: 'POST',
-            data: $.param(formData), // Convert array back to string
+            data: $.param(formData),
             btn: $(this),
             onSuccess: function (d, msg) {
                 App.modal.close('lab-modal');
                 App.toast.success('Success', msg);
 
-                // If update, stay on current page; if new, go to page 1
+                // Stay on page or reset to first page
                 loadLabCases(editingId ? currentPage : 1);
-
-                resetForm(); // Important: Clears editingId and UI
+                resetForm();
             }
         });
     });
 
     /* ================================================================
-    EDIT LAB CASE
-================================================================ */
+        EDIT LAB CASE (Fixed Arch Selector Population)
+    ================================================================ */
     $(document).on('click', '.btn-edit', function () {
         var id = $(this).data('id');
         editingId = id;
@@ -264,29 +311,34 @@ $(document).ready(function () {
             url: '/emp-labs/get.php?id=' + id,
             loader: true,
             onSuccess: function (r) {
-                resetForm(); // Clear previous state
+                resetForm();
                 editingId = r.id;
                 $('#lab-modal-title').text('Edit Lab Case');
 
-                // 1. Basic Fields
-                $('input[name="patient_name"]').val(r.p_name);
+                // 1. Basic Fields Mapping with cross-browser Select2 updates
+                if (r.p_id) {
+                    if ($('#patient-select').find("option[value='" + r.p_id + "']").length) {
+                        $('#patient-select').val(r.p_id).trigger('change');
+                    } else {
+                        var newOption = new Option(r.patient_name || 'Selected Patient', r.p_id, true, true);
+                        $('#patient-select').append(newOption).trigger('change');
+                    }
+                }
                 $('#doctor_id').val(r.provider);
                 $('#impression_type').val(r.impression_type);
                 $('#next_visit').val(r.next_visit);
                 $('#lab_provider').val(r.lab_provider);
                 $('textarea[name="notes"]').val(r.notes);
 
-                // 2. Handle Case Type & UI Toggle
-                // We set the value and manually trigger 'change' so the JS shows/hides sections
+                // 2. Handle Case Type & UI Toggle (This resets arch_selector to '')
                 $('#case_type_id').val(r.case_type).trigger('change');
 
                 // 3. Handle Tooth Chart Logic
                 if (r.u_arch || r.l_arch) {
-                    // Set hidden inputs
                     $('#u_arch_input').val(r.u_arch);
                     $('#l_arch_input').val(r.l_arch);
 
-                    // If it's a 'teeth' target, we light up the buttons
+                    // Light up buttons for tooth targeting
                     if ($('#section-teeth').is(':visible')) {
                         var upperTeeth = r.u_arch ? r.u_arch.split(',') : [];
                         var lowerTeeth = r.l_arch ? r.l_arch.split(',') : [];
@@ -299,15 +351,13 @@ $(document).ready(function () {
                         });
                     }
 
-                    // If it's an 'arch' target (Full), we set the dropdown
-                    if ($('#section-arch').is(':visible')) {
-                        if (r.u_arch === 'Full' && r.l_arch === 'Full') {
-                            $('#arch_selector').val('both');
-                        } else if (r.u_arch === 'Full') {
-                            $('#arch_selector').val('upper');
-                        } else if (r.l_arch === 'Full') {
-                            $('#arch_selector').val('lower');
-                        }
+                    // FIXED: Map selector using data values directly instead of checking jQuery's :visible status
+                    if (r.u_arch === 'Full' && r.l_arch === 'Full') {
+                        $('#arch_selector').val('both');
+                    } else if (r.u_arch === 'Full') {
+                        $('#arch_selector').val('upper');
+                    } else if (r.l_arch === 'Full') {
+                        $('#arch_selector').val('lower');
                     }
                 }
 
@@ -316,9 +366,8 @@ $(document).ready(function () {
         });
     });
 
-
     /* ================================================================
-    VIEW LAB CASE DETAILS
+        VIEW LAB CASE DETAILS
 ================================================================ */
     $(document).on('click', '.btn-view', function () {
         var id = $(this).data('id');
@@ -330,26 +379,32 @@ $(document).ready(function () {
                 var html =
                     '<div class="grid-2" style="gap:var(--sp-8)">' +
 
-                    // Left Column: Patient & Provider
+                    // Left Column: Patient, Provider & Clinical Details
                     '<div>' +
                     '<div class="form-section-title mb-4"><i class="fa-solid fa-user-doctor"></i> General Information</div>' +
-                    infoRow('Patient Name', App.utils.escHtml(r.p_name)) +
-                    infoRow('Provider', 'Dr. ' + App.utils.escHtml(r.doctor_name)) +
-                    infoRow('Office', App.utils.escHtml(r.office_name)) +
-                    infoRow('Lab ', App.utils.escHtml(r.lab_partner_name)) +
+                    infoRow('Patient Name', App.utils.escHtml(r.patient_name || '—')) +
+                    infoRow('Provider', 'Dr. ' + App.utils.escHtml(r.doctor_name || '—')) +
+                    infoRow('Office', App.utils.escHtml(r.office_name || '—')) +
+                    infoRow('Lab Provider', App.utils.escHtml(r.lab_partner_name || '—')) +
 
                     '<div class="form-section-title mt-6 mb-4"><i class="fa-solid fa-tooth"></i> Clinical Details</div>' +
-                    infoRow('Case Type', App.utils.escHtml(r.case_type_name)) +
-                    infoRow('Impression', App.utils.escHtml(r.impression_type)) +
+                    infoRow('Case Type', App.utils.escHtml(r.case_type_name || '—')) +
+                    infoRow('Impression', App.utils.escHtml(r.impression_type || '—')) +
                     infoRow('Upper Arch', App.utils.escHtml(r.u_arch || '—')) +
                     infoRow('Lower Arch', App.utils.escHtml(r.l_arch || '—')) +
                     '</div>' +
 
-                    // Right Column: Status & Next Visit
+                    // Right Column: Workflow Status, Timeline Logs & Follow-up
                     '<div>' +
                     '<div class="form-section-title mb-4"><i class="fa-solid fa-circle-info"></i> Workflow Status</div>' +
-                    infoRow('Current Status', '<span class="status-badge status-' + r.status.toLowerCase() + '">' + r.status + '</span>') +
-                    infoRow('Date Sent', App.utils.escHtml(r.date_sent)) +
+                    infoRow('Current Status', '<span class="status-badge status-' + (r.status || 'sent').toLowerCase() + '">' + (r.status || 'Sent') + '</span>') +
+                    infoRow('Date Sent', App.utils.escHtml(r.date_sent || '—')) +
+                    infoRow('Date Scheduled', App.utils.escHtml(r.date_scheduled || '—')) +
+
+                    '<div class="form-section-title mt-6 mb-4"><i class="fa-solid fa-clock-rotate-left"></i> Audit Logs</div>' +
+                    infoRow('Sent By', App.utils.escHtml(r.created_by_name || '—')) +
+                    infoRow('Last Edited By', App.utils.escHtml(r.edited_by_name || '—')) +
+                    infoRow('Last Edited At', App.utils.escHtml(r.edited_at || '—')) +
 
                     '<div class="form-section-title mt-6 mb-4"><i class="fa-solid fa-calendar-check"></i> Follow-up</div>' +
                     infoRow('Next Procedure', App.utils.escHtml(r.next_visit_step_name || '—')) +
@@ -364,15 +419,11 @@ $(document).ready(function () {
                     '</div>';
 
                 $('#view-lab-body').html(html);
-
-                // Map ID to the edit button inside the modal for convenience
                 $('#btn-edit-from-view').data('id', r.id);
-
                 App.modal.open('view-lab-modal');
             }
         });
     });
-
 
     function infoRow(label, value) {
         return '<div class="info-row mb-2">' +
@@ -381,25 +432,22 @@ $(document).ready(function () {
             '</div>';
     }
 
-
     /* ================================================================
-      DELETE LOGIC
-  ================================================================ */
+        DELETE LOGIC
+    ================================================================ */
     $(document).on('click', '.btn-delete', function () {
         const id = $(this).data('id');
         const name = $(this).data('name');
 
-        // 1. Prepare UI
         $('#confirm-title').text('Delete Lab Case');
         $('#confirm-ok').text('Delete Permanently').removeClass('btn-success').addClass('btn-danger');
         $('#confirm-body-content').html(`
-        <div class="text-center">
-            <i class="fa-solid fa-trash-can text-danger mb-3" style="font-size:3rem"></i>
-            <p>Delete lab case for <b>${App.utils.escHtml(name)}</b>?</p>
-        </div>
-    `);
+            <div class="text-center">
+                <i class="fa-solid fa-trash-can text-danger mb-3" style="font-size:3rem"></i>
+                <p>Delete lab case for <b>${App.utils.escHtml(name || 'this patient')}</b>?</p>
+            </div>
+        `);
 
-        // 2. CLEAR AND BIND (This prevents the double-firing issue)
         $('#confirm-ok').off('click').on('click', function () {
             App.modal.close('confirm-modal');
             executeDelete(id);
@@ -413,19 +461,17 @@ $(document).ready(function () {
     ================================================================ */
     $(document).on('click', '.btn-receive', function () {
         const id = $(this).data('id');
-        const name = $(this).closest('tr').find('td:first').text();
+        const name = $(this).closest('tr').find('td:nth-child(2) .fw-600').text();
 
-        // 1. Prepare UI
         $('#confirm-title').text('Confirm Receipt');
         $('#confirm-ok').text('Confirm & Send').removeClass('btn-danger').addClass('btn-success');
         $('#confirm-body-content').html(`
-        <div class="text-center">
-            <i class="fa-solid fa-truck-ramp-box text-success mb-3" style="font-size:3rem"></i>
-            <p>Mark <b>${App.utils.escHtml(name)}</b> as Received?</p>
-        </div>
-    `);
+            <div class="text-center">
+                <i class="fa-solid fa-truck-ramp-box text-success mb-3" style="font-size:3rem"></i>
+                <p>Mark <b>${App.utils.escHtml(name || 'this case')}</b> as Received?</p>
+            </div>
+        `);
 
-        // 2. CLEAR AND BIND (This cleans up the Delete logic if it was there)
         $('#confirm-ok').off('click').on('click', function () {
             App.modal.close('confirm-modal');
             executeReceive(id);
@@ -434,9 +480,6 @@ $(document).ready(function () {
         App.modal.open('confirm-modal');
     });
 
-    /**
-     * Helper functions to keep the click listeners clean
-     */
     function executeDelete(id) {
         App.ajax({
             url: '/emp-labs/delete.php',
@@ -460,24 +503,32 @@ $(document).ready(function () {
             }
         });
     }
+
     /* ================================================================
         UI HELPERS
     ================================================================ */
     $('#btn-add-lab').on('click', function () {
         resetForm();
-        editingId = null
         App.modal.open('lab-modal');
     });
 
     function resetForm() {
-        App.form.reset(document.getElementById('lab-form'));
+        var formEl = document.getElementById('lab-form');
+        if (formEl) {
+            App.form.reset(formEl);
+        }
+        $('#patient-select').val(null).trigger('change');
         $('#section-teeth, #section-arch').addClass('hidden-field');
         resetToothChart();
+        $('#arch_selector').val('');
+        $('#lab-modal-title').text('Create Lab Case');
+        editingId = null;
     }
 
     /* ================================================================
         INIT
     ================================================================ */
+    initPatientLookup();
     loadDropdowns();
     loadLabCases(1);
 });

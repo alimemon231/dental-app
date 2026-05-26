@@ -5,7 +5,6 @@
  */
 
 require_once __DIR__ . '/../../includes/Auth.php';
-require_once __DIR__ . '/../../includes/EmailSender.php';
 
 $db   = new Database();
 $auth = new Auth($db);
@@ -22,63 +21,45 @@ if (Api::method() !== 'POST') {
     exit; 
 }
 
-// 2. Capture Input
-$preAuthId     = (int)($_POST['id'] ?? 0);
-$newStatus     = trim($_POST['status'] ?? ''); // 'Approved' or 'Rejected'
-$reviewerId    = $_SESSION['user_id']; 
-$expiery  = $_POST['expiry_date'];
+// 2. Capture Input from JavaScript AJAX Payload securely
+$preAuthId      = (int)($_POST['id'] ?? 0);
+$newStatus      = trim($_POST['status'] ?? ''); 
+$reviewerId     = $_SESSION['user_id']; 
+$expiryDate     = !empty($_POST['expiry_date']) ? trim($_POST['expiry_date']) : null;
+$rejectionNotes = !empty($_POST['rejection_notes']) ? trim($_POST['rejection_notes']) : null;
 
-// 3. Basic Validation
+// 3. Parameters Range Check Validation
 if (!$preAuthId || !in_array($newStatus, ['Approved', 'Rejected'])) {
-    Api::error('Invalid request parameters.');
+    Api::error('Invalid request parameters matching status state profiles.');
     exit;
 }
 
 try {
-    // 4. Fetch the existing record and Clinic Details
-    // We join with 'offices' to get the clinic's email address
-    $sql = "SELECT pa.*, o.office_name, o.email as clinic_email 
-            FROM `pre-auth` pa
-            JOIN offices o ON pa.office_id = o.id
-            WHERE pa.id = ?";
-    
+    // 4. Fetch the existing record to guarantee presence safety
+    $sql = "SELECT pa.id FROM `pre-auth` pa WHERE pa.id = ? LIMIT 1";
     $record = $db->queryOne($sql, [$preAuthId]);
 
     if (!$record) {
-        Api::error('Pre-auth record not found.', 404);
+        Api::error('Pre-auth target record could not be found.', 404);
         exit;
     }
 
-    // 5. Update the Database
-    // We update status, the reviewer ID, and the timestamp
+    // 5. Build safe database payload matrix mapping array variables 
+    // This structure prevents errors by falling back cleanly to NULL fields
     $updateData = [
-        'status'      => $newStatus,
-        'approved_by' => $reviewerId,
-        'approval_expire_date' => $expiery, 
+        'status'               => $newStatus,
+        'approved_by'          => $reviewerId,
+        'approval_expire_date' => ($newStatus === 'Approved') ? $expiryDate : null,
+        
+        'notes'          => ($newStatus === 'Rejected') ? $rejectionNotes : null
     ];
 
+    // Execute safe parameter bindings query execution
     $db->update("pre-auth", $updateData, ['id' => $preAuthId]);
 
-    // 6. Send Email Notification to the Clinic
-    if (!empty($record['email'])) {
-        $subject = "Pre-Auth Update: {$record['p_first_name']} {$record['p_last_name']} - {$newStatus}";
-        
-        $emailBody = "Pre-Authorization Status Update\r\n";
-        $emailBody .= "----------------------------------\r\n";
-        $emailBody .= "Patient:    " . $record['p_first_name'] . " " . $record['p_last_name'] . "\r\n";
-        $emailBody .= "Office:     " . $record['office_name'] . "\r\n";
-        $emailBody .= "Status:     " . strtoupper($newStatus) . "\r\n";
-        $emailBody .= "Updated At: " . date('M d, Y h:i A') . "\r\n";
-        $emailBody .= "----------------------------------\r\n";
-        $emailBody .= "Please log in to the portal to view full details.\r\n";
-
-        // Use the EmailSender utility
-        //EmailSender::send($record['clinic_email'], $subject, $emailBody);
-    }
-
-    // 7. Success Response
-    Api::success(null, "Pre-Auth has been successfully {$newStatus}.");
+    // 6. Return standard API operational response block mapping parameters back to frontend
+    Api::success(null, "Pre-Auth has been processed and saved as {$newStatus}.");
 
 } catch (Exception $e) {
-    Api::error('Server Error: ' . $e->getMessage());
+    Api::error('Server state mutation structural failure: ' . $e->getMessage(), 500);
 }

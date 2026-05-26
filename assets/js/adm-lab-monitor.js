@@ -174,7 +174,7 @@ function renderLabTable(records) {
         html += `
             <tr>
                 <td>
-                    <div class="font-bold">${App.utils.escHtml(r.p_name)}</div>
+                    <div class="font-bold">${App.utils.escHtml(r.patient_name)}</div>
                     <div class="text-xs text-muted">${App.utils.escHtml(r.type_name)} | Dr. ${App.utils.escHtml(r.doctor_name)}</div>
                     <div class="text-xs mt-1"><i class="fa-solid fa-location-dot"></i> ${App.utils.escHtml(r.office_name)}</div>
                 </td>
@@ -183,6 +183,9 @@ function renderLabTable(records) {
                     <button class="btn btn-sm btn-ghost btn-view" data-id="${r.id}">
                         <i class="fa-solid fa-eye"></i>
                     </button>
+                    <a href="/adm-create-lab.php?id=${r.id}" class="btn btn-sm btn-ghost btn-view" title="Edit Pre-Auth Record">
+                        <i class="fa-solid fa-pen"></i>
+                    </a>
                 </td>
             </tr>`;
     });
@@ -204,74 +207,86 @@ function renderPagination(totalRecords, totalPages, currentCount) {
 }
 
 /**
- * Detailed Lifecycle Fetcher
+ * Detailed Lifecycle Fetcher - Admin Monitor Module
  */
 function viewLabLifecycle(id) {
     App.ajax({
-        url: '/adm-labs/get.php',
+        url: '/adm-labs/get.php', // Fixed URL path endpoint targeting
+        method: 'GET',
         data: { id: id },
-        onSuccess: function (data) {
-            updateProgressBar(data.status);
+        loader: true,
+        onSuccess: function (res) {
+            // Unpacks data structure cleanly regardless of response wrapper format
+            var r = res.hasOwnProperty('data') ? res.data : res;
 
-            let infoHtml = `
-                <div class="modal-detail-section">
-                    <h4 class="section-title"><i class="fa-solid fa-flask"></i> Case Information</h4>
-                    <div class="detail-grid">
-                        <div class="detail-item"><strong>Patient:</strong> <span>${data.p_name}</span></div>
-                        <div class="detail-item"><strong>Case Type:</strong> <span>${data.type_name}</span></div>
-                        <div class="detail-item"><strong>Provider:</strong> <span>Dr. ${data.doctor_name}</span></div>
-                        <div class="detail-item"><strong>Office:</strong> <span>${data.office_name}</span></div>
-                        <div class="detail-item"><strong>Next Procidure:</strong> <span>${data.next_step_name}</span></div>
-                        <div class="detail-item"><strong>Lab :</strong> <span>${data.lab_partner_name}</span></div>
-                    </div>
-                    </div>
-                </div>
-                <div class="modal-detail-section">
-                    <h4 class="section-title"><i class="fa-solid fa-timeline"></i> Lab Timeline</h4>
-                    <div class="detail-grid">
-                        <div class="detail-item"><strong>Date Sent:</strong> <span>${App.utils.formatDate(data.date_sent)}</span></div>
-                        <div class="detail-item"><strong>Date Received:</strong> <span>${data.date_received || 'Waiting...'}</span></div>
-                        <div class="detail-item"><strong>Patient Appt:</strong> <span>${data.date_scheduled || 'Not Booked'}</span></div>
-                        <div class="detail-item"><strong>Current Status:</strong> <span class="badge">${data.status}</span> <span class="badge">${data.status}</span></div>
-                    </div>
-                </div>
-                <div class="modal-detail-section no-border">
-                    <h4 class="section-title"><i class="fa-solid fa-note-sticky"></i> Internal Notes</h4>
-                    <div class="notes-box">${data.notes || 'No internal notes found for this lab case.'}</div>
-                </div>
-            `;
+            // 1. Update the progress bar roadmap status wrapper
+            if (typeof updateProgressBar === "function") {
+                updateProgressBar(r.status);
+            }
 
-            $('#view-details-body').html(infoHtml);
+            // 2. Generate the balanced multi-column layout representation 
+            var html =
+                '<div class="grid-2" style="gap:var(--sp-8); margin-top:var(--sp-6);">' +
+
+                // Left Column: Patient, Clinic and Treatment Specifications
+                '<div>' +
+                '<div class="form-section-title mb-4"><i class="fa-solid fa-user-doctor"></i> General Information</div>' +
+                infoRow('Lab ID', '<span class="text-bold text-primary">#LAB-' + r.id + '</span>') +
+                infoRow('Patient Name', App.utils.escHtml(r.p_name || '—')) +
+                infoRow('Provider', 'Dr. ' + App.utils.escHtml(r.doctor_name || '—')) +
+                infoRow('Clinic Office', App.utils.escHtml(r.office_name || '—')) +
+                infoRow('Lab Provider', App.utils.escHtml(r.lab_partner_name || '—')) +
+
+                '<div class="form-section-title mt-6 mb-4"><i class="fa-solid fa-tooth"></i> Clinical Details</div>' +
+                infoRow('Case Type', App.utils.escHtml(r.type_name || '—')) +
+                infoRow('Impression', App.utils.escHtml(r.impression_type || '—')) +
+                infoRow('Upper Arch', App.utils.escHtml(r.u_arch || '—')) +
+                infoRow('Lower Arch', App.utils.escHtml(r.l_arch || '—')) +
+                '</div>' +
+
+                // Right Column: Active Status Tracking, System Accountability and Instructions
+                '<div>' +
+                '<div class="form-section-title mb-4"><i class="fa-solid fa-circle-info"></i> Workflow Status</div>' +
+                infoRow('Current Status', '<span class="status-badge status-' + (r.status || 'sent').toLowerCase() + '">' + (r.status || 'Sent') + '</span>') +
+                infoRow('Date Sent', App.utils.escHtml(r.date_sent || '—')) +
+                infoRow('Date Received', App.utils.escHtml(r.date_received || 'Waiting...')) +
+                infoRow('Date Scheduled', App.utils.escHtml(r.date_scheduled || 'Not Booked')) +
+                infoRow('Date Completed', App.utils.escHtml(r.date_completed || '—')) +
+
+                '<div class="form-section-title mt-6 mb-4"><i class="fa-solid fa-clock-rotate-left"></i> Audit Logs</div>' +
+                infoRow('Sent By', App.utils.escHtml(r.created_by_name || '—')) +
+                infoRow('Last Edited By', App.utils.escHtml(r.edited_by_name || '—')) +
+                infoRow('Last Edited At', App.utils.escHtml(r.edited_at || '—')) +
+
+                '<div class="form-section-title mt-6 mb-4"><i class="fa-solid fa-calendar-check"></i> Follow-up</div>' +
+                infoRow('Next Procedure', App.utils.escHtml(r.next_step_name || '—')) +
+
+                // Internal Directions and Case Specifications Block
+                '<div class="mt-4 p-3 bg-light border-radius-sm" style="border-left: 3px solid var(--color-primary); padding-left:12px;">' +
+                '<small class="text-muted d-block mb-1">Lab Notes:</small>' +
+                '<div style="white-space: pre-wrap;">' + App.utils.escHtml(r.notes || 'No internal notes found for this lab case.') + '</div>' +
+                '</div>' +
+                '</div>' +
+
+                '</div>';
+
+            // 3. Inject into the DOM body and unlock frame
+            $('#view-details-body').html(html);
             App.modal.open('view-modal');
         }
     });
 }
 
+
 /**
- * Updates Modal Progress Bar
+ * Shared Helper Component for structured text metadata formatting rows
  */
-function updateProgressBar(status) {
-    const stages = ['Sent', 'Received', 'Scheduled', 'Done'];
-    const currentIdx = stages.indexOf(status);
-
-    let html = '';
-    stages.forEach((label, idx) => {
-        let stateClass = '';
-        if (idx < currentIdx) stateClass = 'completed';
-        else if (idx === currentIdx) stateClass = 'active';
-
-        // Ensure "Done" shows as completed when active
-        if (status === 'Done') stateClass = 'completed';
-
-        html += `
-            <div class="step ${stateClass}">
-                <div class="step-icon">${idx + 1}</div>
-                <div class="step-label">${label}</div>
-            </div>`;
-    });
-    $('#modal-progress-bar').html(html);
+function infoRow(label, value) {
+    return '<div class="info-row mb-2" style="display: flex; align-items: baseline;">' +
+        '<span class="text-muted" style="width: 140px; min-width: 140px; display: inline-block; font-size: 0.85rem;">' + label + ':</span>' +
+        '<span class="fw-600" style="word-break: break-word;">' + value + '</span>' +
+        '</div>';
 }
-
 
 /**
  * Main wrapper called inside loadLabMonitor onSuccess

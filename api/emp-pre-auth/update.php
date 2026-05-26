@@ -2,16 +2,16 @@
 /**
  * API: Update Pre-Auth
  * Path: /emp-pre-auth/update.php
+ * Updates parent metadata and syncs structural dynamic multi-row itemized procedures.
  */
 
 require_once __DIR__ . '/../../includes/Auth.php';
-require_once __DIR__ . '/../../includes/EmailSender.php';
 
 $db   = new Database();
 $auth = new Auth($db);
 $auth->requireAuth();
 
-if (!$auth->hasRole('staff')) {
+if (!$auth->hasRole('staff') && !$auth->hasRole('doctor')) {
     Api::error('Unauthorized access.', 403);
     exit;
 }
@@ -21,80 +21,99 @@ if (Api::method() !== 'POST') {
     exit; 
 }
 
-// 1. Capture and Validate ID
-$id = (int)($_POST['preauth_id'] ?? 0);
-if (!$id) {
-    Api::error('Record ID is required for update.');
+// 1. Establish Session parameters and Validate Master PreAuth ID target
+$currentUserId   = $_SESSION['user_id'];
+$sessionOfficeId = (int)($_SESSION['office_id'] ?? 0);
+$preAuthId       = (int)($_POST['preauth_id'] ?? 0);
+
+if ($preAuthId <= 0) {
+    Api::error('Record Identification ID is required for updating.');
     exit;
 }
 
-// 2. Fetch the Current Record to check status and compare changes
-$currentRecord = $db->queryOne("SELECT * FROM `pre-auth` WHERE id = ? AND created_by = ?", [$id, $_SESSION['user_id']]);
+if ($sessionOfficeId <= 0) {
+    Api::error('Active clinic location scope not established in session.', 400);
+    exit;
+}
+
+// 2. Fetch current record validation context
+$currentRecord = $db->queryOne(
+    "SELECT id, status FROM `pre-auth` WHERE id = ? AND office_id = ? LIMIT 1", 
+    [$preAuthId, $sessionOfficeId]
+);
 
 if (!$currentRecord) {
-    Api::error('Record not found or access denied.', 404);
+    Api::error('Record not found or workspace access validation denied.', 404);
     exit;
 }
 
-// 3. STRICT CHECK: Only allow updates if status is 'Sent'
-if ($currentRecord['status'] !== 'Sent') {
-    Api::error('This record cannot be modified because it is already ' . $currentRecord['status'] . '.', 400);
+// 3. STRICT CHECK: Only allow structural modifications if the current status is exactly 'Create' or 'Rejected'
+$currentStatus = strtolower($currentRecord['status']);
+if ($currentStatus !== 'create' && $currentStatus !== 'rejected') {
+    Api::error('This record cannot be modified because its processing status state is currently: ' . $currentRecord['status'] . '.', 400);
     exit;
 }
 
-// 4. Capture New Form Data
-$newData = [
-    'p_first_name'     => trim($_POST['p_first_name'] ?? $currentRecord['p_first_name']),
-    'p_last_name'      => trim($_POST['p_last_name'] ?? $currentRecord['p_last_name']),
-    'p_dob'            => trim($_POST['p_dob'] ?? $currentRecord['p_dob']),
-    'p_insurance_plan' => trim($_POST['p_insurance_plan'] ?? $currentRecord['p_insurance_plan']),
-    'treatment_type'   => trim($_POST['treatment_type'] ?? $currentRecord['treatment_type']),
-    'tooth_numbers'    => trim($_POST['tooth_numbers'] ?? $currentRecord['tooth_numbers'])
+// 4. Capture and Validate Relational Payload & Array Blocks
+$patientId       = (int)($_POST['patient_id'] ?? 0);
+$p_insurance     = trim($_POST['p_insurance_plan'] ?? '');
+$treatment_types = $_POST['treatment_type'] ?? []; // Array stack
+$tooth_numbers   = $_POST['tooth_numbers'] ?? [];   // Array stack
+
+if ($patientId <= 0 || empty($p_insurance) || empty($treatment_types) || empty($tooth_numbers)) {
+    Api::error('Patient selection, insurance code, and at least one itemized procedure row are required.');
+    exit;
+}
+
+if (count($treatment_types) !== count($tooth_numbers)) {
+    Api::error('Structural payload mismatch detected. Procedures data matrix length is uneven.');
+    exit;
+}
+
+// 5. Prepare Master Parent Update Schema Block
+$parentUpdateData = [
+    'patient_id'       => $patientId,
+    'p_insurance_plan' => $p_insurance,
+    'edited_by'        => $currentUserId,
+    'edit_time'        => date('Y-m-d H:i:s')
 ];
 
-// 5. Generate Change Log for Email
-$changes = "";
-foreach ($newData as $key => $newValue) {
-    $oldValue = $currentRecord[$key];
-    if ($oldValue != $newValue) {
-        $label = str_replace(['p_', '_'], ['', ' '], $key); // Clean labels for email
-        $changes .= ucfirst($label) . ": '{$oldValue}' → '{$newValue}'\r\n";
-    }
-}
-
-// 6. Perform Update if changes exist
-if (empty($changes)) {
-    Api::success(null, 'No changes detected.');
-    exit;
-}
-
 try {
-    $db->update('pre-auth', $newData, ['id' => $id]);
+    // Start Transaction to guarantee full integrity across parent and children tables
+    $db->beginTransaction();
 
-    // 7. Get Submitter Name and Office for the Email
-    $creator = $db->queryOne("SELECT name FROM users WHERE user_id = ? LIMIT 1", [$_SESSION['user_id']]);
-    $office  = $db->queryOne("SELECT office_name FROM offices WHERE id = ? LIMIT 1", [$currentRecord['office_id']]);
-    
-    $creatorName = $creator ? $creator['name'] : 'Staff';
-    $officeName  = $office ? $office['office_name'] : 'Unknown Office';
+    // 6. Update master parent metadata row entries
+    $db->update('pre-auth', $parentUpdateData, ['id' => $preAuthId]);
 
-    // 8. Build Update Notification Email
-    $emailBody = "Pre-Authorization Modification Record\r\n";
-    $emailBody .= "-----------------------------------\r\n";
-    $emailBody .= "Office:       " . $officeName . "\r\n";
-    $emailBody .= "Patient:      " . $newData['p_first_name'] . " " . $newData['p_last_name'] . "\r\n";
-    $emailBody .= "Modified By:  " . $creatorName . "\r\n";
-    $emailBody .= "Status:       Sent (Modified)\r\n";
-    $emailBody .= "-----------------------------------\r\n";
-    $emailBody .= "CHANGES MADE:\r\n";
-    $emailBody .= $changes;
-    $emailBody .= "-----------------------------------\r\n";
+    // 7. Purge existing mapping rows cleanly to reset relations before insertion
+    $db->query("DELETE FROM `pre_auth_procedures` WHERE pre_auth_id = ?", [$preAuthId]);
 
-    // Notify the fax/admin email
-    //EmailSender::send('Ourayfax@gmail.com', "Modified Pre-Auth: {$newData['p_first_name']} {$newData['p_last_name']} ({$officeName})", $emailBody);
+    // 8. Reconstruct dynamic rows layout stack mapping elements
+    foreach ($treatment_types as $index => $procedureId) {
+        $procId  = (int)$procedureId;
+        $toothNo = trim($tooth_numbers[$index]);
 
-    Api::success(null, 'Pre-Auth updated and notification sent.');
+        if ($procId <= 0 || $toothNo === '') {
+            continue; // Ignore blank entries safely
+        }
+
+        // Write fresh, verified index tracking details cleanly
+        $db->insert('pre_auth_procedures', [
+            'pre_auth_id'  => $preAuthId,
+            'procedure_id' => $procId,
+            'tooth_number' => $toothNo
+        ]);
+    }
+
+    // Safely commit all queries to permanent storage
+    $db->commit();
+
+    Api::success(null, 'Pre-Authorization modifications saved successfully.');
 
 } catch (Exception $e) {
-    Api::error('Database error: ' . $e->getMessage());
+    // Safe transactional roll-back wrapper validation check
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
+    Api::error('Database transactional operational failure: ' . $e->getMessage(), 500);
 }

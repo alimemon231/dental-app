@@ -26,6 +26,7 @@
                     <table class="data-table" id="manage-appointments-table">
                         <thead>
                             <tr>
+                                <th>Case NO </th>
                                 <th>Patient Name</th>
                                 <th>Appointment Date</th>
                                 <th>Procedure</th>
@@ -58,10 +59,7 @@
                             <button class="modal-close" data-close-modal="view-modal">&#x2715;</button>
                         </div>
                         <div class="modal-body">
-                            <!-- Progress bar can be injected here by JS -->
-                            <div id="modal-progress-bar"></div>
-                            <hr class="mb-6">
-                            <div id="view-details-body">Loading…</div>
+                           
                         </div>
                         <div class="modal-footer">
                             <button class="btn btn-ghost" data-close-modal="view-modal">Close Window</button>
@@ -131,7 +129,8 @@
     <script>
         $(document).ready(function () {
             App.auth.check();
-            App.auth.role('staff');
+            App.auth.role(['staff' , 'doctor']);
+
         });
     </script>
 </body>

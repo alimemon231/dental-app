@@ -39,6 +39,7 @@ if ($currentUser['role'] == 'admin') {
     'Offices Settings' => [
       ['label' => 'Offices Setting', 'icon' => 'fa-hospital', 'href' => '/offices.php', 'key' => 'offices'],
       ['label' => 'Budget Setting', 'icon' => 'fa-file-invoice-dollar', 'href' => '/monthly_budget.php', 'key' => 'budget'],
+      ['label' => 'Patient Setting', 'icon' => 'fa-user-injured', 'href' => '/adm-patient.php', 'key' => 'patient'],
     ],
     'Pre-auth Settings' => [
       ['label' => 'Pre-Auth Records', 'icon' => 'fa-clipboard-check', 'href' => '/adm-pre-auth.php', 'key' => 'pre_auth'],
@@ -70,12 +71,15 @@ if ($currentUser['role'] == 'admin') {
 
     '' => [
       ['label' => 'Dashboard', 'icon' => 'fa-gauge', 'href' => '/dashboard.php', 'key' => 'dashboard'],
+      ['label' => 'Patient Settings', 'icon' => 'fa-user-injured', 'href' => '/patients.php', 'key' => 'dashboard'],
     ],
 
     'Preauth Settings' => [
       ['label' => 'Add Record', 'icon' => 'fa-plus-circle', 'href' => '/emp-pre-auth.php', 'key' => 'order'],
       ['label' => 'Verified Record', 'icon' => 'fa-check-double', 'href' => '/emp-done-patient.php', 'key' => 'dashboard'],
       ['label' => 'Add Appointments', 'icon' => 'fa-calendar-plus', 'href' => '/emp-book-appointment.php', 'key' => 'dashboard'],
+      ['label' => 'Pre Auth History', 'icon' => 'fa-file-medical', 'href' => '/emp-pre-auth-his.php', 'key' => 'dashboard'],
+      ['label' => 'Lab History', 'icon' => 'fa-folder', 'href' => '/emp-lab-his.php', 'key' => 'dashboard'],
     ],
 
     'Lab Settings' => [
@@ -91,20 +95,36 @@ if ($currentUser['role'] == 'admin') {
 
   ];
 
-  $office_name = $auth->officeName($currentUser['id']);
+  $office_name = $auth->officeName($_SESSION['office_id']);
 } else if ($currentUser['role'] == 'doctor') {
   $navSections = [
-    'Main' => [
-      ['label' => 'Dashboard', 'icon' => 'fa-gauge', 'href' => '/dashboard.php', 'key' => 'dashboard'],
-    ],
+  
+     // Original doctor clinic supply settings kept untouched:
     'Clinic' => [
+      ['label' => 'Dashboard', 'icon' => 'fa-gauge', 'href' => '/dashboard.php', 'key' => 'dashboard'],
       ['label' => 'Orders', 'icon' => 'fa-shopping-bag', 'href' => '/doc-order.php', 'key' => 'order'],
       ['label' => 'Items', 'icon' => 'fa-pills', 'href' => '/emp-items.php', 'key' => 'dashboard'],
+      ['label' => 'Patient Settings', 'icon' => 'fa-user-injured', 'href' => '/patients.php', 'key' => 'dashboard'],
+    ],
+    
+    // Copied from Staff over to Doctor:
+    'Preauth Settings' => [
+      ['label' => 'Add Record', 'icon' => 'fa-plus-circle', 'href' => '/emp-pre-auth.php', 'key' => 'order'],
+      ['label' => 'Verified Record', 'icon' => 'fa-check-double', 'href' => '/emp-done-patient.php', 'key' => 'dashboard'],
+      ['label' => 'Add Appointments', 'icon' => 'fa-calendar-plus', 'href' => '/emp-book-appointment.php', 'key' => 'dashboard'],
+      ['label' => 'Pre Auth History', 'icon' => 'fa-file-medical', 'href' => '/emp-pre-auth-his.php', 'key' => 'dashboard'],
+    ],
+
+    // Copied from Staff over to Doctor:
+    'Lab Settings' => [
+      ['label' => 'Add Record', 'icon' => 'fa-microscope', 'href' => '/emp-lab.php', 'key' => 'lab'],
+      ['label' => 'Scheduled Labs', 'icon' => 'fa-calendar-check', 'href' => '/emp-labs-done.php', 'key' => 'dashboard'],
+      ['label' => 'Lab History', 'icon' => 'fa-folder', 'href' => '/emp-lab-his.php', 'key' => 'dashboard'],
     ],
 
   ];
 
-  $office_name = $auth->officeName($currentUser['id']);
+  $office_name = $auth->officeName($_SESSION['office_id']);
 }else if ($currentUser['role'] == 'm-staff') {
     // Management Staff Navigation
     $navSections = [
@@ -161,8 +181,15 @@ $userRole = htmlspecialchars($currentUser['role'] ?? '', ENT_QUOTES);
         <i class="fa-solid fa-chevron-up" style="font-size:0.7rem;color:var(--color-sidebar-text)"></i>
       </div>
       <div class="dropdown-menu" style="bottom:100%;top:auto;margin-bottom:var(--sp-2)">
-        <a href="/pages/profile.php" class="dropdown-item"><i class="fa-regular fa-user"></i> My Profile</a>
-        <a href="/pages/change-password.php" class="dropdown-item"><i class="fa-solid fa-key"></i> Change Password</a>
+        <?php
+        if($currentUser['role'] == 'staff' || $currentUser['role'] == 'doctor'){
+          ?>
+          <a href="/select-office.php" class="dropdown-item"><i class="fa-regular fa-office"></i> Switch Office</a>
+        <?php
+        }
+
+        ?>
+        
         <div class="dropdown-divider"></div>
         <button class="dropdown-item danger" onclick="App.auth.logout()">
           <i class="fa-solid fa-right-from-bracket"></i> Logout

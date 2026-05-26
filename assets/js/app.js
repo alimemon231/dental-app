@@ -283,29 +283,35 @@ App.auth = {
    * If the check fails, the user is redirected or blocked.
    * @param {string} roleName - e.g., 'admin', 'staff'
    */
-  role: function (roleName) {
-    App.ajax({
-      url: '/auth/check-role.php',
-      method: 'POST',
-      data: { role: roleName },
-      loader: true, // Show loader because this is a page-access check
-      silent: false, 
-      onSuccess: function (response) {
-        
-      },
-      onError: function (msg) {
-        // User does not have the role or session is invalid
-        App.toast.error('Access Denied', msg || 'You do not have permission to view this page.');
-        
-        // Redirect to dashboard or index after a short delay
-        setTimeout(function () {
-          window.location.href = App.config.baseUrl + '/dashboard.php';
-        }, 1500);
-      }
-    });
-  },
+  role: function (roleNames) {
+    // Convert a single string to an array automatically to ensure consistent payload structure
+    var rolesPayload = Array.isArray(roleNames) ? roleNames : [roleNames];
 
-  currentUser: null
+    App.ajax({
+        url: '/auth/check-role.php',
+        method: 'POST',
+        data: { roles: rolesPayload }, // Sends an array parameter named 'roles'
+        loader: true,                 // Show loader because this is a page-access check
+        silent: false, 
+        onSuccess: function (response) {
+            // Access granted - code execution continues smoothly
+        },
+        onError: function (xhr, msg) {
+            // Extract response error safely if available
+            var errorText = xhr?.responseJSON?.message || msg || 'You do not have permission to view this page.';
+            
+            // User does not have any of the required roles or session is invalid
+            App.toast.error('Access Denied', errorText);
+            
+            // Redirect to dashboard or index after a short delay
+            setTimeout(function () {
+                window.location.href = App.config.baseUrl + '/dashboard.php';
+            }, 1500);
+        }
+    });
+},
+
+currentUser: null
 };
 
 /* ------------------------------------------------------------------ */

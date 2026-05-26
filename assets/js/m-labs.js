@@ -15,44 +15,46 @@ $(document).ready(function () {
                 <div class="grid-2">
                     <div>
                         <div class="form-section-title"><i class="fa-solid fa-user"></i> Patient & Clinic</div>
-                        ${infoRow('Patient Name', `<strong>${r.p_name}</strong>`)}
-                        ${infoRow('Clinic Location', r.office_location)}
-                        ${infoRow('Doctor', 'Dr. ' + r.doctor_name)}
-                        ${infoRow('Lab',  r.lab_partner_name)}
-                        ${infoRow('Case Type', r.case_type_name)}
+                        ${infoRow('Patient Name', `<strong>${App.utils.escHtml(r.patient_name || '—')}</strong>`)}
+                        ${infoRow('Clinic Location', App.utils.escHtml(r.office_location || '—'))}
+                        ${infoRow('Doctor', 'Dr. ' + App.utils.escHtml(r.doctor_name || '—'))}
+                        ${infoRow('Lab Provider', App.utils.escHtml(r.lab_partner_name || '—'))}
+                        ${infoRow('Case Type', App.utils.escHtml(r.case_type_name || '—'))}
                     </div>
 
                     <div>
                         <div class="form-section-title"><i class="fa-solid fa-clock"></i> Tracking Status</div>
-                        ${infoRow('Current Status', `<span class="status-badge status-${r.status.toLowerCase()}">${r.status}</span>`)}
-                        ${infoRow('Sent By', r.sent_by_name + ' on ' + r.fmt_sent_date)}
-                        ${infoRow('Received By', (r.received_by_name || 'N/A') + ' on ' + r.fmt_received_date)}
+                        ${infoRow('Current Status', `<span class="status-badge status-${(r.status || 'Sent').toLowerCase()}">${r.status || 'Sent'}</span>`)}
+                        ${infoRow('Sent By', App.utils.escHtml(r.created_by_name || '—') + ' on ' + r.fmt_sent_date)}
+                        ${infoRow('Received By', App.utils.escHtml(r.received_by_name || '—') + ' on ' + r.fmt_received_date)}
                     </div>
                 </div>
 
                 <div class="grid-2 mt-4">
                     <div>
                         <div class="form-section-title"><i class="fa-solid fa-tooth"></i> Clinical Details</div>
-                        ${infoRow('Impression', r.impression_type)}
-                        ${infoRow('Arch / Teeth', r.display_arch)}
-                        ${infoRow('Next Procedure', r.next_visit_step_name)}
+                        ${infoRow('Impression', App.utils.escHtml(r.impression_type || '—'))}
+                        ${infoRow('Arch / Teeth', App.utils.escHtml(r.display_arch || '—'))}
+                        ${infoRow('Next Procedure', App.utils.escHtml(r.next_visit_procedure || '—'))}
+                        ${infoRow('Scheduled Date', App.utils.escHtml(r.fmt_scheduled_date || '—'))}
                     </div>
 
                     <div>
-                        <div class="form-section-title"><i class="fa-solid fa-comment-medical"></i> Internal Notes</div>
-                        <div class="p-3 bg-light border rounded text-sm" style="min-height: 80px;">
-                            ${r.notes ? App.utils.escHtml(r.notes) : '<span class="text-muted italic">No clinical notes provided.</span>'}
-                        </div>
+                        <div class="form-section-title"><i class="fa-solid fa-clock-rotate-left"></i> Audit Logs</div>
+                        ${infoRow('Last Edited By', App.utils.escHtml(r.edited_by_name || '—'))}
+                        ${infoRow('Last Edited At', App.utils.escHtml(r.fmt_edited_at || '—'))}
+                        
+                        <div class="form-section-title mt-3"><i class="fa-solid fa-comment-medical"></i> Internal Notes</div>
+                        <div class="p-3 bg-light border rounded text-sm" style="min-height: 80px; white-space: pre-wrap;">${r.notes ? App.utils.escHtml(r.notes) : '<span class="text-muted italic">No clinical notes provided.</span>'}</div>
                     </div>
                 </div>
-            `;
+                `;
 
                 $('#view-details-body').html(html);
                 App.modal.open('view-modal');
             }
         });
     });
-
 
     function infoRow(label, value) {
         return '<div class="info-row mb-2">' +
@@ -61,8 +63,7 @@ $(document).ready(function () {
             '</div>';
     }
 
-
-    // Open Schedule Modal
+    // Open Schedule Modal (Kept Unchanged)
     $(document).on('click', '.btn-schedule', function () {
         const id = $(this).data('id');
         $('#schedule-lab-id').val(id);
@@ -70,7 +71,7 @@ $(document).ready(function () {
         App.modal.open('schedule-modal');
     });
 
-    // Confirm Schedule Action
+    // Confirm Schedule Action (Kept Unchanged)
     $('#btn-confirm-schedule').on('click', function () {
         const form = $('#schedule-form');
         if (!App.form.validate(form)) return;
@@ -99,24 +100,25 @@ function loadGlobalLabs(page) {
 
             if (data && data.length > 0) {
                 data.forEach(r => {
-                    // Logic to handle empty or pending received dates
+
+                    console.log(r)
                     const receivedDateDisp = r.date_received
                         ? `<small class="text-success">${r.fmt_received_date}</small>`
                         : `<small class="text-muted italic">Not received</small>`;
 
                     rows += `<tr>
                         <td>
-                            <div class="text-bold text-primary">${App.utils.escHtml(r.office_location)}</div>
+                            <div class="text-bold text-primary">${App.utils.escHtml(r.office_location || '—')}</div>
                             <small class="text-muted">ID: #LAB-${r.id}</small>
                         </td>
-                        <td><strong>${App.utils.escHtml(r.p_name)}</strong></td>
-                        <td>Dr. ${App.utils.escHtml(r.doctor_name)}</td>
-                        <td>${App.utils.escHtml(r.case_type_name)}</td>
+                        <td><strong>${App.utils.escHtml(r.patient_name || '—')}</strong></td>
+                        <td>Dr. ${App.utils.escHtml(r.doctor_name || '—')}</td>
+                        <td>${App.utils.escHtml(r.case_type_name || '—')}</td>
                         <td>${r.fmt_sent_date}</td>
                         <td>${receivedDateDisp}</td>
-                        <td><span class="status-badge status-${r.status.toLowerCase()}">${r.status}</span></td>
+                        <td><span class="status-badge status-${(r.status || 'Sent').toLowerCase()}">${r.status || 'Sent'}</span></td>
                         <td>
-                            <div class="actions">
+                            <div class="actions" style="display: flex; gap: 4px;">
                                 <button class="btn btn-ghost btn-sm btn-view" data-id="${r.id}" title="View Full Details">
                                     <i class="fa-solid fa-eye"></i>
                                 </button>
@@ -129,14 +131,7 @@ function loadGlobalLabs(page) {
                 });
             }
 
-            $('#m-labs-tbody').html(rows || '<tr><td colspan="7" class="text-center p-4">No lab cases found in the system.</td></tr>');
-
-            // Update pagination info if your API returns total counts
-
+            $('#m-labs-tbody').html(rows || '<tr><td colspan="8" class="text-center p-4">No lab cases found in the system.</td></tr>');
         }
     });
-}
-
-function infoRow(label, value) {
-    return `<div class="info-row"><span class="info-label">${label}:</span><span class="info-value">${value || '—'}</span></div>`;
 }

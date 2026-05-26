@@ -26,12 +26,14 @@
           <table class="data-table" id="appointment-table">
             <thead>
               <tr>
+                <th>Case NO</th>
                 <th>Patient Name</th>
                 <th>DOB</th>
+                <th>Treatments Required</th>
                 <th>Approved By</th>
-                 <th>Approval Expired On</th>
-                <th>Created At</th>
-                <th>Status</th>
+                <th>Approval Expired On</th>
+              
+              
                 <th>Actions</th>
               </tr>
             </thead>
@@ -61,7 +63,7 @@
             <div class="modal-body">
               <form id="book-form" novalidate>
                 <input type="hidden" name="id" id="book-preauth-id">
-                
+
                 <div class="form-group">
                   <label class="form-label">Appointment Date <span class="required">*</span></label>
                   <input type="date" name="appointment_date" id="appointment_date" class="form-control" required>
@@ -104,8 +106,9 @@
   <script>
     $(document).ready(function () {
       App.auth.check();
-      App.auth.role('staff');
+      App.auth.role(['staff' , 'doctor']);
     });
   </script>
 </body>
+
 </html>

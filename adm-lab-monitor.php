@@ -124,10 +124,14 @@
             <div class="page-wrapper">
                 <div class="page-header">
                     <div class="page-header-left">
-                        <h1>Lab Pipeline Monitor</h1>
+                        <h1>Lab History</h1>
                         <div class="page-header-sub">Advanced tracking for clinical lab cases across all locations.
                         </div>
                     </div>
+
+                    <a href="/adm-create-lab.php" class="btn btn-primary btn-sm">
+                        <i class="fa-solid fa-plus"></i> Add New Record
+                    </a>
                 </div>
 
                 <div class="card mb-6 no-print">
@@ -242,11 +246,6 @@
                             <button class="modal-close" data-close-modal="view-modal">&#x2715;</button>
                         </div>
                         <div class="modal-body">
-                            <!-- Progress Bar -->
-                            <div class="progress-track" id="modal-progress-bar">
-                                <!-- JS Rendered -->
-                            </div>
-                            <hr class="mb-6">
                             <div id="view-details-body"></div>
                         </div>
                         <div class="modal-footer">

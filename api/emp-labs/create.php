@@ -6,12 +6,11 @@
 
 require_once __DIR__ . '/../../includes/Auth.php';
 
-
 $db   = new Database();
 $auth = new Auth($db);
 $auth->requireAuth();
 
-if (!$auth->hasRole('staff')) {
+if (!$auth->hasRole('staff') && !$auth->hasRole('doctor')) {
     Api::error('Unauthorized access.', 403);
     exit;
 }
@@ -23,19 +22,19 @@ if (Api::method() !== 'POST') {
 
 // 1. Capture Input Data
 $currentUserId   = $_SESSION['user_id'];
-$p_name          = trim($_POST['patient_name'] ?? '');
+$p_id            = trim($_POST['patient_id'] ?? ''); // Switched from patient_name to patient_id
 $provider_id     = trim($_POST['doctor_id'] ?? '');
 $case_type_id    = trim($_POST['case_type_id'] ?? '');
 $impression_type = trim($_POST['impression_type'] ?? '');
 $u_arch          = trim($_POST['u_arch'] ?? '');
 $l_arch          = trim($_POST['l_arch'] ?? '');
-$lab_proider      = trim($_POST['lab_provider'] ?? '');
+$lab_provider    = trim($_POST['lab_provider'] ?? '');
 $next_visit      = trim($_POST['next_visit'] ?? '');
 $notes           = trim($_POST['notes'] ?? '');
 
 // 2. Validation
-if (empty($p_name) || empty($provider_id) || empty($case_type_id) || empty($next_visit)) {
-    Api::error('Patient, Doctor, Case Type, and Next Visit Procedure are required.');
+if (empty($p_id) || empty($provider_id) || empty($case_type_id) || empty($next_visit)) {
+    Api::error('Patient selection, Doctor, Case Type, and Next Visit Procedure are required.');
     exit;
 }
 
@@ -57,9 +56,9 @@ $officeId   = $officeInfo['office_id'];
 $officeName = $officeInfo['office_name'];
 
 // 4. Prepare Data for Database
-// Matching your requested field names: p_name, office_id, provider, case_type, u_arch, l_arch, impression_type, next_visit, date_sent, sent_by, status
+// Matching requested schema fields: p_id, office_id, provider, case_type, u_arch, l_arch, impression_type, next_visit, date_sent, sent_by, status
 $labData = [
-    'p_name'          => $p_name,
+    'p_id'            => $p_id,          // Saved explicitly into requested schema tracking slot
     'office_id'       => $officeId,
     'provider'        => $provider_id,   // Doctor ID
     'case_type'       => $case_type_id,  // Case Type ID
@@ -67,7 +66,7 @@ $labData = [
     'l_arch'          => $l_arch,        // Full or Tooth numbers
     'impression_type' => $impression_type,
     'next_visit'      => $next_visit,    // Procedure ID
-    'lab_provider'    => $lab_proider,
+    'lab_provider'    => $lab_provider,
     'notes'           => $notes,
     'sent_by'         => $currentUserId,
     'date_sent'       => date('Y-m-d H:i:s'),
@@ -75,11 +74,10 @@ $labData = [
 ];
 
 try {
-    // 5. Insert into `lab_cases` table (adjust table name if necessary)
+    // 5. Insert into table row mapping block
     $db->insert('labs', $labData);
 
-   
-    // 7. Success Response
+    // 6. Success Response
     Api::success(null, 'Lab case created successfully.');
 
 } catch (Exception $e) {

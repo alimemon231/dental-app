@@ -22,7 +22,7 @@ if (!$office_id) { Api::error('Office ID is required.'); exit; }
 if (!$doctor_id) { Api::error('Doctor ID is required.'); exit; }
 
 if ($db->exists('office_users', ['user_id' => $doctor_id, 'office_id' => $office_id ,])) {
-    Api::error('Doctor or Staff Already Assignedto Orgnization.', 404); exit;
+    Api::error('Doctor or Staff Already Assigned to Orgnization.'); exit;
 }
 
 $db->insert("office_users" , ['user_id' => $doctor_id, 'office_id' => $office_id ,]);

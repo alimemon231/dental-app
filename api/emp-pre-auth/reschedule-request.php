@@ -11,7 +11,7 @@ $auth = new Auth($db);
 $auth->requireAuth();
 
 // 1. Role Check: Only staff or admin can modify appointments
-if ($auth->userRole() !== 'staff' && $auth->userRole() !== 'admin') {
+if ($auth->userRole() !== 'staff' && $auth->userRole() !== 'admin' && $auth->userRole() !== 'doctor') {
     Api::error('Unauthorized access. Staff privileges required.', 403);
     exit;
 }
@@ -34,8 +34,8 @@ if (!$preAuthId) {
 try {
     // 4. Fetch the existing record to ensure it belongs to this user
     // and is currently in 'Scheduled' status
-    $sql = "SELECT id, status, p_first_name, p_last_name FROM `pre-auth` WHERE id = ? AND created_by = ?";
-    $record = $db->queryOne($sql, [$preAuthId, $currentUserId]);
+    $sql = "SELECT id, status FROM `pre-auth` WHERE id = ? ";
+    $record = $db->queryOne($sql, [$preAuthId]);
 
     if (!$record) {
         Api::error('Record not found or you do not have permission to modify it.', 404);
@@ -60,7 +60,7 @@ try {
     Api::success([
         'id' => $preAuthId,
         'new_status' => 'Approved'
-    ], "Appointment for {$record['p_first_name']} {$record['p_last_name']} has been cleared for rescheduling.");
+    ], "Appointment has been cleared for rescheduling.");
 
 } catch (Exception $e) {
     Api::error('Server Error: ' . $e->getMessage());

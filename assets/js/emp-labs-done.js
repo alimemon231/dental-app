@@ -1,7 +1,7 @@
 $(document).ready(function () {
     loadScheduledLabs();
 
-    // Open Completion Modal
+    // Open Completion Modal (Kept as is, but updated to pass relational patient name)
     $(document).on('click', '.btn-mark-done', function () {
         const id = $(this).data('id');
         const name = $(this).data('name');
@@ -10,7 +10,7 @@ $(document).ready(function () {
         App.modal.open('complete-modal');
     });
 
-    // Handle AJAX Completion
+    // Handle AJAX Completion (Unchanged)
     $('#btn-confirm-done').on('click', function () {
         const id = $('#complete-lab-id').val();
         const btn = $(this);
@@ -28,6 +28,7 @@ $(document).ready(function () {
         });
     });
 
+    // View Details (Updated rendering parameters to map your new API structure)
     $(document).on('click', '.btn-view', function () {
         var id = $(this).data('id');
 
@@ -38,27 +39,34 @@ $(document).ready(function () {
                 var html =
                     '<div class="grid-2" style="gap:var(--sp-8)">' +
 
-                    // Left Column: Patient & Provider
+                    // Left Column: Patient, Provider & Clinic Context
                     '<div>' +
                     '<div class="form-section-title mb-4"><i class="fa-solid fa-user-doctor"></i> General Information</div>' +
-                    infoRow('Patient Name', App.utils.escHtml(r.p_name)) +
-                    infoRow('Provider', 'Dr. ' + App.utils.escHtml(r.doctor_name)) +
-                    infoRow('Lab', App.utils.escHtml(r.lab_partner_name)) +
+                    infoRow('Lab ID', '<span class="text-bold text-primary">#LAB-' + r.id + '</span>') +
+                    infoRow('Patient Name', App.utils.escHtml(r.patient_name || '—')) +
+                    infoRow('Clinic Office', App.utils.escHtml(r.office_name || '—')) +
+                    infoRow('Provider', 'Dr. ' + App.utils.escHtml(r.doctor_name || '—')) +
+                    infoRow('Lab Partner', App.utils.escHtml(r.lab_partner_name || '—')) +
 
                     '<div class="form-section-title mt-6 mb-4"><i class="fa-solid fa-tooth"></i> Clinical Details</div>' +
-                    infoRow('Case Type', App.utils.escHtml(r.case_type_name)) +
-                    infoRow('Impression', App.utils.escHtml(r.impression_type)) +
+                    infoRow('Case Type', App.utils.escHtml(r.case_type_name || '—')) +
+                    infoRow('Impression', App.utils.escHtml(r.impression_type || '—')) +
                     infoRow('Upper Arch', App.utils.escHtml(r.u_arch || '—')) +
                     infoRow('Lower Arch', App.utils.escHtml(r.l_arch || '—')) +
                     '</div>' +
 
-                    // Right Column: Status & Next Visit
+                    // Right Column: Workflow Status, Timeline Logs & Follow-up
                     '<div>' +
                     '<div class="form-section-title mb-4"><i class="fa-solid fa-circle-info"></i> Workflow Status</div>' +
-                    infoRow('Current Status', '<span class="status-badge status-' + r.status.toLowerCase() + '">' + r.status + '</span>') +
-                    infoRow('Date Sent', App.utils.escHtml(r.date_sent)) +
-                    infoRow('Date Received', App.utils.escHtml(r.date_received)) +
-                    infoRow('Date Scheduled', App.utils.escHtml(r.date_scheduled)) +
+                    infoRow('Current Status', '<span class="status-badge status-' + (r.status || 'sent').toLowerCase() + '">' + (r.status || 'Sent') + '</span>') +
+                    infoRow('Date Sent', App.utils.escHtml(r.date_sent || '—')) +
+                    infoRow('Sent By', App.utils.escHtml(r.created_by_name || '—')) +
+                    infoRow('Date Received', App.utils.escHtml(r.date_received || '—')) +
+                    infoRow('Date Scheduled', App.utils.escHtml(r.date_scheduled || '—')) +
+
+                    '<div class="form-section-title mt-6 mb-4"><i class="fa-solid fa-clock-rotate-left"></i> Audit History</div>' +
+                    infoRow('Last Edited By', App.utils.escHtml(r.edited_by_name || '—')) +
+                    infoRow('Last Edited At', App.utils.escHtml(r.edited_at || '—')) +
 
                     '<div class="form-section-title mt-6 mb-4"><i class="fa-solid fa-calendar-check"></i> Follow-up</div>' +
                     infoRow('Next Procedure', App.utils.escHtml(r.next_visit_step_name || '—')) +
@@ -73,49 +81,51 @@ $(document).ready(function () {
                     '</div>';
 
                 $('#view-lab-body').html(html);
-
-                // Map ID to the edit button inside the modal for convenience
                 $('#btn-edit-from-view').data('id', r.id);
-
                 App.modal.open('view-lab-modal');
             }
         });
     });
-
-    
 });
 
-
-
+// Load Scheduled Labs (Updated variables mapping to the array format)
 function loadScheduledLabs() {
     App.ajax({
         url: '/emp-labs/list-scheduled.php',
         onSuccess: function (data) {
             let rows = '';
-            data.forEach(r => {
-                rows += `<tr>
-                    <td><strong>${r.p_name}</strong></td>
-                    <td>${r.fmt_scheduled_date}</td>
-                    <td>Dr. ${r.doctor_name}</td>
-                    <td>${r.case_type_name}</td>
-                    <td><span class="status-badge status-scheduled">Scheduled</span></td>
-                    <td class="text-right">
-                        <button class="btn btn-ghost btn-sm btn-view" data-id="${r.id}"><i class="fa-solid fa-eye"></i></button>
-                        <button class="btn btn-primary btn-sm btn-mark-done" data-id="${r.id}" data-name="${r.p_name}">
-                            <i class="fa-solid fa-check"></i> Done
-                        </button>
-                    </td>
-                </tr>`;
-            });
-            $('#labs-done-tbody').html(rows || '<tr><td colspan="6" class="text-center">No scheduled lab procedures found.</td></tr>');
+            if (data && data.length > 0) {
+                data.forEach(r => {
+                    rows += `<tr>
+                        <td>
+                            <div class="text-bold text-primary">#LAB-${r.id}</div>
+                        </td>
+                        <td><strong>${App.utils.escHtml(r.patient_name || '—')}</strong></td>
+                        <td>${r.fmt_scheduled_date}</td>
+                        <td>Dr. ${App.utils.escHtml(r.doctor_name || '—')}</td>
+                        <td>${App.utils.escHtml(r.case_type_name || '—')}</td>
+                        <td><span class="status-badge status-${(r.status || 'scheduled').toLowerCase()}">${r.status || 'Scheduled'}</span></td>
+                        <td class="text-right">
+                            <div class="actions" style="display: flex; gap: 4px; justify-content: flex-end;">
+                                <button class="btn btn-ghost btn-sm btn-view" data-id="${r.id}" title="View Full Details">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                                <button class="btn btn-primary btn-sm btn-mark-done" data-id="${r.id}" data-name="${App.utils.escHtml(r.patient_name || 'Patient')}">
+                                    <i class="fa-solid fa-check"></i> Done
+                                </button>
+                            </div>
+                        </td>
+                    </tr>`;
+                });
+            }
+            $('#labs-done-tbody').html(rows || '<tr><td colspan="7" class="text-center p-4">No scheduled lab procedures found.</td></tr>');
         }
     });
 }
 
-
 function infoRow(label, value) {
-        return '<div class="info-row mb-2">' +
-            '<span class="text-muted" style="width:130px; display:inline-block; font-size:0.85rem">' + label + ':</span>' +
-            '<span class="fw-600">' + value + '</span>' +
-            '</div>';
-    }
+    return '<div class="info-row mb-2">' +
+        '<span class="text-muted" style="width:130px; display:inline-block; font-size:0.85rem">' + label + ':</span>' +
+        '<span class="fw-600">' + value + '</span>' +
+        '</div>';
+}

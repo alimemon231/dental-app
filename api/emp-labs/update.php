@@ -5,22 +5,30 @@ $db = new Database();
 $auth = new Auth($db);
 $auth->requireAuth();
 
-if (Api::method() !== 'POST') { Api::error('Method not allowed', 405); exit; }
+if (Api::method() !== 'POST') { 
+    Api::error('Method not allowed', 405); 
+    exit; 
+}
 
 $id = $_POST['id'] ?? null;
-if (!$id) { Api::error('Missing ID'); exit; }
+if (!$id) { 
+    Api::error('Missing ID'); 
+    exit; 
+}
 
-// Prepare Data (matching your create logic)
+// Prepare Data with database identity track pipelines
 $updateData = [
-    'p_name'          => trim($_POST['patient_name'] ?? ''),
+    'p_id'            => trim($_POST['patient_id'] ?? ''), // Swapped from p_name to use relational table key
     'provider'        => trim($_POST['doctor_id'] ?? ''),
     'case_type'       => trim($_POST['case_type_id'] ?? ''),
     'impression_type' => trim($_POST['impression_type'] ?? ''),
     'u_arch'          => trim($_POST['u_arch'] ?? ''),
     'l_arch'          => trim($_POST['l_arch'] ?? ''),
     'next_visit'      => trim($_POST['next_visit'] ?? ''),
-    'lab_provider'      => trim($_POST['lab_provider'] ?? ''),
-    'notes'           => trim($_POST['notes'] ?? '')
+    'lab_provider'    => trim($_POST['lab_provider'] ?? ''),
+    'notes'           => trim($_POST['notes'] ?? ''),
+    'edited_by'       => $auth->userId(),                  // Captures active staff user context automatically
+    'edited_at'       => date('Y-m-d H:i:s')               // Appends precise modification runtime tracking
 ];
 
 // 1. Fetch the record first

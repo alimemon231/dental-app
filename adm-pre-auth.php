@@ -123,10 +123,14 @@
             <div class="page-wrapper">
                 <div class="page-header">
                     <div class="page-header-left">
-                        <h1>Pre-Auth Pipeline Monitor</h1>
+                        <h1>Pre-Auth History</h1>
                         <div class="page-header-sub">Global tracking for all insurance authorizations and schedules.
                         </div>
                     </div>
+
+                    <a href="/adm-add-pre-auth.php" class="btn btn-primary btn-sm">
+                        <i class="fa-solid fa-plus"></i> Add New Record
+                    </a>
                 </div>
 
                 <div class="card mb-6 no-print">
@@ -166,6 +170,9 @@
                                 </label>
                                 <label class="flex flex-align gap-2 mb-2" style="cursor:pointer">
                                     <input type="checkbox" class="status-checkbox" value="Rejected"> Rejected
+                                </label>
+                                <label class="flex flex-align gap-2 mb-2" style="cursor:pointer">
+                                    <input type="checkbox" class="status-checkbox" value="Appealed"> Appealed
                                 </label>
                                 <label class="flex flex-align gap-2 mb-2" style="cursor:pointer">
                                     <input type="checkbox" class="status-checkbox" value="Scheduled"> Scheduled
@@ -251,11 +258,8 @@
                             <button class="modal-close" data-close-modal="view-modal">&#x2715;</button>
                         </div>
                         <div class="modal-body">
-                            <!-- Progress Bar -->
-                            <div class="progress-track" id="modal-progress-bar">
-                                <!-- JS Rendered -->
-                            </div>
-                            <hr class="mb-6">
+
+
                             <div id="view-details-body"></div>
                         </div>
                         <div class="modal-footer">

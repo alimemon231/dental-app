@@ -170,17 +170,16 @@ class Auth
     /**
      * Fetches the office name for a single user.
      */
-    public function officeName(int $userId): ?string
+    public function officeName(int $office_id): ?string
     {
         $this->requireAuth();
 
-        $sql = "SELECT o.office_name 
-            FROM offices o
-            INNER JOIN office_users ou ON o.id = ou.office_id
-            WHERE ou.user_id = ? ";
+        $sql = "SELECT office_name 
+            FROM offices 
+            WHERE id = ? ";
 
         // Using your query method
-        $result = $this->db->query($sql, [$userId]);
+        $result = $this->db->query($sql, [$office_id]);
 
         
 

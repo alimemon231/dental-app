@@ -9,25 +9,8 @@ $db   = new Database();
 $auth = new Auth($db);
 $auth->requireAuth();
 
-// 1. Get Current User ID from Auth session
-$currentUser = $auth->user();
-$userId = $currentUser['id'];
 
-/**
- * 2. Find the Office ID for this user.
- * We look into 'office_users' to see which office this staff is assigned to.
- */
-$officeAssignment = $db->queryOne(
-    "SELECT office_id FROM office_users WHERE user_id = ? LIMIT 1",
-    [$userId]
-);
-
-if (!$officeAssignment) {
-    Api::error('User is not assigned to any office.', 404);
-    exit;
-}
-
-$currentOfficeId = $officeAssignment['office_id'];
+$currentOfficeId = $_SESSION['office_id'];
 
 /**
  * 3. Fetch all doctors in THIS specific office.

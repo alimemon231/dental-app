@@ -25,29 +25,29 @@ if ($id <= 0) {
 
 /**
  * 3. Fetch Comprehensive Data
- * Joins with users, offices, and case_type to get full names
  */
 $sql = "SELECT 
     l.*, 
+    p.name AS patient_name,
     o.office_name, 
     u.name AS doctor_name,
     ct.name AS type_name,
     u_creator.name AS creator_name,
-    
+    u_editor.name AS editor_name,
     ls.name AS next_step_name,
     lp.name AS lab_partner_name
 FROM labs l
+LEFT JOIN patient p ON l.p_id = p.id
 LEFT JOIN offices o ON l.office_id = o.id
 LEFT JOIN users u ON l.provider = u.user_id
 LEFT JOIN users u_creator ON l.sent_by = u_creator.user_id
+LEFT JOIN users u_editor ON l.edited_by = u_editor.user_id
 LEFT JOIN case_type ct ON l.case_type = ct.id
--- Map next_visit to the lab_steps table
 LEFT JOIN lab_steps ls ON l.next_visit = ls.id
--- Map lab_provider to the labs_patner table
 LEFT JOIN labs_patner lp ON l.lab_provider = lp.id
 WHERE l.id = ?";
 
-$data = $db->queryOne($sql, [$id,]);
+$data = $db->queryOne($sql, [$id]);
 
 if (!$data) {
     Api::error('Lab case not found.', 404);
@@ -56,26 +56,34 @@ if (!$data) {
 
 /**
  * 4. Data Sanitization & Formatting
- * We format dates here to make the JS logic cleaner.
+ * Explicitly includes all keys required by the frontend layout template.
  */
 $formattedData = [
     'id'               => $data['id'],
-    'p_name'           => $data['p_name'],
+    'p_name'           => $data['patient_name'] ?: '—',
     'status'           => $data['status'],
-    'office_name'      => $data['office_name'],
-    'doctor_name'      => $data['doctor_name'],
-    'type_name'        => $data['type_name'],
+    'office_name'      => $data['office_name'] ?: '—',
+    'doctor_name'      => $data['doctor_name'] ?: '—',
+    'type_name'        => $data['type_name'] ?: '—',
     'notes'            => $data['notes'] ?: 'No internal notes provided.',
     
-    // Date Formats for the Table & Modal
+    // Clinical Parameters passed along to frontend template bindings
+    'impression_type'  => $data['impression_type'] ?: '—',
+    'u_arch'           => $data['u_arch'] ?: '—',
+    'l_arch'           => $data['l_arch'] ?: '—',
+    'next_step_name'   => $data['next_step_name'] ?: '—',
+    'lab_partner_name' => $data['lab_partner_name'] ?: '—',
+
+    // Timeline Date Formats
     'date_sent'        => $data['date_sent'] ? date('m/d/Y', strtotime($data['date_sent'])) : 'N/A',
     'date_received'    => $data['date_received'] ? date('m/d/Y', strtotime($data['date_received'])) : null,
     'date_scheduled'   => $data['date_scheduled'] ? date('m/d/Y', strtotime($data['date_scheduled'])) : null,
     'date_completed'   => $data['date_complete'] ? date('m/d/Y', strtotime($data['date_complete'])) : null,
     
-    // Additional Metadata for Modal
-    
-    'created_by_name'  => $data['sent_by'] ?? 'System',
+    // Additional Metadata and Audit Trail
+    'created_by_name'  => $data['creator_name'] ?: ($data['sent_by'] ?? 'System'),
+    'edited_by_name'   => $data['editor_name'] ?: '—',
+    'edited_at'        => ($data['edited_at'] && $data['edited_at'] !== '0000-00-00 00:00:00') ? date('m/d/Y g:i A', strtotime($data['edited_at'])) : '—',
     'tracking_number'  => $data['id'] ?? 'N/A'
 ];
 

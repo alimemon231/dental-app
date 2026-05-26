@@ -1,7 +1,7 @@
 <?php
 /**
  * POST api/m-labs/schedule.php
- * Updates appointment date, marks as Scheduled, and notifies the clinic.
+ * Updates appointment date, marks as Scheduled, logs who edited it, and notifies the clinic.
  */
 require_once __DIR__ . '/../../includes/Auth.php';
 require_once __DIR__ . '/../../includes/EmailSender.php';
@@ -11,7 +11,7 @@ $auth = new Auth($db);
 $auth->requireAuth();
 
 if (!$auth->hasRole('m-staff')) {
-    Api::error('Unauthorized access.', 403);
+    Api::error('Unauthorized access. Management only.', 403);
     exit;
 }
 
@@ -30,11 +30,17 @@ if (!$id || !$appointment_date) {
 }
 
 try {
-    // 2. Fetch Lab and Clinic Details for the email
-    $sql = "SELECT l.p_name, l.office_id, o.office_name, o.email as office_email 
+    // 2. Fetch Lab, Patient Name, and Clinic Details for the email from the new schema
+    $sql = "SELECT 
+                p.name AS patient_name, 
+                l.office_id, 
+                o.office_name, 
+                o.email AS office_email 
             FROM labs l 
+            JOIN patient p ON l.p_id = p.id
             JOIN offices o ON l.office_id = o.id 
-            WHERE l.id = ? ";
+            WHERE l.id = ?";
+            
     $lab = $db->queryOne($sql, [$id]);
 
     if (!$lab) {
@@ -42,10 +48,12 @@ try {
         exit;
     }
 
-    // 3. Update the Lab Record
+    // 3. Update the Lab Record (including audit footprint logs)
     $updateData = [
-        'date_scheduled'   => $appointment_date,
-        'status'           => 'Scheduled'
+        'date_scheduled' => $appointment_date,
+        'status'         => 'Scheduled',
+        'edited_by'      => $auth->userId(),      // Captures active management session user
+        'edited_at'      => date('Y-m-d H:i:s')   // Sets date/time signature
     ];
     $db->update('labs', $updateData, ['id' => $id]);
 
@@ -53,10 +61,10 @@ try {
     if (!empty($lab['office_email'])) {
         $formattedDate = date('M d, Y', strtotime($appointment_date));
         
-        $subject = "Appointment Scheduled: {$lab['p_name']} ({$lab['office_name']})";
+        $subject = "Appointment Scheduled: {$lab['patient_name']} ({$lab['office_name']})";
         
         $message = "Hello {$lab['office_name']} Team,\r\n\r\n";
-        $message .= "This is a notification that the lab case for patient {$lab['p_name']} has been scheduled.\r\n\r\n";
+        $message .= "This is a notification that the lab case for patient {$lab['patient_name']} has been scheduled.\r\n\r\n";
         $message .= "Scheduled Date: {$formattedDate}\r\n";
         $message .= "Status: Scheduled\r\n\r\n";
         $message .= "Please ensure the patient chart is updated and clinical staff are aware.\r\n";

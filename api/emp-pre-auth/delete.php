@@ -2,16 +2,16 @@
 /**
  * API: Delete Pre-Auth
  * Path: /emp-pre-auth/delete.php
+ * Safely removes master pre-auth records and clean-purges linked itemized child procedures.
  */
 
 require_once __DIR__ . '/../../includes/Auth.php';
-require_once __DIR__ . '/../../includes/EmailSender.php';
 
 $db   = new Database();
 $auth = new Auth($db);
 $auth->requireAuth();
 
-if (!$auth->hasRole('staff')) {
+if (!$auth->hasRole('staff') && !$auth->hasRole('doctor')) {
     Api::error('Unauthorized access.', 403);
     exit;
 }
@@ -28,47 +28,53 @@ if (!$id) {
     exit;
 }
 
-// 2. Fetch the Record to verify ownership and status
-$currentUserId = $_SESSION['user_id'];
-$record = $db->queryOne("SELECT * FROM `pre-auth` WHERE id = ? AND created_by = ?", [$id, $currentUserId]);
+$sessionOfficeId = (int)($_SESSION['office_id'] ?? 0);
 
-if (!$record) {
-    Api::error('Record not found or you do not have permission to delete it.', 404);
+if ($sessionOfficeId <= 0) {
+    Api::error('Active clinic location scope not established in session.', 400);
     exit;
 }
 
-// 3. STRICT CHECK: Only allow deletion if status is 'Sent'
-// We don't want staff deleting records that are already 'Approved' or 'Processed'
-if ($record['status'] !== 'Sent') {
-    Api::error('Cannot delete a record that has already been ' . $record['status'] . '.', 400);
+// 2. Fetch the Record within active office context to verify ownership and status
+$record = $db->queryOne(
+    "SELECT id, status FROM `pre-auth` WHERE id = ? AND office_id = ? LIMIT 1", 
+    [$id, $sessionOfficeId]
+);
+
+if (!$record) {
+    Api::error('Record not found or workspace access validation denied.', 404);
+    exit;
+}
+
+// 3. STRICT CHECK: Only allow deletions if status is exactly 'Create'
+if (strtolower($record['status']) !== 'create') {
+    Api::error('Cannot delete a record that is currently marked as: ' . $record['status'] . '.', 400);
     exit;
 }
 
 try {
-    // 4. Delete the Record
+    // Start Transaction to guarantee both deletions complete smoothly or roll back entirely
+    $db->beginTransaction();
+
+    // 4. First purge child item rows mapping data from the procedures relationship table
+    $db->query("DELETE FROM `pre_auth_procedures` WHERE pre_auth_id = ?", [$id]);
+
+    // 5. Delete the parent master pre-auth record row entry
     $deleted = $db->delete('pre-auth', ['id' => $id]);
 
-    if ($deleted) {
-        // 5. Get Office Name for the notification
-        $office = $db->queryOne("SELECT office_name FROM offices WHERE id = ? LIMIT 1", [$record['office_id']]);
-        $officeName = $office ? $office['office_name'] : 'Unknown Office';
-
-        // 6. Notify Admin/Fax about the deletion
-        $emailBody = "Pre-Authorization DELETED / CANCELLED\r\n";
-        $emailBody .= "-------------------------------------\r\n";
-        $emailBody .= "Office:     " . $officeName . "\r\n";
-        $emailBody .= "Patient:    " . $record['p_first_name'] . " " . $record['p_last_name'] . "\r\n";
-        $emailBody .= "Action:     Record removed from system by staff.\r\n";
-        $emailBody .= "Date:       " . date('Y-m-d H:i:s') . "\r\n";
-        $emailBody .= "-------------------------------------\r\n";
-
-        //EmailSender::send('Ourayfax@gmail.com', "Deleted Pre-Auth: {$record['p_first_name']} {$record['p_last_name']}", $emailBody);
-
-        Api::success(null, 'Pre-Auth record successfully deleted.');
-    } else {
-        throw new Exception("Failed to delete record from database.");
+    if (!$deleted) {
+        throw new Exception("Failed to delete the primary master entry record row.");
     }
 
+    // Commit changes to database permanently
+    $db->commit();
+
+    Api::success(null, 'Pre-Auth entry and associated treatment entries successfully deleted.');
+
 } catch (Exception $e) {
-    Api::error('Database error: ' . $e->getMessage());
+    // Instantly restore transaction changes on errors to keep things clean
+   
+        $db->rollBack();
+    
+    Api::error('Database transactional isolation removal failure: ' . $e->getMessage(), 500);
 }

@@ -18,8 +18,7 @@ $doctors = $db->query(
     "SELECT u.*
     FROM users u
     LEFT JOIN office_users ou ON u.user_id = ou.user_id
-    WHERE u.user_type = 'doctor' 
-    AND ou.user_id IS NULL",
+    WHERE u.user_type = 'doctor'",
     []
 );
 

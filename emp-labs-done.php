@@ -112,7 +112,7 @@
     <script>
         $(document).ready(function () {
             App.auth.check();
-            App.auth.role('staff');
+            App.auth.role(['staff' , 'doctor']);
         });
     </script>
 </body>

@@ -12,6 +12,7 @@ require_once "includes/Auth.php";
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="assets/css/global.css">
     <link rel="stylesheet" href="assets/css/layout.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <style>
         /* Tooth Chart Styles */
         .tooth-chart-container {
@@ -63,6 +64,22 @@ require_once "includes/Auth.php";
             text-transform: uppercase;
         }
 
+        /* Sync Select2 with custom form engine styling */
+        .select2-container--default .select2-selection--single {
+            height: 38px !important;
+            border: 1px solid var(--color-border, #cbd5e1) !important;
+            border-radius: var(--radius-md, 4px) !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 36px !important;
+            padding-left: var(--sp-3, 12px) !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 36px !important;
+        }
+
         /* Form Logic Classes */
         .hidden-field {
             display: none;
@@ -91,6 +108,7 @@ require_once "includes/Auth.php";
                     <table class="data-table" id="lab-table">
                         <thead>
                             <tr>
+                                <th>Lab Case Number</th>
                                 <th>Patient</th>
                                 <th>Doctor</th>
                                 <th>Case Type</th>
@@ -102,7 +120,7 @@ require_once "includes/Auth.php";
                         </thead>
                         <tbody id="lab-tbody">
                             <tr>
-                                <td colspan="7" class="text-center">Loading lab cases...</td>
+                                <td colspan="8" class="text-center">Loading lab cases...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -115,21 +133,21 @@ require_once "includes/Auth.php";
                             <button class="modal-close" data-close-modal="lab-modal">&#x2715;</button>
                         </div>
                         <div class="modal-body">
-                            <form id="lab-form">
+                            <form id="lab-form" novalidate>
                                 <div class="form-section">
-                                    <div class="form-section-title"><i class="fa-solid fa-user"></i> General Information
-                                    </div>
+                                    <div class="form-section-title"><i class="fa-solid fa-user"></i> General Information</div>
+                                    
                                     <div class="form-row">
                                         <div class="form-group">
-                                            <label class="form-label">Patient Name <span
-                                                    class="required">*</span></label>
-                                            <input type="text" name="patient_name" class="form-control"
-                                                placeholder="Full Name" required>
+                                            <label class="form-label">Select Patient Record <span class="required">*</span></label>
+                                            <select name="patient_id" id="patient-select" class="form-control" required style="width: 100%;">
+                                                <option value="">Search by patient name...</option>
+                                            </select>
+                                            <span class="form-error">Please designate a valid patient profile.</span>
                                         </div>
                                         <div class="form-group">
-                                            <label class="form-label">Provider (Doctor) <span
-                                                    class="required">*</span></label>
-                                            <select name="doctor_id" id="doctor_id" class="form-control" required>
+                                            <label class="form-label">Provider (Doctor) <span class="required">*</span></label>
+                                            <select name="doctor_id" id="doctor_id" class="form-control" required style="width: 100%;">
                                                 <option value="">Select Doctor</option>
                                             </select>
                                         </div>
@@ -143,8 +161,7 @@ require_once "includes/Auth.php";
                                             </select>
                                         </div>
                                         <div class="form-group">
-                                            <label class="form-label">Impression Type <span
-                                                    class="required">*</span></label>
+                                            <label class="form-label">Impression Type <span class="required">*</span></label>
                                             <select name="impression_type" class="form-control" required>
                                                 <option value="Scan">Digital Scan</option>
                                                 <option value="VPS">VPS / Manual</option>
@@ -153,8 +170,7 @@ require_once "includes/Auth.php";
                                     </div>
 
                                     <div id="section-teeth" class="hidden-field mt-4">
-                                        <div class="form-section-title"><i class="fa-solid fa-tooth"></i> Select Teeth
-                                        </div>
+                                        <div class="form-section-title"><i class="fa-solid fa-tooth"></i> Select Teeth</div>
                                         <div class="tooth-chart-container">
                                             <div class="arch-label">Upper Arch</div>
                                             <div class="arch-row" id="upper-arch">
@@ -172,8 +188,7 @@ require_once "includes/Auth.php";
                                     </div>
 
                                     <div id="section-arch" class="hidden-field mt-4">
-                                        <div class="form-section-title"><i class="fa-solid fa-grip-lines"></i> Arch
-                                            Selection</div>
+                                        <div class="form-section-title"><i class="fa-solid fa-grip-lines"></i> Arch Selection</div>
                                         <div class="form-group">
                                             <label class="form-label">Target Arch</label>
                                             <select id="arch_selector" class="form-control">
@@ -199,14 +214,12 @@ require_once "includes/Auth.php";
                                                 <option value="">-- Select Next Step --</option>
                                             </select>
                                         </div>
-                                       
                                     </div>
 
                                     <div class="form-row mt-4" style="grid-template-columns: repeat(1, 1fr);">
                                         <div class="form-group">
                                             <label class="form-label">Lab Notes</label>
-                                            <textarea name="notes" class="form-control" rows="2"
-                                                placeholder="Shade, specific instructions..."></textarea>
+                                            <textarea name="notes" class="form-control" rows="2" placeholder="Shade, specific instructions..."></textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -225,8 +238,7 @@ require_once "includes/Auth.php";
                             <div class="modal-title">Lab Case Details</div>
                             <button class="modal-close" data-close-modal="view-lab-modal">&#x2715;</button>
                         </div>
-                        <div class="modal-body" id="view-lab-body">
-                        </div>
+                        <div class="modal-body" id="view-lab-body"></div>
                         <div class="modal-footer">
                             <button class="btn btn-ghost" data-close-modal="view-lab-modal">Close</button>
                             <button class="btn btn-primary btn-edit" id="btn-edit-from-view" data-id="">
@@ -236,7 +248,6 @@ require_once "includes/Auth.php";
                     </div>
                 </div>
 
-                <!-- Generic Confirmation Modal for Approvals/Rejections -->
                 <div class="modal-backdrop" id="confirm-modal">
                     <div class="modal modal-sm">
                         <div class="modal-header">
@@ -244,12 +255,10 @@ require_once "includes/Auth.php";
                             <button class="modal-close" data-close-modal="confirm-modal">&#x2715;</button>
                         </div>
                         <div class="modal-body">
-                            <!-- The dynamic icon and message will be injected here -->
                             <div id="confirm-body-content"></div>
                         </div>
                         <div class="modal-footer">
-                            <button class="btn btn-ghost" data-close-modal="confirm-modal"
-                                id="confirm-cancel">Cancel</button>
+                            <button class="btn btn-ghost" data-close-modal="confirm-modal" id="confirm-cancel">Cancel</button>
                             <button class="btn" id="confirm-ok">Proceed</button>
                         </div>
                     </div>
@@ -259,6 +268,7 @@ require_once "includes/Auth.php";
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="assets/js/app.js"></script>
     <script src="assets/js/emp-lab.js"></script>
 </body>
