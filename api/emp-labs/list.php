@@ -51,7 +51,8 @@ LEFT JOIN case_type ct ON l.case_type = ct.id
 LEFT JOIN lab_steps ls ON l.next_visit = ls.id        -- Linked to lab_steps
 LEFT JOIN labs_patner lp ON l.lab_provider = lp.id    -- Linked to labs_patner
 WHERE l.office_id = ? 
-  AND l.status = 'Sent'
+  AND (l.status = 'Sent'
+  OR l.status = 'Received')
 ORDER BY l.id DESC
 LIMIT ? OFFSET ?";
 

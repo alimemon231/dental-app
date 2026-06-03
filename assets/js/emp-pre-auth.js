@@ -47,7 +47,10 @@ $(document).ready(function () {
     /* ================================================================
         FUNCTION 2: ADD N NUMBER OF TEETH & PROCEDURE ROWS
     ================================================================ */
-    function addTreatmentRow(selectedProcedureId, selectedToothNumber) {
+    // Added 3rd parameter: preAuthRowId to accurately track database record keys
+    function addTreatmentRow(selectedProcedureId, selectedToothNumber, preAuthRowId) {
+        var rowIdValue = preAuthRowId || '';
+
         var procedureOptions = '<option value="">-- Select Procedure --</option>';
         $.each(dropdownCache.procedures, function (i, p) {
             procedureOptions += `<option value="${p.id}">${App.utils.escHtml(p.name)}</option>`;
@@ -61,6 +64,8 @@ $(document).ready(function () {
 
         var newRowHtml = `
             <div class="form-row treatment-row" style="grid-template-columns: 2fr 1fr 40px; gap: var(--sp-3); align-items: flex-end;">
+                <input type="hidden" name="item_row_ids[]" value="${rowIdValue}">
+                
                 <div class="form-group">
                     <label class="form-label">Treatment Type <span class="required">*</span></label>
                     <select name="treatment_type[]" class="form-control treatment-type-select" required>
@@ -93,7 +98,8 @@ $(document).ready(function () {
 
     // Dynamic treatment block utilities
     $('#btn-add-treatment-row').on('click', function () {
-        addTreatmentRow();
+        // Appends a completely brand new structural row entry on UI (Row ID is left empty)
+        addTreatmentRow('', '1', '');
     });
 
     $(document).on('click', '.btn-remove-row', function () {
@@ -111,7 +117,6 @@ $(document).ready(function () {
             $rows.find('.btn-remove-row').css('visibility', 'visible');
         }
     }
-
     /* ================================================================
         FETCH DROPDOWN DATA
     ================================================================ */
@@ -144,6 +149,20 @@ $(document).ready(function () {
                 $('#p_insurance_plan').html(options);
             }
         });
+
+        App.ajax({
+            url: '/emp-labs/all-doctors.php',
+            method: 'GET',
+            loader: false,
+            onSuccess: function (data) {
+                dropdownCache.insurances = data;
+                var options = '<option value="">-- Select Provider --</option>';
+                $.each(data, function (i, ins) {
+                    options += `<option value="${ins.user_id}">${App.utils.escHtml(ins.name)}</option>`;
+                });
+                $('#provider').html(options);
+            }
+        });
     }
 
     /* ================================================================
@@ -172,79 +191,163 @@ $(document).ready(function () {
     function renderTable(records) {
         let rows = '';
         if (!records || records.length === 0) {
-            rows = '<tr><td colspan="7" class="text-center text-muted">No authorization records found for this workspace.</td></tr>';
+            rows = '<tr><td colspan="8" class="text-center text-muted py-4">No authorization records found for this workspace.</td></tr>';
         } else {
             records.forEach(r => {
-                const statusLower = (r.status || 'Create').toLowerCase();
-                const statusClass = 'status-' + statusLower;
+                const childItems = r.procedures_list || [];
+                const rowSpanCount = childItems.length > 0 ? childItems.length : 1;
 
-                // Define contextual row colors based on workflow tracking rules
-                let rowColorClass = '';
-                if (statusLower === 'expired') {
-                    rowColorClass = 'table-warning alert-warning-row';
-                } else if (statusLower === 'rejected' || statusLower === 'denied') {
-                    rowColorClass = 'table-danger alert-danger-row';
-                } else if (statusLower === 'approved') {
-                    rowColorClass = 'table-success alert-success-row';
-                } else if (statusLower === 'appealed') {
-                    rowColorClass = 'table-info alert-info-row'; // Custom styling theme for active dispute states
-                } else {
-                    rowColorClass = ''; // 'Create', 'Sent' use standard rows
+                // Loop through each itemized procedure within this Case
+                for (let i = 0; i < rowSpanCount; i++) {
+                    const proc = childItems[i];
+
+                    // Determine status and styling attributes for each specific split row
+                    const currentStatus = proc ? (proc.status || 'Create') : (r.status || 'Create');
+                    const statusLower = currentStatus.toLowerCase();
+                    const statusClass = 'status-' + statusLower;
+
+                    // Define contextual row colors based on operational status rules
+                    let rowColorClass = '';
+                    if (statusLower === 'expired') {
+                        rowColorClass = 'table-warning alert-warning-row';
+                    } else if (statusLower === 'rejected' || statusLower === 'denied') {
+                        rowColorClass = 'table-danger alert-danger-row';
+                    } else if (statusLower === 'approved') {
+                        rowColorClass = 'table-success alert-success-row';
+                    } else if (statusLower === 'appealed') {
+                        rowColorClass = 'table-info alert-info-row';
+                    }
+
+                    // Compile an elegant visual border separation between distinct cases
+                    let rowBorderStyle = 'vertical-align: middle;';
+                    if (i === rowSpanCount - 1) {
+                        rowBorderStyle += ' border-bottom: 2px solid #cbd5e1;';
+                    }
+
+                    rows += `<tr class="${rowColorClass}" style="${rowBorderStyle} transition: background-color 0.2s ease;">`;
+
+                    // ================================================================
+                    // COLUMN BLOCK 1: MASTER CONTAINER CASE FIELDS (Rendered only on the first row)
+                    // ================================================================
+                    if (i === 0) {
+                        rows += `
+                        <td rowspan="${rowSpanCount}" class="fw-bold text-center" style="background: rgba(0,0,0,0.01); border-right: 1px solid #e2e8f0; vertical-align: middle;">
+                            <span class="badge bg-secondary text-dark px-2 py-1">Case #${App.utils.escHtml(r.id)}</span>
+                        </td>
+                        <td rowspan="${rowSpanCount}" style="vertical-align: middle;">
+                            <div class="fw-600 text-primary">${App.utils.escHtml(r.patient_name)}</div>
+                            <small class="text-muted d-block mt-1">
+                                <i class="fa-solid fa-user-doctor"></i> Dr. ${App.utils.escHtml(r.doctor_name || 'Unassigned')}
+                            </small>
+                            <small class="text-muted d-block">
+                                <i class="fa-regular fa-clock"></i> ${proc ? proc.time_ago : r.time_ago}
+                            </small>
+                        </td>
+                        <td rowspan="${rowSpanCount}" style="vertical-align: middle;">${App.utils.escHtml(r.patient_dob || '—')}</td>
+                        <td rowspan="${rowSpanCount}" style="vertical-align: middle;">${App.utils.escHtml(r.insurance_name || '—')}</td>
+                    `;
+                    }
+
+                    // ================================================================
+                    // COLUMN BLOCK 2: SPLIT ITEMIZED INDIVIDUAL PATIENT TREATMENTS & STATUS
+                    // ================================================================
+                    if (proc) {
+                        rows += `
+                        <td style="vertical-align: middle; border-right: 1px solid #f1f5f9;">
+                            <span class="badge bg-light text-primary border me-1">Tooth ${App.utils.escHtml(proc.tooth_number)}</span>
+                            <span class="fw-500">${App.utils.escHtml(proc.procedure_name)}</span>
+                        </td>
+                        <td style="vertical-align: middle; text-align: center; border-right: 1px solid #f1f5f9;">
+                            <span class="status-badge ${statusClass}">${App.utils.escHtml(currentStatus)}</span>
+                        </td>
+                    `;
+                    } else {
+                        rows += `
+                        <td style="vertical-align: middle; border-right: 1px solid #f1f5f9;">
+                            <span class="text-muted">${App.utils.escHtml(r.procedure_name || '—')}</span><br>
+                            <small class="text-danger">Tooth: ${App.utils.escHtml(r.tooth_numbers || '—')}</small>
+                        </td>
+                        <td style="vertical-align: middle; text-align: center; border-right: 1px solid #f1f5f9;">
+                            <span class="status-badge ${statusClass}">${App.utils.escHtml(currentStatus)}</span>
+                        </td>
+                    `;
+                    }
+
+                    // ================================================================
+                    // COLUMN BLOCK 3: ITEMIZED LINE-LEVEL OPERATIONS & LIFECYCLE CONTROLS
+                    // ================================================================
+                    const targetPreAuthId = proc ? proc.pre_auth_id : r.id;
+
+                    rows += `<td style="vertical-align: middle; text-align: center;">
+                            <div class="row-actions" style="display: flex; gap: 4px; justify-content: center;">`;
+
+                    // Condition A: STATUS == 'REQUESTED' (Edit, View, Send, Delete for itemized record row)
+                    if (statusLower === 'requested' || statusLower === 'create') {
+                        rows += `
+                        <button class="btn btn-ghost btn-sm btn-edit-item" data-id="${targetPreAuthId}" title="Edit Procedure Parameters"><i class="fa-solid fa-pen text-muted"></i></button>
+                        <button class="btn btn-ghost btn-sm btn-view-item" data-id="${targetPreAuthId}" title="View Details"><i class="fa-solid fa-eye text-primary"></i></button>
+                        <button class="btn btn-ghost btn-sm btn-send-preauth" data-id="${targetPreAuthId}" title="Send to Management Review" style="color:var(--color-success)">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                        <button class="btn btn-ghost btn-sm btn-delete-item" data-id="${targetPreAuthId}" title="Delete Authorization Row" style="color:var(--color-danger)">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    `;
+                    }
+                    // Condition B: STATUS == 'SENT' (View, Edit, Approve, Reject lifecycle adjustments)
+                    else if (statusLower === 'sent') {
+                        rows += `
+                        <button class="btn btn-ghost btn-sm btn-view-item" data-id="${targetPreAuthId}" title="View Clearinghouse Timeline"><i class="fa-solid fa-eye text-primary"></i></button>
+                        <button class="btn btn-ghost btn-sm btn-edit-item" data-id="${targetPreAuthId}" title="Modify Details"><i class="fa-solid fa-pen text-muted"></i></button>
+                        <button class="btn btn-ghost btn-sm btn-approve-preauth" data-id="${targetPreAuthId}" title="Mark as Approved" style="color:var(--color-success)">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </button>
+                        <button class="btn btn-ghost btn-sm btn-reject-preauth" data-id="${targetPreAuthId}" title="Mark as Rejected" style="color:var(--color-danger)">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                        </button>
+                    `;
+                    }
+                    // Condition C: STATUS == 'APPEALED' (Matches Sent controls but explicitly drops the edit option)
+                    else if (statusLower === 'appealed') {
+                        rows += `
+                        <button class="btn btn-ghost btn-sm btn-view-item" data-id="${targetPreAuthId}" title="View Appeal Documentation"><i class="fa-solid fa-eye text-primary"></i></button>
+                        <button class="btn btn-ghost btn-sm btn-approve-preauth" data-id="${targetPreAuthId}" title="Mark as Approved" style="color:var(--color-success)">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </button>
+                        <button class="btn btn-ghost btn-sm btn-reject-preauth" data-id="${targetPreAuthId}" title="Mark as Rejected" style="color:var(--color-danger)">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                        </button>
+                    `;
+                    }
+                    // Condition D: STATUS == 'DENIED' or 'REJECTED' (View, Edit, Appeal adjustment)
+                    else if (statusLower === 'denied' || statusLower === 'rejected') {
+                        rows += `
+                        <button class="btn btn-ghost btn-sm btn-view-item" data-id="${targetPreAuthId}" title="View Defect Log Notes"><i class="fa-solid fa-eye text-primary"></i></button>
+                        <button class="btn btn-ghost btn-sm btn-edit-item" data-id="${targetPreAuthId}" title="Correct Case Properties"><i class="fa-solid fa-pen text-muted"></i></button>
+                        <button class="btn btn-ghost btn-sm btn-appeal-preauth" data-id="${targetPreAuthId}" title="File Appeal Matrix Dispute" style="color:#0284c7">
+                            <i class="fa-solid fa-gavel"></i>
+                        </button>
+                    `;
+                    }
+                    // Fallback for remaining active tracking states (e.g., Approved, Expired)
+                    else {
+                        rows += `<button class="btn btn-ghost btn-sm btn-view-item" data-id="${targetPreAuthId}" title="View Details"><i class="fa-solid fa-eye text-primary"></i></button>`;
+                    }
+
+                    rows += `   </div>
+                          </td>`;
+
+                    // ================================================================
+                    // COLUMN BLOCK 4: GLOBAL CONTAINER CASE ACTIONS (Rendered only on the first row)
+                    // ================================================================
+                   
+
+                    rows += `</tr>`;
                 }
-
-                let proceduresHtml = '';
-                if (r.procedures_list && r.procedures_list.length > 0) {
-                    r.procedures_list.forEach((proc, index) => {
-                        proceduresHtml += `<div class="text-xs ${index > 0 ? 'mt-1 pt-1 border-top border-dashed' : ''}" style="border-color: rgba(0,0,0,0.05)">
-                                            <strong>T${App.utils.escHtml(proc.tooth_number)}:</strong> ${App.utils.escHtml(proc.procedure_name)}
-                                           </div>`;
-                    });
-                } else {
-                    proceduresHtml = `<span class="text-sm">${App.utils.escHtml(r.procedure_name || '—')}</span><br>` +
-                        `<small class="text-primary">Tooth: ${App.utils.escHtml(r.tooth_numbers || '—')}</small>`;
-                }
-
-                rows += `
-                <tr class="${rowColorClass}" style="transition: background-color 0.2s ease;">
-                    <td><strong>#${r.id}</strong></td>
-                    <td>
-                        <div class="fw-600">${App.utils.escHtml(r.patient_name)}</div>
-                        <small class="text-muted"><i class="fa-regular fa-clock"></i> ${r.time_ago}</small>
-                    </td>
-                    <td>${App.utils.escHtml(r.patient_dob || '—')}</td>
-                    <td>${App.utils.escHtml(r.insurance_name || '—')}</td>
-                    <td style="max-width: 240px; font-size: 0.85rem;">${proceduresHtml}</td>
-                    <td><span class="status-badge ${statusClass}">${App.utils.escHtml(r.status || 'Create')}</span></td>
-                    <td>
-                        <div class="actions" style="display: flex; gap: 4px;">
-                            ${statusLower === 'create' ? `
-                                <button class="btn btn-ghost btn-sm btn-send-preauth" data-id="${r.id}" title="Send to Management Review" style="color:var(--color-success)">
-                                    <i class="fa-solid fa-circle-check"></i>
-                                </button>
-                            ` : ''}
-
-                            ${(statusLower === 'rejected' || statusLower === 'denied') ? `
-                                <button class="btn btn-ghost btn-sm btn-appeal-preauth" data-id="${r.id}" title="File appeal following staff case corrections" style="color:#0284c7">
-                                    <i class="fa-solid fa-gavel"></i>
-                                </button>
-                            ` : ''}
-                            
-                            <button class="btn btn-ghost btn-sm btn-view" data-id="${r.id}" title="View Timeline Pipeline Tracking Summary"><i class="fa-solid fa-eye"></i></button>
-                            <button class="btn btn-ghost btn-sm btn-edit" data-id="${r.id}" title="Modify Entry"><i class="fa-solid fa-pen"></i></button>
-                            
-                            ${statusLower === 'create' ? `
-                                <button class="btn btn-ghost btn-sm btn-delete" data-id="${r.id}" data-name="${App.utils.escHtml(r.patient_name)}" title="Purge Record Row" style="color:var(--color-danger)">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
-                            ` : ''}
-                        </div>
-                    </td>
-                </tr>`;
             });
         }
         $('#preauth-tbody').html(rows);
     }
-
     /* ================================================================
         ADD NEW PRE-AUTH
     ================================================================ */
@@ -288,44 +391,56 @@ $(document).ready(function () {
     /* ================================================================
         EDIT PRE-AUTH
     ================================================================ */
-    $(document).on('click', '.btn-edit', function () {
-        var id = $(this).data('id');
+    /* ================================================================
+                EDIT PRE-AUTH (CASE COMPANION CONTAINER WORKFLOW)
+    ================================================================ */
+    $(document).on('click', '.btn-edit-item', function () {
+        var id = $(this).data('id'); // Row pre-auth record level ID pointer
+
         App.ajax({
-            url: '/emp-pre-auth/get.php?id=' + id,
+            url: '/emp-pre-auth/get-edit.php?id=' + id,
             loader: true,
             onSuccess: function (r) {
-                resetForm();
-                editingId = r.id;
-                $('#preauth-modal-title').text('Edit Pre-Auth');
+                resetForm(); // Safety wipe of previously loaded selection fields
 
-                $('#preauth-id').val(r.id);
-                $('#p_insurance_plan').val(r.p_insurance_plan);
-                $('#status').val(r.status);
+                editingId = r.case_id;
+                $('#preauth-modal-title').text('Edit Pre-Auth Case File #' + r.case_id);
 
+                // Populate form keys and drop-down structures
+                $('#preauth-id').val(r.case_id);
+                $('#p_insurance_plan').val(r.p_insurance_plan).trigger('change');
+                $('#provider').val(r.doctor_id).trigger('change'); // Updates assigned practitioner drop-down
+                $('#status').val(r.status).trigger('change');
+
+                // Initialize or append search engine profile option metrics for the patient
                 if (r.patient_id) {
                     var option = new Option(r.patient_name, r.patient_id, true, true);
                     $('#patient-select').append(option).trigger('change');
                 }
 
+                // Empty the matrix container row elements safely
+                $('#treatments-container').empty();
+
+                // Check array response parameters and map procedures to layout rows
                 if (r.procedures_list && r.procedures_list.length) {
-                    $('#treatments-container').empty();
                     $.each(r.procedures_list, function (idx, entry) {
-                        addTreatmentRow(entry.procedure_id, entry.tooth_number);
+                        addTreatmentRow(entry.procedure_id, entry.tooth_number, entry.pre_auth_id);
                     });
                 } else {
-                    $('#treatments-container').empty();
-                    addTreatmentRow(r.treatment_type, r.tooth_numbers);
+                    // Safe default row mapping fallback for fresh templates
+                    addTreatmentRow('', '1', '');
                 }
 
+                // Open original versatile modal grid view safely
                 App.modal.open('preauth-modal');
             }
         });
     });
 
     /* ================================================================
-         VIEW PRE-AUTH DETAILS (5-STEP WORKFLOW TIMELINE GENERATOR)
-     ================================================================ */
-    $(document).on('click', '.btn-view', function () {
+     VIEW PRE-AUTH DETAILS (5-STEP WORKFLOW TIMELINE GENERATOR)
+   ================================================================ */
+    $(document).on('click', '.btn-view-item', function () {
         var id = $(this).data('id');
 
         App.ajax({
@@ -333,18 +448,26 @@ $(document).ready(function () {
             loader: true,
             onSuccess: function (r) {
                 var listHtml = '';
+
+                // Build the treatment display row using the procedures list block array
                 if (r.procedures_list && r.procedures_list.length) {
                     $.each(r.procedures_list, function (idx, item) {
                         listHtml += `<div style="padding: var(--sp-2) 0; border-bottom: 1px dashed #e2e8f0;">
                                     <i class="fa-solid fa-circle-chevron-right text-primary text-sm mr-2"></i> 
-                                    <strong>Tooth ${item.tooth_number}:</strong> ${App.utils.escHtml(item.procedure_name)}
+                                    <strong>Tooth ${App.utils.escHtml(item.tooth_number || '—')}:</strong> ${App.utils.escHtml(item.procedure_name)}
                                  </div>`;
                     });
+                } else if (r.procedure_name) {
+                    // Single-row direct properties fallback injection structural insurance
+                    listHtml = `<div style="padding: var(--sp-2) 0; border-bottom: 1px dashed #e2e8f0;">
+                                <i class="fa-solid fa-circle-chevron-right text-primary text-sm mr-2"></i> 
+                                <strong>Tooth ${App.utils.escHtml(r.tooth_number || '—')}:</strong> ${App.utils.escHtml(r.procedure_name)}
+                             </div>`;
                 } else {
                     listHtml = `<div class="text-muted">No itemized treatments mapped to this pre-auth.</div>`;
                 }
 
-                var statusStr = (r.status || 'Created').toLowerCase();
+                var statusStr = (r.status || 'Requested').toLowerCase();
 
                 // Layout Configuration Parameters
                 var progressWidth = '0%';
@@ -356,6 +479,7 @@ $(document).ready(function () {
                 var steps = [0, 0, 0, 0, 0];
 
                 switch (statusStr) {
+                    case 'requested':
                     case 'create':
                     case 'created':
                     case 'pending':
@@ -428,42 +552,42 @@ $(document).ready(function () {
                 else if (isAppealedState) stepThreeText = 'Appealed';
 
                 var progressBarHtml = `
-                <div class="status-progress-wrapper" style="margin-bottom: var(--sp-6); background: #f8fafc; padding: var(--sp-5) var(--sp-4); border-radius: var(--radius-md); border: 1px solid #e2e8f0;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <span class="text-xs font-bold uppercase text-muted" style="letter-spacing:0.5px;">Authorization Pipeline Status</span>
-                        <span class="status-badge" style="background: ${themeColor}; color: #fff; font-size: 0.75rem; padding: 3px 10px; border-radius: 50px; text-transform: uppercase; font-weight: 700;">${r.status}</span>
-                    </div>
+            <div class="status-progress-wrapper" style="margin-bottom: var(--sp-6); background: #f8fafc; padding: var(--sp-5) var(--sp-4); border-radius: var(--radius-md); border: 1px solid #e2e8f0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <span class="text-xs font-bold uppercase text-muted" style="letter-spacing:0.5px;">Authorization Pipeline Status</span>
+                    <span class="status-badge" style="background: ${themeColor}; color: #fff; font-size: 0.75rem; padding: 3px 10px; border-radius: 50px; text-transform: uppercase; font-weight: 700;">${App.utils.escHtml(r.status || 'Requested')}</span>
+                </div>
+                
+                <div class="progress-bar-container" style="position: relative; height: 6px; background: #e2e8f0; border-radius: 4px; margin: 25px var(--sp-4) 15px var(--sp-4);">
+                    <div style="position: absolute; left: 0; top: 0; height: 100%; width: ${progressWidth}; background: ${themeColor}; border-radius: 4px; transition: width 0.5s ease;"></div>
                     
-                    <div class="progress-bar-container" style="position: relative; height: 6px; background: #e2e8f0; border-radius: 4px; margin: 25px var(--sp-4) 15px var(--sp-4);">
-                        <div style="position: absolute; left: 0; top: 0; height: 100%; width: ${progressWidth}; background: ${themeColor}; border-radius: 4px; transition: width 0.5s ease;"></div>
-                        
-                        <div style="position: absolute; width: 100%; display: flex; justify-content: space-between; top: -9px; left: 0;">
-                            <div style="width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight:bold; ${getNodeStyle(0)}" title="Created">1</div>
-                            <div style="width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight:bold; ${getNodeStyle(1)}" title="Sent">2</div>
-                            <div style="width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight:bold; ${getNodeStyle(2)}" title="Evaluation Step">${nodeThreeLabel}</div>
-                            <div style="width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight:bold; ${getNodeStyle(3)}" title="Scheduled / Expired">${statusStr === 'expired' ? '✕' : '4'}</div>
-                            <div style="width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight:bold; ${getNodeStyle(4)}" title="Completed Workflow">5</div>
-                        </div>
+                    <div style="position: absolute; width: 100%; display: flex; justify-content: space-between; top: -9px; left: 0;">
+                        <div style="width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight:bold; ${getNodeStyle(0)}" title="Requested">1</div>
+                        <div style="width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight:bold; ${getNodeStyle(1)}" title="Sent">2</div>
+                        <div style="width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight:bold; ${getNodeStyle(2)}" title="Evaluation Step">${nodeThreeLabel}</div>
+                        <div style="width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight:bold; ${getNodeStyle(3)}" title="Scheduled / Expired">${statusStr === 'expired' ? '✕' : '4'}</div>
+                        <div style="width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight:bold; ${getNodeStyle(4)}" title="Completed Workflow">5</div>
                     </div>
-                    
-                    <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #64748b; font-weight: 700; padding: 0 2px; text-transform: uppercase;">
-                        <span style="${steps[0] ? 'color:#1e293b' : ''}">Create</span>
-                        <span style="${steps[1] ? 'color:#1e293b' : ''}">Sent</span>
-                        <span style="${steps[2] ? (isRejectedState ? 'color:#ef4444' : (isAppealedState ? 'color:#f59e0b' : 'color:#1e293b')) : ''}">${stepThreeText}</span>
-                        <span style="${steps[3] ? (statusStr === 'expired' ? 'color:#ef4444' : 'color:#1e293b') : ''}">Scheduled</span>
-                        <span style="${steps[4] ? 'color:#10b981' : ''}">Done</span>
-                    </div>
-                </div>`;
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #64748b; font-weight: 700; padding: 0 2px; text-transform: uppercase;">
+                    <span style="${steps[0] ? 'color:#1e293b' : ''}">Requested</span>
+                    <span style="${steps[1] ? 'color:#1e293b' : ''}">Sent</span>
+                    <span style="${steps[2] ? (isRejectedState ? 'color:#ef4444' : (isAppealedState ? 'color:#f59e0b' : 'color:#1e293b')) : ''}">${stepThreeText}</span>
+                    <span style="${steps[3] ? (statusStr === 'expired' ? 'color:#ef4444' : 'color:#1e293b') : ''}">Scheduled</span>
+                    <span style="${steps[4] ? 'color:#10b981' : ''}">Done</span>
+                </div>
+            </div>`;
 
-                var approverRow = r.approved_by
+                var approverRow = r.approver_name
                     ? `<span class="text-success" style="font-weight:600;"><i class="fa-solid fa-user-check"></i> ${App.utils.escHtml(r.approver_name)}</span>`
                     : '<span class="text-muted" style="font-style: italic;"><i class="fa-solid fa-hourglass-half"></i> Pending Review Evaluation</span>';
 
-                var expireRow = r.approval_expire_date
-                    ? `<strong class="text-dark">${App.utils.escHtml(r.approval_expire_date)}</strong>`
-                    : '<span class="text-muted">—</span>';
+                var expireRow = r.formatted_expiry
+                    ? `<strong class="text-dark">${App.utils.escHtml(r.formatted_expiry)}</strong>`
+                    : (r.approval_expire_date ? `<strong class="text-dark">${App.utils.escHtml(r.approval_expire_date)}</strong>` : '<span class="text-muted">—</span>');
 
-                var editorRow = r.edited_by
+                var editorRow = r.editor_name && r.editor_name !== '—'
                     ? `<span><i class="fa-solid fa-user-pen"></i> ${App.utils.escHtml(r.editor_name)} <small class="text-muted">(${r.formatted_edit_time})</small></span>`
                     : '<span class="text-muted" style="font-style: italic;">Never modified</span>';
 
@@ -497,7 +621,8 @@ $(document).ready(function () {
                     '</div>';
 
                 $('#view-preauth-body').html(html);
-                $('#btn-edit-from-view').data('id', r.id);
+                // Explicitly sets the specific pre_auth_id parameter on the edit redirect target trigger button
+                $('#btn-edit-from-view').data('id', r.pre_auth_id || r.id);
                 App.modal.open('view-preauth-modal');
             }
         });
@@ -509,13 +634,20 @@ $(document).ready(function () {
             '<span class="fw-600">' + value + '</span>' +
             '</div>';
     }
-
     /* ================================================================
         DELETE / DEACTIVATE PRE-AUTH
     ================================================================ */
-    $(document).on('click', '.btn-delete', function () {
+    $(document).on('click', '.btn-delete-item', function () {
         var id = $(this).data('id');
         var name = $(this).data('name');
+         $('#rejection-notes-container').hide();
+        $('#approval-expiry-container').hide();
+         $('#confirm-body-content').html(`
+        <div class="text-center">
+            <i class="fa-solid fa-circle-check text-danger mb-3" style="font-size:3rem"></i>
+            <p>Are you sure you want to <strong>Delete</strong> the request for <b>${App.utils.escHtml(name)}</b>?</p>
+        </div>
+    `);
 
         App.utils.confirm(
             'Are you sure you want to delete the pre-auth for "' + name + '"? This action will remove it from the active list.',
@@ -545,6 +677,15 @@ $(document).ready(function () {
     $(document).on('click', '.btn-send-preauth', function () {
         var id = $(this).data('id');
 
+         $('#rejection-notes-container').hide();
+        $('#approval-expiry-container').hide();
+         $('#confirm-body-content').html(`
+        <div class="text-center">
+            <i class="fa-solid fa-circle-check text-danger mb-3" style="font-size:3rem"></i>
+            <p>Are you sure you want to <strong>Sent</strong> the request for <b>${App.utils.escHtml(name)}</b>?</p>
+        </div>
+    `);
+
         App.utils.confirm('Are you sure you want to mark this pre-authorization as Sent?', function () {
             App.ajax({
                 url: '/emp-pre-auth/send-pre-auth.php',
@@ -564,6 +705,15 @@ $(document).ready(function () {
     ================================================================ */
     $(document).on('click', '.btn-appeal-preauth', function () {
         var id = $(this).data('id');
+
+         $('#rejection-notes-container').hide();
+        $('#approval-expiry-container').hide();
+         $('#confirm-body-content').html(`
+        <div class="text-center">
+            <i class="fa-solid fa-circle-check text-danger mb-3" style="font-size:3rem"></i>
+            <p>Are you sure you want to <strong>Appeal</strong> the request for <b>${App.utils.escHtml(name)}</b>?</p>
+        </div>
+    `);
 
         App.utils.confirm('Confirm changes have been made. Re-submit this rejected case as an Appeal?', function () {
             App.ajax({
@@ -615,6 +765,98 @@ $(document).ready(function () {
         $('#treatments-container').empty();
         addTreatmentRow();
         editingId = null;
+    }
+
+
+    /* ================================================================
+    M-STAFF ACTION HANDLERS (APPROVE / REJECT)
+================================================================ */
+
+    // Handle APPROVE Button
+    $(document).on('click', '.btn-approve-preauth', function () {
+        const id = $(this).data('id');
+        const name = $(this).data('name');
+
+        // Setup Modal UI Layouts
+        $('#confirm-title').text('Approve Pre-Auth');
+        $('#confirm-ok').text('Approve Request').removeClass('btn-danger').addClass('btn-success');
+
+        // Toggle Section Matrices
+        $('#rejection-notes-container').hide();
+        $('#approval-expiry-container').show();
+        $('#approval-expiry-date').val(''); // Clear previous value
+
+        $('#confirm-body-content').html(`
+        <div class="text-center">
+            <i class="fa-solid fa-circle-check text-success mb-3" style="font-size:3rem"></i>
+            <p>Are you sure you want to <strong>APPROVE</strong> the request for <b>${App.utils.escHtml(name)}</b>?</p>
+        </div>
+    `);
+
+        $('#confirm-ok').off('click').on('click', function () {
+            const expiryDate = $('#approval-expiry-date').val();
+            updateStatus(id, 'Approved', expiryDate, null); // Pass date to update function
+            App.modal.close('confirm-modal');
+        });
+
+        App.modal.open('confirm-modal');
+    });
+
+    // Handle REJECT Button
+    $(document).on('click', '.btn-reject-preauth', function () {
+        const id = $(this).data('id');
+        const name = $(this).data('name');
+
+        // Setup Modal UI Layouts
+        $('#confirm-title').text('Reject Pre-Auth');
+        $('#confirm-ok').text('Reject Request').removeClass('btn-success').addClass('btn-danger');
+
+        // Toggle Section Matrices
+        $('#approval-expiry-container').hide();
+        $('#rejection-notes-container').show();
+        $('#rejection-notes').val(''); // Clear old entries completely
+
+        $('#confirm-body-content').html(`
+        <div class="text-center">
+            <i class="fa-solid fa-circle-xmark text-danger mb-3" style="font-size:3rem"></i>
+            <p>Are you sure you want to <strong>REJECT</strong> the request for <b>${App.utils.escHtml(name)}</b>?</p>
+            <p class="text-danger text-sm mt-2">This action will return the submission as denied.</p>
+        </div>
+    `);
+
+        // Bind execution context payload capturing the text value
+        $('#confirm-ok').off('click').on('click', function () {
+            const notes = $('#rejection-notes').val().trim();
+            updateStatus(id, 'Rejected', null, notes); // Pass text value down
+            App.modal.close('confirm-modal');
+        });
+
+        App.modal.open('confirm-modal');
+    });
+
+    /**
+     * Common function to hit the status pipeline endpoints
+     */
+    function updateStatus(id, newStatus, expiryDate = null, notes = null) {
+        App.ajax({
+            url: '/m-pre-auth/update-status.php',
+            method: 'POST',
+            data: {
+                id: id,
+                status: newStatus,
+                expiry_date: expiryDate,
+                rejection_notes: notes // Relayed up directly to your server layer parameters
+            },
+            loaderMsg: 'Updating status tracking profile...',
+            onSuccess: function (res, msg) {
+                App.toast.success('Record updated to ' + newStatus, msg);
+                if (typeof loadRequests === 'function') {
+                    loadRequests(currentPage); // Dynamic hot reload
+                } else {
+                    window.location.reload();
+                }
+            }
+        });
     }
 
     /* ================================================================

@@ -263,6 +263,32 @@ require_once "includes/Auth.php";
                         </div>
                     </div>
                 </div>
+
+                  <div class="modal-backdrop" id="schedule-modal">
+                    <div class="modal modal-sm">
+                        <div class="modal-header">
+                            <div class="modal-title">Schedule Lab Appointment</div>
+                            <button class="modal-close" data-close-modal="schedule-modal">&#x2715;</button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="schedule-form" novalidate>
+                                <input type="hidden" name="id" id="schedule-lab-id">
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Appointment Date <span class="required">*</span></label>
+                                    <input type="date" name="appointment_date" id="appointment_date" class="form-control" required>
+                                    <span class="form-error">Please select a valid date.</span>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-ghost" data-close-modal="schedule-modal">Cancel</button>
+                            <button class="btn btn-primary" id="btn-confirm-schedule">
+                                <i class="fa-solid fa-calendar-check"></i> Save Schedule
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>

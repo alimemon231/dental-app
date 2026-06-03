@@ -1,7 +1,8 @@
 <?php
 /**
- * GET emp-pre-auth/list-his.php
- * Staff tracking log filtering pre-auth records limited to their assigned clinics.
+ * GET api/emp-pre-auth/list-his.php
+ * Staff tracking log filtering pre-auth records row-by-row based on assigned clinic parameters.
+ * Supports multi-dimensional filtering, pagination, and relative tracking parameters.
  */
 require_once __DIR__ . '/../../includes/Auth.php';
 
@@ -9,13 +10,20 @@ $db = new Database();
 $auth = new Auth($db);
 $auth->requireAuth();
 
-// 1. Capture authenticated user context 
+// 1. Capture authenticated user context & clinic scope
 $currentUser = $auth->user();
+$currentUserId = $_SESSION['user_id'] ?? $currentUser['user_id'];
+$sessionOfficeId = (int)($_SESSION['office_id'] ?? ($currentUser['office_id'] ?? 0));
 
-// 2. Capture Filters & Pagination
-$limit  = min((int) ($_GET['limit'] ?? 15), 100);
-$page   = max((int) ($_GET['page'] ?? 1), 1);
-$offset = ($page - 1) * $limit;
+if ($sessionOfficeId <= 0) {
+    Api::error('Active clinic location scope not established.', 400);
+    exit;
+}
+
+// 2. Capture Filters & Pagination parameters (Identical to admin matching rules)
+$limit       = min((int) ($_GET['limit'] ?? 15), 100);
+$page        = max((int) ($_GET['page'] ?? 1), 1);
+$offset      = ($page - 1) * $limit;
 
 $patientName = trim($_GET['patient_name'] ?? '');
 $clinicId    = $_GET['clinic_id'] ?? null;
@@ -23,23 +31,20 @@ $startDate   = $_GET['start_date'] ?? null;
 $endDate     = $_GET['end_date'] ?? null;
 $status      = $_GET['status'] ?? null; 
 
-// 3. Build Dynamic WHERE Clause
-$where = ["1=1"];
+// 3. Build Dynamic WHERE Clause without 1=1 hardcoding
+$where = [];
 $params = [];
 
-// Enforce office restrictions based on assignment scope
+// Enforce clinic location/office restrictions based on the parent Case setup
 if (!empty($clinicId)) {
-    // If user selected a specific clinic from their available options
-    $where[] = "pa.office_id = ?";
+    $where[] = "pac.office_id = ?";
     $params[] = (int)$clinicId;
 } else {
-    // Default to the office the employee is currently signed into or assigned to
-    $defaultOfficeId = (int)($currentUser['office_id'] ?? ($_SESSION['office_id'] ?? 0));
-    $where[] = "pa.office_id = ?";
-    $params[] = $defaultOfficeId;
+    $where[] = "pac.office_id = ?";
+    $params[] = $sessionOfficeId;
 }
 
-// Patient Name Filter
+// Patient Name Filter (Queries joined patient table text schema)
 if (!empty($patientName)) {
     $where[] = "pat.name LIKE ?";
     $params[] = '%' . $patientName . '%';
@@ -57,7 +62,7 @@ if (!empty($endDate)) {
     $params[] = $endDate;
 }
 
-// Handle Multiple Statuses from Multi-Select Dropdown
+// Handle Multiple Statuses dynamically from Multi-Select or Single Value Overrides
 if (!empty($status)) {
     if (is_array($status)) {
         $placeholders = implode(',', array_fill(0, count($status), '?'));
@@ -71,103 +76,97 @@ if (!empty($status)) {
     }
 }
 
-$whereSql = implode(" AND ", $where);
+// Dynamically stitch the WHERE block safely
+$whereSql = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
 
 try {
     /**
-     * 4. Main Query Execution
+     * 4. Main Row-by-Row Single Query Execution
+     * Pulls rows directly from the itemized `pre-auth` table.
      */
     $sql = "SELECT 
                 pa.*, 
+                pa.id AS pre_auth_id,
+                pa.teeth_number AS tooth_number, -- Normalize property name mapping for front-end safety
+                pac.id AS case_id,
+                pac.office_id,
+                pac.patient_id,
+                pac.doctor_id,
                 pat.name AS patient_name,
                 pat.dob AS patient_dob,
                 o.office_name, 
                 u_creator.name AS creator_name,
                 u_approver.name AS approver_name,
                 u_editor.name AS editor_name,
-                ins.name AS insurance_name
+                ins.name AS insurance_name,
+                doc.name AS doctor_name,
+                proc.name AS procedure_name
             FROM `pre-auth` pa
-            LEFT JOIN patient pat ON pa.patient_id = pat.id
-            LEFT JOIN offices o ON pa.office_id = o.id
+            INNER JOIN `pre_auth_cases` pac ON pa.case_id = pac.id
+            LEFT JOIN patient pat ON pac.patient_id = pat.id
+            LEFT JOIN offices o ON pac.office_id = o.id
             LEFT JOIN users u_creator ON pa.created_by = u_creator.user_id
             LEFT JOIN users u_approver ON pa.approved_by = u_approver.user_id
             LEFT JOIN users u_editor ON pa.edited_by = u_editor.user_id
             LEFT JOIN insurance ins ON pa.p_insurance_plan = ins.id
-            WHERE $whereSql
+            LEFT JOIN users doc ON pac.doctor_id = doc.user_id
+            LEFT JOIN procedures proc ON pa.procedure_id = proc.id
+            $whereSql
             ORDER BY pa.id DESC";
 
-    // Combine current query criteria parameters with layout bounds params
-    $queryData = array_merge($params, []);
-    $records = $db->query($sql, $queryData) ?: [];
+    // Combine selection filtering parameters array with integers for pagination limits
+    
+    $records = $db->query($sql, $params) ?: [];
 
     /**
-     * 5. Total Count Generation for Pagination Footer Calculations
+     * 5. Total Count Generation for Pagination Footer
      */
     $countSql = "SELECT COUNT(*) as total 
                  FROM `pre-auth` pa 
-                 LEFT JOIN patient pat ON pa.patient_id = pat.id
-                 WHERE $whereSql";
-    $totalCount = $db->queryOne($countSql, $params)['total'];
+                 INNER JOIN `pre_auth_cases` pac ON pa.case_id = pac.id
+                 LEFT JOIN patient pat ON pac.patient_id = pat.id
+                 $whereSql";
+                 
+    $totalCountResult = $db->queryOne($countSql, $params);
+    $totalCount = isset($totalCountResult['total']) ? (int)$totalCountResult['total'] : 0;
     $totalPages = ceil($totalCount / $limit);
 
-    // 6. Single-Batch Child Procedures Matrix Compilation
-    if (!empty($records)) {
-        $preAuthIds = array_column($records, 'id');
-        $procPlaceholders = implode(',', array_fill(0, count($preAuthIds), '?'));
-
-        $procSql = "SELECT 
-                        pap.pre_auth_id,
-                        pap.procedure_id,
-                        pap.tooth_number,
-                        proc.name AS procedure_name
-                    FROM `pre_auth_procedures` pap
-                    INNER JOIN `procedures` proc ON pap.procedure_id = proc.id
-                    WHERE pap.pre_auth_id IN ($procPlaceholders)";
-
-        $allProcedures = $db->query($procSql, $preAuthIds) ?: [];
-
-        // Distribute mapped subsets back into grouping arrays
-        $proceduresGrouped = [];
-        foreach ($allProcedures as $proc) {
-            $proceduresGrouped[$proc['pre_auth_id']][] = [
-                'procedure_id'   => $proc['procedure_id'],
-                'procedure_name' => $proc['procedure_name'],
-                'tooth_number'   => $proc['tooth_number']
-            ];
+    /**
+     * 6. Data Post-Processing & Normalization Loop
+     */
+    foreach ($records as &$r) {
+        $r['time_ago'] = timeAgo($r['created_at']);
+        $r['created_at_date'] = date('m/d/Y', strtotime($r['created_at']));
+        
+        if (!empty($r['appointment_date'])) {
+            $r['appointment_date_fmt'] = date('m/d/Y g:i A', strtotime($r['appointment_date']));
+        } else {
+            $r['appointment_date_fmt'] = null;
         }
 
-        // 7. Post-Processing Loop to Format Output Strings for UI Fields
-        foreach ($records as &$r) {
-            $r['time_ago'] = timeAgo($r['created_at']);
-            $r['created_at_date'] = date('m/d/Y', strtotime($r['created_at']));
-            
-            if (!empty($r['appointment_date'])) {
-                $r['appointment_date_fmt'] = date('m/d/Y g:i A', strtotime($r['appointment_date']));
-            } else {
-                $r['appointment_date_fmt'] = null;
-            }
+        // Context Fallback fields for basic row templates
+        $r['procedure_name'] = $r['procedure_name'] ?: 'No procedure assigned'; 
+        $r['tooth_numbers']  = $r['tooth_number'] ?: '—';
 
-            // Assign raw target children arrays
-            $r['procedures_list'] = $proceduresGrouped[$r['id']] ?? [];
+        // Set submitter flags matching your relative session rules
+        $r['submitted_by'] = ((int)$r['created_by'] === (int)$currentUserId) ? 'You' : ($r['creator_name'] ?: 'System User');
+        $r['approver_name'] = $r['approver_name'] ?: 'Management';
 
-            if (!empty($r['procedures_list'])) {
-                $names = [];
-                $teeth = [];
-                foreach ($r['procedures_list'] as $item) {
-                    $names[] = $item['procedure_name'];
-                    $teeth[] = $item['tooth_number'];
-                }
-                $r['procedure_name'] = implode(', ', $names);
-                $r['tooth_numbers']  = implode(', ', $teeth);
-            } else {
-                $r['procedure_name'] = 'No procedures assigned';
-                $r['tooth_numbers']  = '—';
-            }
-        }
-        unset($r); // Safely collapse point link reference mutations
+        // Emulate an internal procedures list array containing its own individual details 
+        // to completely protect frontend table loop structures relying on array iterations.
+        $r['procedures_list'] = [
+            [
+                'pre_auth_id'    => (int)$r['pre_auth_id'],
+                'procedure_id'   => (int)$r['procedure_id'],
+                'procedure_name' => $r['procedure_name'],
+                'tooth_number'   => $r['tooth_number'],
+                'status'         => $r['status']
+            ]
+        ];
     }
+    unset($r); // Sever looping link references completely
 
-    // 8. Stream Response Envelop back to the Javascript pipeline AJAX worker
+    // 7. Stream standard array payload matrix envelope back to layout component
     Api::success([
         'records'       => $records,
         'total_records' => (int)$totalCount,
@@ -183,6 +182,7 @@ try {
  * Helper: Convert standard datetime to context relative duration string
  */
 function timeAgo($datetime) {
+    if (!$datetime || $datetime === '0000-00-00 00:00:00') return '—';
     $time = strtotime($datetime);
     if (!$time) return '—';
     

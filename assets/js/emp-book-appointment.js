@@ -35,55 +35,108 @@ function loadApprovedRequests(page = 1) {
 }
 
 /**
- * 2. Render the Table
+ * 2. Render the Table with streamlined Management actions
  */
 function renderTable(records) {
-    let html = '';
+    let rows = '';
     if (!records || records.length === 0) {
-        html = '<tr><td colspan="7" class="text-center text-muted" style="padding: var(--sp-6);">No approved authorizations ready for booking.</td></tr>';
+        rows = '<tr><td colspan="7" class="text-center text-muted py-4">No appointments scheduled at this time.</td></tr>';
     } else {
         records.forEach(r => {
-            const statusClass = 'status-approved'; // Hardcoded since we only fetch approved
+            const childItems = r.procedures_list || [];
+            const rowSpanCount = childItems.length > 0 ? childItems.length : 1;
 
-            // Compile treatment descriptions handling itemized dynamic procedure lists cleanly
-            let treatmentsHtml = '';
-            if (r.procedures_list && r.procedures_list.length > 0) {
-                r.procedures_list.forEach((proc, index) => {
-                    treatmentsHtml += `<div class="text-xs ${index > 0 ? 'mt-1 pt-1 border-top border-dashed' : ''}" style="border-color: rgba(0,0,0,0.05)">
-                                        <strong>T${App.utils.escHtml(proc.tooth_number)}:</strong> ${App.utils.escHtml(proc.procedure_name)}
-                                       </div>`;
-                });
-            } else {
-                treatmentsHtml = `<span class="text-sm">${App.utils.escHtml(r.procedure_name || r.treatment_type || '—')}</span><br>` +
-                                 `<small class="text-primary">Tooth: ${App.utils.escHtml(r.tooth_numbers || '—')}</small>`;
-            }
+            // Loop through each itemized scheduled procedure within this Case
+            for (let i = 0; i < rowSpanCount; i++) {
+                const proc = childItems[i];
 
-            html += `
-                <tr class="table-success alert-success-row">
-                    <td>
-                        <span class="badge bg-dark text-white fw-bold" style="font-family: monospace; font-size: 0.85rem; padding: 4px 8px;">#${r.id}</span>
-                    </td>
-                    <td><strong>${App.utils.escHtml(r.patient_name || (r.p_first_name + ' ' + r.p_last_name))}</strong></td>
-                    <td>${App.utils.escHtml(r.patient_dob || r.p_dob || '—')}</td>
-                    <td style="max-width: 240px;">${treatmentsHtml}</td>
-                    <td><small class="fw-600 text-secondary">${App.utils.escHtml(r.approver_name || 'Management')}</small></td>
-                    <td><strong class="text-dark">${App.utils.escHtml(r.approval_expire_date || '—')}</strong></td>
-                   
-                    
-                    <td>
-                        <div class="btn-group" style="gap: 4px;">
-                            <button class="btn btn-sm btn-ghost btn-view" data-id="${r.id}" title="View Pipeline Status">
-                                <i class="fa-solid fa-eye"></i>
+                // Determine status and styling context properties
+                const currentStatus = proc ? (proc.status || 'Scheduled') : (r.status || 'Scheduled');
+                const statusLower = currentStatus.toLowerCase();
+                const statusClass = 'status-' + statusLower;
+
+                // Compile visual cell border separation between distinct case groups
+                let rowBorderStyle = 'vertical-align: middle;';
+                if (i === rowSpanCount - 1) {
+                    rowBorderStyle += ' border-bottom: 2px solid #cbd5e1;';
+                }
+
+                rows += `<tr style="${rowBorderStyle} transition: background-color 0.2s ease;">`;
+
+                // ================================================================
+                // COLUMN BLOCK 1: MASTER ENVELOPE CASE FIELDS (Rendered only on the first row)
+                // ================================================================
+                if (i === 0) {
+                    rows += `
+                        <td rowspan="${rowSpanCount}" class="fw-bold text-center" style="background: rgba(0,0,0,0.01); border-right: 1px solid #e2e8f0; vertical-align: middle;">
+                            <span class="badge bg-secondary text-dark px-2 py-1">Case #${App.utils.escHtml(r.id)}</span>
+                        </td>
+                        <td rowspan="${rowSpanCount}" style="vertical-align: middle;">
+                            <div class="fw-600 text-primary">${App.utils.escHtml(r.patient_name)}</div>
+                            <small class="text-muted d-block mt-1">
+                                <i class="fa-regular fa-clock"></i> ${App.utils.escHtml(r.time_ago || '—')}
+                            </small>
+                            <small class="text-muted d-block mt-1">
+                                <i class="fas fa-user"></i> DR : ${App.utils.escHtml(r.doctor_name || '—')}
+                            </small>
+                        </td>
+                        <td rowspan="${rowSpanCount}" class="text-success font-bold" style="vertical-align: middle;">
+                            ${App.utils.escHtml(r.patient_dob || r.patient_dob || '—')}
+                        </td>
+                        <td rowspan="${rowSpanCount}" style="vertical-align: middle;">
+                            <small class="text-muted">${App.utils.escHtml(r.insurance_name || '—')}</small>
+                        </td>
+                    `;
+                }
+
+                // ================================================================
+                // COLUMN BLOCK 2: SPLIT ITEMIZED PROCEDURES & WORKFLOW STATUSES
+                // ================================================================
+                if (proc) {
+                    rows += `
+                        <td style="vertical-align: middle; border-right: 1px solid #f1f5f9;">
+                            <span class="badge bg-light text-primary border me-1">Tooth ${App.utils.escHtml(proc.tooth_number)}</span>
+                            <span class="fw-500">${App.utils.escHtml(proc.procedure_name)}</span>
+                        </td>
+                        <td style="vertical-align: middle; text-align: center; border-right: 1px solid #f1f5f9;">
+                            <span class="status-badge ${statusClass}">${App.utils.escHtml(currentStatus)}</span>
+                        </td>
+                    `;
+                } else {
+                    rows += `
+                        <td style="vertical-align: middle; border-right: 1px solid #f1f5f9;">
+                            <span class="text-muted">${App.utils.escHtml(r.procedure_name || '—')}</span><br>
+                            <small class="text-danger">Tooth: ${App.utils.escHtml(r.tooth_numbers || '—')}</small>
+                        </td>
+                        <td style="vertical-align: middle; text-align: center; border-right: 1px solid #f1f5f9;">
+                            <span class="status-badge status-scheduled">${App.utils.escHtml(currentStatus)}</span>
+                        </td>
+                    `;
+                }
+
+                // ================================================================
+                // COLUMN BLOCK 3: LINE-LEVEL MANAGEMENT ACTION BUTTONS (Streamlined)
+                // ================================================================
+                const targetPreAuthId = proc ? proc.pre_auth_id : r.id;
+
+                rows += `
+                    <td style="vertical-align: middle; text-align: center;">
+                        <div class="row-actions" style="display: flex; gap: 4px; justify-content: center;">
+                            <button class="btn btn-ghost btn-sm btn-view" data-id="${targetPreAuthId}" title="View Timeline Pipeline Tracking Summary">
+                                <i class="fa-solid fa-eye text-primary"></i>
                             </button>
-                            <button class="btn btn-sm btn-primary btn-book" data-id="${r.id}" title="Schedule Appointment">
+                            <button class="btn btn-ghost btn-sm btn-book-appointment" data-id="${targetPreAuthId}" title="Book Appointment" style="color: var(--color-success)">
                                 <i class="fa-solid fa-calendar-plus"></i>
                             </button>
                         </div>
                     </td>
-                </tr>`;
+                `;
+
+                rows += `</tr>`;
+            }
         });
     }
-    $('#appointment-tbody').html(html);
+    $('#appointment-tbody').html(rows);
 }
 
 /* ================================================================
@@ -171,7 +224,7 @@ $(document).on('click', '.btn-view', function () {
                 </div>
             </div>`;
 
-            var approverRow = r.approved_by 
+            var approverRow = r.approver_name
                 ? `<span class="text-success" style="font-weight:600;"><i class="fa-solid fa-user-check"></i> ${App.utils.escHtml(r.approver_name || 'Management')}</span>` 
                 : '<span class="text-muted" style="font-style: italic;">—</span>';
 
@@ -194,7 +247,7 @@ $(document).on('click', '.btn-view', function () {
                         <div class="form-section-title mb-4" style="color:var(--color-primary); border-bottom:2px solid #f1f5f9; padding-bottom:5px; font-weight:700;"><i class="fa-solid fa-shield-halved"></i> Authorization & Audit</div>
                         ${infoRow('Current Status', `<span class="status-badge status-${statusStr}">${r.status}</span>`)}
                         ${infoRow('Authorized By', approverRow)}
-                        ${infoRow('Expiration Date', r.approval_expire_date ? `<strong class="text-dark">${App.utils.escHtml(r.approval_expire_date)}</strong>` : '—')}
+                        ${infoRow('Expiration Date', r.procedures_list[0].approval_expire_date ? `<strong class="text-dark">${App.utils.escHtml(r.procedures_list[0].approval_expire_date)}</strong>` : '—')}
                         ${infoRow('Last Edited By', editorRow)}
                         ${infoRow('Submitted By', App.utils.escHtml(r.creator_name || r.staff_name || 'System') + ' <small class="text-muted">(' + (r.time_ago || '—') + ')</small>')}
                         
@@ -219,7 +272,7 @@ $(document).on('click', '.btn-view', function () {
 });
 
 // Handle BOOK Button (Calendar Icon) - Open Modal
-$(document).on('click', '.btn-book', function () {
+$(document).on('click', '.btn-book-appointment', function () {
     const id = $(this).data('id');
     $('#book-preauth-id').val(id); // Set hidden ID
     $('#appointment_date').val(''); // Clear previous value

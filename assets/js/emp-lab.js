@@ -200,37 +200,62 @@ $(document).ready(function () {
             const statusLower = (r.status || 'Sent').toLowerCase();
             const statusClass = 'status-' + statusLower;
 
+            // Build conditional action buttons matrix based on status parameters
+            let actionButtonsHtml = '';
+
+            if (statusLower === 'sent') {
+                // "Sent" layout: Mark Received, View, Edit, Delete
+                actionButtonsHtml = `
+                <button class="btn btn-ghost btn-sm btn-receive" data-id="${r.id}" title="Mark Received" style="color:var(--color-success)">
+                    <i class="fa-solid fa-square-check"></i>
+                </button>
+                <button class="btn btn-ghost btn-sm btn-view" data-id="${r.id}" title="View Case Details"><i class="fa-solid fa-eye"></i></button>
+                <button class="btn btn-ghost btn-sm btn-edit" data-id="${r.id}" title="Modify Entry"><i class="fa-solid fa-pen"></i></button>
+                <button class="btn btn-ghost btn-sm btn-delete" data-id="${r.id}" data-name="${App.utils.escHtml(r.patient_name)}" title="Delete Permanently" style="color:var(--color-danger)">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            `;
+            } else if (statusLower === 'received') {
+                // "Received" layout: View, Edit, and Calendar Button (Schedule Lab)
+                actionButtonsHtml = `
+                <button class="btn btn-ghost btn-sm btn-schedule" data-id="${r.id}" title="Schedule Lab Appointment" style="color:var(--color-primary)">
+                    <i class="fa-solid fa-calendar-days"></i>
+                </button>
+                <button class="btn btn-ghost btn-sm btn-view" data-id="${r.id}" title="View Case Details"><i class="fa-solid fa-eye"></i></button>
+                <button class="btn btn-ghost btn-sm btn-edit" data-id="${r.id}" title="Modify Entry"><i class="fa-solid fa-pen"></i></button>
+                
+            `;
+            } else {
+                // Fallback default catch block for other statuses if needed
+                actionButtonsHtml = `
+                <button class="btn btn-ghost btn-sm btn-view" data-id="${r.id}" title="View Case Details"><i class="fa-solid fa-eye"></i></button>
+            `;
+            }
+
             rows += `
-            <tr style="transition: background-color 0.2s ease;">
-                <td><strong>#${r.id}</strong></td>
-                <td>
-                    <div class="fw-600">${App.utils.escHtml(r.patient_name || '—')}</div>
-                    <small class="text-muted"><i class="fa-regular fa-calendar"></i> Sent: ${r.formatted_date}</small>
-                </td>
-                <td>Dr. ${App.utils.escHtml(r.doctor_name || '—')}</td>
-                <td>${App.utils.escHtml(r.case_type_name || '—')}</td>
-                <td>
-                    <div class="text-sm"><strong>${App.utils.escHtml(r.display_arch)}</strong></div>
-                    <small class="text-muted">${App.utils.escHtml(r.impression_type || '—')}</small>
-                </td>
-                <td>
-                    <div class="text-sm">${App.utils.escHtml(r.next_visit_step || '—')}</div>
-                    <small class="text-primary">${App.utils.escHtml(r.lab_partner_name || '—')}</small>
-                </td>
-                <td><span class="status-badge ${statusClass}">${App.utils.escHtml(r.status || 'Sent')}</span></td>
-                <td>
-                    <div class="actions" style="display: flex; gap: 4px;">
-                        <button class="btn btn-ghost btn-sm btn-receive" data-id="${r.id}" title="Mark Received" style="color:var(--color-success)">
-                            <i class="fa-solid fa-square-check"></i>
-                        </button>
-                        <button class="btn btn-ghost btn-sm btn-view" data-id="${r.id}" title="View Case Details"><i class="fa-solid fa-eye"></i></button>
-                        <button class="btn btn-ghost btn-sm btn-edit" data-id="${r.id}" title="Modify Entry"><i class="fa-solid fa-pen"></i></button>
-                        <button class="btn btn-ghost btn-sm btn-delete" data-id="${r.id}" data-name="${App.utils.escHtml(r.patient_name)}" title="Delete Permanently" style="color:var(--color-danger)">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>`;
+        <tr style="transition: background-color 0.2s ease;">
+            <td><strong>#${r.id}</strong></td>
+            <td>
+                <div class="fw-600">${App.utils.escHtml(r.patient_name || '—')}</div>
+                <small class="text-muted"><i class="fa-regular fa-calendar"></i> Sent: ${r.formatted_date}</small>
+            </td>
+            <td>Dr. ${App.utils.escHtml(r.doctor_name || '—')}</td>
+            <td>${App.utils.escHtml(r.case_type_name || '—')}</td>
+            <td>
+                <div class="text-sm"><strong>${App.utils.escHtml(r.display_arch)}</strong></div>
+                <small class="text-muted">${App.utils.escHtml(r.impression_type || '—')}</small>
+            </td>
+            <td>
+                <div class="text-sm">${App.utils.escHtml(r.next_visit_step || '—')}</div>
+                
+            </td>
+            <td><span class="status-badge ${statusClass}">${App.utils.escHtml(r.status || 'Sent')}</span></td>
+            <td>
+                <div class="actions" style="display: flex; gap: 4px;">
+                    ${actionButtonsHtml}
+                </div>
+            </td>
+        </tr>`;
         });
         $('#lab-tbody').html(rows);
     }
@@ -503,6 +528,32 @@ $(document).ready(function () {
             }
         });
     }
+
+     // Open Schedule Modal (Kept Unchanged)
+    $(document).on('click', '.btn-schedule', function () {
+        const id = $(this).data('id');
+        $('#schedule-lab-id').val(id);
+        $('#schedule-form')[0].reset();
+        App.modal.open('schedule-modal');
+    });
+
+    // Confirm Schedule Action (Kept Unchanged)
+    $('#btn-confirm-schedule').on('click', function () {
+        const form = $('#schedule-form');
+        if (!App.form.validate(form)) return;
+
+        App.ajax({
+            url: '/m-labs/schedule.php',
+            method: 'POST',
+            data: form.serialize(),
+            btn: $(this),
+            onSuccess: function (d, msg) {
+                App.toast.success('Scheduled', msg);
+                App.modal.close('schedule-modal');
+                loadLabCases(currentPage)
+            }
+        });
+    });
 
     /* ================================================================
         UI HELPERS

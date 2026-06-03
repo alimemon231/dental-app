@@ -54,6 +54,16 @@ $(document).ready(function () {
             var percentage = p.percentage;
             var statusClass = p.status_class;
 
+            let barColor = '#28a745'; // Green (under 50%)
+
+            if (percentage > 100) {
+                barColor = '#dc3545'; // Dark Red
+            } else if (percentage >= 80) {
+                barColor = '#ff6b6b'; // Light Red
+            } else if (percentage >= 50) {
+                barColor = '#94d82d'; // Light Green / Lime
+            }
+
             // Create a readable month string (e.g., "April 2026")
             var displayDate = new Date(p.budget_year, p.budget_month - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
 
@@ -72,7 +82,7 @@ $(document).ready(function () {
                 '<span class="amt-total text-muted">/ $' + budget + '</span>' +
                 '</div>' +
                 '<div class="progress-track" style="background: #eee; height: 8px; border-radius: 4px; overflow: hidden;">' +
-                '<div class="progress-fill ' + statusClass + '" style="width: ' + Math.min(percentage, 100) + '%; height: 100%; transition: width 0.4s;"></div>' +
+                '<div class="progress-fill" style="background-color: ' + barColor + '; width: ' + Math.min(percentage, 100) + '%; height: 100%; transition: width 0.4s; background-size: cover;"></div>'+
                 '</div>' +
                 '<div class="percentage-label mt-1 ' + (percentage > 100 ? 'text-danger fw-bold' : 'text-muted') + '" style="font-size: 11px;">' +
                 percentage + '% Utilized' +
@@ -377,7 +387,7 @@ $(document).ready(function () {
                 limit: perPage,
                 month: month,
                 year: year,
-                office : office
+                office: office
             },
             onSuccess: function (data, msg, res) {
                 $("#month").val("");

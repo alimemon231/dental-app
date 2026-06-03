@@ -105,10 +105,6 @@
                             
                             <div class="order-form mt-3">
                                 <div class="mb-2">
-                                    <label class="form-label">Order Date</label>
-                                    <input type="date" id="order-date" class="form-control">
-                                </div>
-                                <div class="mb-2">
                                     <label class="form-label">Expected Receive Date</label>
                                     <input type="date" id="expected-date" class="form-control">
                                 </div>
@@ -128,6 +124,8 @@
     <script src="assets/js/app.js"></script>
     <script src="assets/js/emp-store.js"></script>
     <script>
+
+        
         // Toggle the top filter bar visibility
         $('#toggle-filter-bar').on('click', function() {
             $('#filter-bar').slideToggle(200);

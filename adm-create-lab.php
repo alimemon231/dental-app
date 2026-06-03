@@ -575,7 +575,7 @@
                 let requestUrl = '/adm-labs/create.php';
                 if (editingRecordId) {
                     dynamicPayload.id = editingRecordId;
-                    requestUrl = '/adm-lab/update.php';
+                    requestUrl = '/adm-labs/update.php';
                 }
 
                 App.ajax({

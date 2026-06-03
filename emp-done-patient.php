@@ -59,7 +59,8 @@
                             <button class="modal-close" data-close-modal="view-modal">&#x2715;</button>
                         </div>
                         <div class="modal-body">
-                           
+                           <div id="view-preauth-body">
+                            </div>
                         </div>
                         <div class="modal-footer">
                             <button class="btn btn-ghost" data-close-modal="view-modal">Close Window</button>

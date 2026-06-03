@@ -164,7 +164,7 @@
             </button>
           </div>
         </div>
-        
+
         <div class="table-wrapper">
           <table class="data-table" id="preauth-table">
             <thead>
@@ -218,6 +218,14 @@
                       <label class="form-label">Insurance Plan <span class="required">*</span></label>
                       <select name="p_insurance_plan" id="p_insurance_plan" class="form-control" required>
                         <option value="">Loading plans...</option>
+                      </select>
+                      <span class="form-error">Please select a plan.</span>
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label">Doctor (Provider)<span class="required">*</span></label>
+                      <select name="provider" id="provider" class="form-control" required>
+                        <option value="">Loading Doctors...</option>
                       </select>
                       <span class="form-error">Please select a plan.</span>
                     </div>
@@ -285,6 +293,41 @@
             </div>
           </div>
         </div>
+
+        <div class="modal-backdrop" id="confirm-modal">
+          <div class="modal modal-sm">
+            <div class="modal-header">
+              <div class="modal-title" id="confirm-title">Confirm Action</div>
+              <button class="modal-close" data-close-modal="confirm-modal">&#x2715;</button>
+            </div>
+            <div class="modal-body">
+              <div id="confirm-body-content"></div>
+
+              <div id="approval-expiry-container" class="mt-4 p-3 bg-light border-radius-sm"
+                style="display:none; border: 1px solid #ddd;">
+                <label class="form-label font-bold text-xs mb-2 d-block">SET APPROVAL EXPIRY
+                  DATE</label>
+                <input type="date" id="approval-expiry-date" class="form-control">
+                <small class="text-muted d-block mt-1">This date will be saved with the approval
+                  record.</small>
+              </div>
+
+              <div id="rejection-notes-container" class="mt-4 p-3 bg-light border-radius-sm"
+                style="display:none; border: 1px solid #ddd;">
+                <label class="form-label font-bold text-xs mb-2 d-block text-danger">REJECTION NOTES
+                  (OPTIONAL)</label>
+                <textarea id="rejection-notes" class="form-control" rows="3"
+                  placeholder="Provide details/reasoning for the staff member..."></textarea>
+                <small class="text-muted d-block mt-1">These notes will be displayed to staff explaining
+                  the denial reason.</small>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-ghost" data-close-modal="confirm-modal" id="confirm-cancel">Cancel</button>
+              <button class="btn" id="confirm-ok">Proceed</button>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -303,7 +346,7 @@
     $(document).ready(function () {
       /* 1. Check auth - Role is now STAFF */
       App.auth.check();
-      App.auth.role(['staff' , 'doctor']);
+      App.auth.role(['staff', 'doctor']);
 
       /* 2. User info UI update */
       App.ajax({

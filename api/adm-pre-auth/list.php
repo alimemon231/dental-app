@@ -1,7 +1,7 @@
 <?php
 /**
  * GET api/admin/pre-auth/list.php
- * Global list for Admin Monitoring with multi-dimensional filtering and itemized child treatment arrays.
+ * Global list for Admin Monitoring rewritten for the new itemized multi-row schema.
  */
 require_once __DIR__ . '/../../includes/Auth.php';
 
@@ -16,29 +16,30 @@ if ($currentUser['role'] !== 'admin') {
     exit;
 }
 
-// 2. Capture Filters & Pagination (Kept intact)
+// 2. Capture Filters & Pagination
 $limit  = min((int) ($_GET['limit'] ?? 15), 100);
 $page   = max((int) ($_GET['page'] ?? 1), 1);
 $offset = ($page - 1) * $limit;
 
 $patientName = trim($_GET['patient_name'] ?? '');
-$clinicId    = $_GET['clinic_id'] ?? null;
+$clinicId    = $_GET['clinic_id'] ?? null; // Admin can explicitly filter by a specific clinic
 $startDate   = $_GET['start_date'] ?? null;
 $endDate     = $_GET['end_date'] ?? null;
-$status      = $_GET['status'] ?? null; // Can be a string or an array
+$status      = $_GET['status'] ?? null; 
 
-// 3. Build Dynamic WHERE Clause
+// 3. Build Dynamic WHERE Clause based on New Relational Structure
 $where = ["1=1"];
 $params = [];
 
-// FIXED: Patient Name Filter now correctly queries the joined 'patient' table text schema (pat.name)
+// Patient Name Filter (Queries joined patient table text schema)
 if (!empty($patientName)) {
     $where[] = "pat.name LIKE ?";
     $params[] = '%' . $patientName . '%';
 }
 
+// Clinic/Office Filter (Admins see all by default unless specific ID passed)
 if (!empty($clinicId)) {
-    $where[] = "pa.office_id = ?";
+    $where[] = "pac.office_id = ?";
     $params[] = (int)$clinicId;
 }
 
@@ -72,102 +73,90 @@ $whereSql = implode(" AND ", $where);
 
 try {
     /**
-     * 4. Main Query
-     * Includes full relational schemas for patients, offices, and audit managers
+     * 4. Main Row-by-Row Query Execution
+     * Tailored to pull itemized records matching the new relational structural schema maps.
      */
     $sql = "SELECT 
                 pa.*, 
+                pa.id AS pre_auth_id,
+                pa.teeth_number AS tooth_number, 
+                pac.id AS case_id,
+                pac.office_id,
+                pac.patient_id,
+                pac.doctor_id,
                 pat.name AS patient_name,
                 pat.dob AS patient_dob,
                 o.office_name, 
                 u_creator.name AS creator_name,
                 u_approver.name AS approver_name,
                 u_editor.name AS editor_name,
-                ins.name AS insurance_name
+                ins.name AS insurance_name,
+                doc.name AS doctor_name,
+                proc.name AS procedure_name
             FROM `pre-auth` pa
-            LEFT JOIN patient pat ON pa.patient_id = pat.id
-            LEFT JOIN offices o ON pa.office_id = o.id
+            INNER JOIN `pre_auth_cases` pac ON pa.case_id = pac.id
+            LEFT JOIN patient pat ON pac.patient_id = pat.id
+            LEFT JOIN offices o ON pac.office_id = o.id
             LEFT JOIN users u_creator ON pa.created_by = u_creator.user_id
             LEFT JOIN users u_approver ON pa.approved_by = u_approver.user_id
             LEFT JOIN users u_editor ON pa.edited_by = u_editor.user_id
             LEFT JOIN insurance ins ON pa.p_insurance_plan = ins.id
+            LEFT JOIN users doc ON pac.doctor_id = doc.user_id
+            LEFT JOIN procedures proc ON pa.procedure_id = proc.id
             WHERE $whereSql
             ORDER BY pa.id DESC
             LIMIT ? OFFSET ?";
 
-    // Merge pagination params with filter params
+    // Bind selection filtering arrays together with pagination parameter restrictions
     $queryData = array_merge($params, [$limit, $offset]);
     $records = $db->query($sql, $queryData) ?: [];
 
     /**
-     * 5. Total Count for Pagination
-     * FIXED: Added the exact same patient JOIN block to prevent crash states during data lookups
+     * 5. Total Count Generation for Pagination Calculations
      */
     $countSql = "SELECT COUNT(*) as total 
                  FROM `pre-auth` pa 
-                 LEFT JOIN patient pat ON pa.patient_id = pat.id
+                 INNER JOIN `pre_auth_cases` pac ON pa.case_id = pac.id
+                 LEFT JOIN patient pat ON pac.patient_id = pat.id
                  WHERE $whereSql";
-    $totalCount = $db->queryOne($countSql, $params)['total'];
+                 
+    $totalCountResult = $db->queryOne($countSql, $params);
+    $totalCount = isset($totalCountResult['total']) ? (int)$totalCountResult['total'] : 0;
     $totalPages = ceil($totalCount / $limit);
 
-    // 6. Single-Batch Dynamic Child Procedures Mapping Block
-    if (!empty($records)) {
-        $preAuthIds = array_column($records, 'id');
-        $procPlaceholders = implode(',', array_fill(0, count($preAuthIds), '?'));
-
-        $procSql = "SELECT 
-                        pap.pre_auth_id,
-                        pap.procedure_id,
-                        pap.tooth_number,
-                        proc.name AS procedure_name
-                    FROM `pre_auth_procedures` pap
-                    INNER JOIN `procedures` proc ON pap.procedure_id = proc.id
-                    WHERE pap.pre_auth_id IN ($procPlaceholders)";
-
-        $allProcedures = $db->query($procSql, $preAuthIds) ?: [];
-
-        // Map itemized results to parent key locations
-        $proceduresGrouped = [];
-        foreach ($allProcedures as $proc) {
-            $proceduresGrouped[$proc['pre_auth_id']][] = [
-                'procedure_id'   => $proc['procedure_id'],
-                'procedure_name' => $proc['procedure_name'],
-                'tooth_number'   => $proc['tooth_number']
-            ];
+    /**
+     * 6. Data Post-Processing & Normalization Loop
+     * Translates structure parameters safely so legacy multi-row iteration components continue working.
+     */
+    foreach ($records as &$r) {
+        $r['time_ago'] = timeAgo($r['created_at']);
+        $r['created_at_date'] = date('m/d/Y', strtotime($r['created_at']));
+        
+        if (!empty($r['appointment_date'])) {
+            $r['appointment_date_fmt'] = date('m/d/Y g:i A', strtotime($r['appointment_date']));
+        } else {
+            $r['appointment_date_fmt'] = null;
         }
 
-        // 7. Data Post-Processing Loop
-        foreach ($records as &$r) {
-            $r['time_ago'] = timeAgo($r['created_at']);
-            $r['created_at_date'] = date('m/d/Y', strtotime($r['created_at']));
-            
-            if (!empty($r['appointment_date'])) {
-                $r['appointment_date_fmt'] = date('m/d/Y g:i A', strtotime($r['appointment_date']));
-            } else {
-                $r['appointment_date_fmt'] = null;
-            }
+        // Context Fallback setups
+        $r['procedure_name'] = $r['procedure_name'] ?: 'No procedure assigned'; 
+        $r['tooth_numbers']  = $r['tooth_number'] ?: '—';
+        $r['approver_name']  = $r['approver_name'] ?: 'Management';
 
-            // Establish full internal context parameters for management tables UI
-            $r['procedures_list'] = $proceduresGrouped[$r['id']] ?? [];
-
-            if (!empty($r['procedures_list'])) {
-                $names = [];
-                $teeth = [];
-                foreach ($r['procedures_list'] as $item) {
-                    $names[] = $item['procedure_name'];
-                    $teeth[] = $item['tooth_number'];
-                }
-                $r['procedure_name'] = implode(', ', $names);
-                $r['tooth_numbers']  = implode(', ', $teeth);
-            } else {
-                $r['procedure_name'] = 'No procedures assigned';
-                $r['tooth_numbers']  = '—';
-            }
-        }
-        unset($r); // Break loop reference safely
+        // Emulate an internal itemized procedures array stack to protect frontend loops built for the old table formats
+        $r['procedures_list'] = [
+            [
+                'pre_auth_id'    => (int)$r['pre_auth_id'],
+                'procedure_id'   => (int)$r['procedure_id'],
+                'procedure_name' => $r['procedure_name'],
+                'tooth_number'   => $r['tooth_number'],
+                'status'         => $r['status']
+            ]
+        ];
     }
+    unset($r); // Sever looping link reference pointers cleanly
 
-    // 8. Output exact response envelope structure matching JS expectation
+    // 7. Output standardised response envelope matrix layout
     Api::success([
         'records'       => $records,
         'total_records' => (int)$totalCount,
@@ -180,9 +169,10 @@ try {
 }
 
 /**
- * Helper: Convert datetime to relative string
+ * Helper: Convert standard datetime to context relative duration string
  */
 function timeAgo($datetime) {
+    if (!$datetime || $datetime === '0000-00-00 00:00:00') return '—';
     $time = strtotime($datetime);
     if (!$time) return '—';
     

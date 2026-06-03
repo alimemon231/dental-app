@@ -10,7 +10,7 @@ $db = new Database();
 $auth = new Auth($db);
 $auth->requireAuth();
 
-if (!$auth->hasRole('m-staff')) {
+if (!$auth->hasRole('m-staff') && !$auth->hasRole('staff') && !$auth->hasRole('doctor')) {
     Api::error('Unauthorized access. Management only.', 403);
     exit;
 }

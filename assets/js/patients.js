@@ -368,7 +368,7 @@ $(document).ready(function () {
                     </div>
                     <div class="text-sm mb-2">
                         <strong>Procedure:</strong> ${App.utils.escHtml(r.procedure_name || 'N/A')} <br>
-                        <span class="text-xs text-muted">Teeth: ${App.utils.escHtml(r.tooth_numbers || '—')}</span>
+                        <span class="text-xs text-muted">Teeth: ${App.utils.escHtml(r.tooth_number || '—')}</span>
                     </div>
                     <div class="flex-between text-xs text-muted mt-2 pt-2" style="border-top: 1px dashed #e2e8f0;">
                         <span><i class="fa-solid fa-building"></i> ${App.utils.escHtml(r.clinic_name || r.office_name || '—')}</span>

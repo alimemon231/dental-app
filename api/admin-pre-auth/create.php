@@ -12,7 +12,7 @@ $db   = new Database();
 $auth = new Auth($db);
 $auth->requireAuth();
 
-if (!$auth->hasRole('staff') && !$auth->hasRole('doctor')) {
+if (!$auth->hasRole('staff') && !$auth->hasRole('doctor') && !$auth->hasRole('admin')) {
     Api::error('Unauthorized access.', 403);
     exit;
 }
@@ -24,7 +24,9 @@ if (Api::method() !== 'POST') {
 
 // 1. Establish Session and Context Parameters
 $currentUserId   = $_SESSION['user_id'];
-$sessionOfficeId = (int)($_SESSION['office_id'] ?? 0);
+
+// Capture office_id dynamically from payload, fallback to session values if missing
+$sessionOfficeId = (int)($_POST['office_id'] ?? $_SESSION['office_id'] ?? 0);
 
 if (!$currentUserId) {
     Api::error('User session context not found.', 401);
@@ -32,16 +34,19 @@ if (!$currentUserId) {
 }
 
 if ($sessionOfficeId <= 0) {
-    Api::error('Active clinic location scope not established in session. Cannot create pre-auth.', 400);
+    Api::error('Active clinic location scope not established. Cannot create pre-auth.', 400);
     exit;
 }
 
 // 2. Capture Relational Fields & Dynamic Arrays Matrix Components
 $patientId       = (int)($_POST['patient_id'] ?? 0);
 $p_insurance     = (int)($_POST['p_insurance_plan'] ?? 0);
-$providerId      = (int)($_POST['provider'] ?? $_POST['doctor_id'] ?? 0); // Captures provider/doctor context from payload
-$treatment_types = $_POST['treatment_type'] ?? []; // Captured as an Array stack
-$tooth_numbers   = $_POST['tooth_numbers'] ?? [];   // Captured as an Array stack
+$providerId      = (int)($_POST['provider'] ?? $_POST['doctor_id'] ?? 0); 
+$treatment_types = $_POST['treatment_type'] ?? []; 
+$tooth_numbers   = $_POST['tooth_numbers'] ?? [];   
+
+// Capture custom request date parameter inputs 
+$requestDateInput = trim($_POST['request_date'] ?? '');
 
 // 3. Robust Array Input Validations
 if ($patientId <= 0 || $p_insurance <= 0 || empty($treatment_types) || empty($tooth_numbers)) {
@@ -67,11 +72,18 @@ $patientRow = $db->queryOne("SELECT name, dob FROM patient WHERE id = ? LIMIT 1"
 $patientName = $patientRow ? $patientRow['name'] : "Patient ID: #{$patientId}";
 $patientDob  = $patientRow ? $patientRow['dob'] : '—';
 
+// 7. Time Merging Engine: Mix input date with active live system runtime hours/mins/secs
+if (!empty($requestDateInput) && strtotime($requestDateInput) !== false) {
+    $currentTimeStamp = date('Y-m-d', strtotime($requestDateInput)) . ' ' . date('H:i:s');
+} else {
+    $currentTimeStamp = date('Y-m-d H:i:s');
+}
+
 try {
-    // Start Transaction to guarantee atomic mapping consistency across both new tables
+    // Start Transaction to guarantee atomic mapping consistency across both tables
     $db->beginTransaction();
 
-    // 7. Insert metadata row into the primary `pre_auth_cases` table
+    // 8. Insert metadata row into the primary `pre_auth_cases` table
     $caseData = [
         'patient_id' => $patientId,
         'doctor_id'  => $providerId,
@@ -84,9 +96,8 @@ try {
         throw new Exception('Failed to generate master Pre-Auth Case container tracking key.');
     }
 
-    // 8. Process Child Loop to unroll rows directly into individual itemized `pre-auth` records
+    // 9. Process Child Loop to unroll rows directly into individual itemized `pre-auth` records
     $itemizedEmailRows = "";
-    $currentTimeStamp  = date('Y-m-d H:i:s');
     
     foreach ($treatment_types as $index => $procedureId) {
         $procId  = (int)$procedureId;
@@ -102,15 +113,15 @@ try {
             'procedure_id'         => $procId,
             'teeth_number'         => $toothNo,
             'p_insurance_plan'     => $p_insurance,
-            'appointment_date'     => null, // Set during scheduling phase
-            'created_at'           => $currentTimeStamp,
+            'appointment_date'     => null, 
+            'created_at'           => $currentTimeStamp, // Injected mixed dynamic datetime string
             'created_by'           => (int)$currentUserId,
-            'approved_by'          => 0,    // Default unassigned validator flag
-            'approval_expire_date' => null, // Evaluated during approval workflows
+            'approved_by'          => 0,    
+            'approval_expire_date' => null, 
             'status'               => 'Requested',
             'edited_by'            => 0,
             'edit_time'            => $currentTimeStamp,
-            'notes'                => ''    // Initial notes state
+            'notes'                => ''    
         ];
 
         // Insert directly as an isolated row to allow granular separate approvals down the line
@@ -126,7 +137,7 @@ try {
     // Commit all operations safely to storage layers
     $db->commit();
 
-    // 9. Build and Dispatch Email Notifications Packet
+    // 10. Build and Dispatch Email Notifications Packet
     $emailBody = "New Itemized Case Pre-Authorization Matrix Created\r\n";
     $emailBody .= "---------------------------------------------\r\n";
     $emailBody .= "Case ID Ref Mapping:   #" . $caseId . "\r\n";
@@ -136,6 +147,7 @@ try {
     $emailBody .= "Insurance Code Map:    " . $p_insurance . "\r\n";
     $emailBody .= "Initial Case Status:   Sent (Pending Splitting Reviews)\r\n";
     $emailBody .= "Submitted By Staff:    " . $creatorName . "\r\n";
+    $emailBody .= "Timestamp Bound:       " . $currentTimeStamp . "\r\n";
     $emailBody .= "---------------------------------------------\r\n";
     $emailBody .= "Itemized Treatments Matrix:\r\n";
     $emailBody .= $itemizedEmailRows;
@@ -143,13 +155,11 @@ try {
 
     // EmailSender::send('Ourayfax@gmail.com', "New Case Pre-Auth: {$patientName} ({$officeName})", $emailBody);
 
-    // 10. Complete Operation Status Success Payload Return
+    // 11. Complete Operation Status Success Payload Return
     Api::success(['case_id' => $caseId], 'Pre-Auth case metrics and itemized tracking rows split and created successfully.');
 
 } catch (Exception $e) {
-    // Instantly roll back nested changes on exceptions to maintain absolute reference integrity
-   
-        $db->rollBack();
-    
+    // Instantly roll back changes on exceptions to maintain absolute reference integrity
+    $db->rollBack();
     Api::error('Database transactional operational failure: ' . $e->getMessage(), 500);
 }

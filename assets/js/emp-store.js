@@ -16,6 +16,21 @@ let currentCartItems = []; // To hold items for the order submission
  * INITIAL LOAD
  */
 $(document).ready(function() {
+    // 1. Get today's date
+    let targetDate = new Date();
+    
+    // 2. Add 7 days to it
+    targetDate.setDate(targetDate.getDate() + 7);
+    
+    // 3. Format to YYYY-MM-DD
+    let yyyy = targetDate.getFullYear();
+    let mm = String(targetDate.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    let dd = String(targetDate.getDate()).padStart(2, '0');
+    
+    let minDateString = `${yyyy}-${mm}-${dd}`; // e.g., "2026-06-10"
+    
+    // 4. Inject the min attribute into your input field
+    $('#expected-date').attr('min', minDateString);
     loadProducts();
     loadCartItems()
     // Also load your categories list here if they aren't hardcoded
@@ -301,14 +316,10 @@ $('#place-order').on('click', function () {
     const orderDate = $('#order-date').val();
     const expectedDate = $('#expected-date').val();
 
-    // 1. Validation
-    if (!orderDate || !expectedDate) {
-        App.toast('error', 'Both Order and Reception dates are required.');
-        return;
-    }
+    
 
     if (currentCartItems.length === 0) {
-        App.toast('error', 'Cannot place an empty order.');
+        App.toast.error('error', 'Cannot place an empty order.');
         return;
     }
 

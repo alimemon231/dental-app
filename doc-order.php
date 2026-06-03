@@ -149,7 +149,7 @@
 
       /* 1. Check auth */
       App.auth.check();
-      App.auth.role('doctor')
+      App.auth.role(['doctor' ,'staff' , 'admin'])
 
       /* 2. User info */
       App.ajax({

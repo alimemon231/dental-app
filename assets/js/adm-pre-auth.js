@@ -175,12 +175,10 @@ function printPipelineTable() {
     }, 750);
 }
 
-/**
- * Renders the 4-stage visual pipeline table matching user specifications
- */
 function renderAdminTable(records) {
-    if (!records || records.length === 0) {
-        $('#admin-tbody').html('<tr><td colspan="6" class="table-empty">No records found matching your filters.</td></tr>');
+   if (!records || records.length === 0) {
+        // Updated colspan to 7 to match the new 5-stage pipeline + context column + action column layout
+        $('#staff-tbody').html('<tr><td colspan="7" class="table-empty">No records found matching your filters.</td></tr>');
         return;
     }
 
@@ -189,10 +187,20 @@ function renderAdminTable(records) {
         const statusStr = (r.status || 'Sent').toLowerCase();
         const hasDate = !!r.appointment_date;
 
-        // Stage 1: Sent (Always true once it hits admin log)
-        const colSent = `<td class="stage-cell stage-success">Sent<br><small>${r.created_at_fmt || r.created_at}</small></td>`;
+        // Stage 1: Requested (Always true once it exists in the system log)
+        const colRequested = `<td class="stage-cell stage-success">Requested<br><small>${r.created_at_date || 'Logged'}</small></td>`;
 
-        // Stage 2: Decision (Approved / Rejected / Appealed)
+        // Stage 2: Sent (Green if sent, approved, scheduled, completed, or appealed. Red if rejected.)
+        let colSent = '';
+        if (statusStr === 'rejected' || statusStr === 'denied') {
+            colSent = `<td class="stage-cell stage-danger" style="background:#fef2f2; opacity:0.6;"><i class="fa-solid fa-xmark"></i></td>`;
+        } else if (['sent', 'approved', 'scheduled', 'completed', 'complete', 'done', 'appealed'].includes(statusStr)) {
+            colSent = `<td class="stage-cell stage-success">Sent</td>`;
+        } else {
+            colSent = `<td class="stage-cell stage-pending"><i class="fa-solid fa-minus"></i></td>`;
+        }
+
+        // Stage 3: Decision (Approved / Rejected / Appealed)
         let colDecision = '';
         if (statusStr === 'rejected' || statusStr === 'denied') {
             colDecision = `<td class="stage-cell stage-danger">Rejected<br><small>By: ${App.utils.escHtml(r.approver_name || 'Admin')}</small></td>`;
@@ -204,7 +212,7 @@ function renderAdminTable(records) {
             colDecision = `<td class="stage-cell stage-pending"><i class="fa-solid fa-minus"></i></td>`;
         }
 
-        // Stage 3: Scheduled
+        // Stage 4: Scheduled
         let colBooked = '';
         if (statusStr === 'rejected' || statusStr === 'denied') {
             colBooked = `<td class="stage-cell stage-danger" style="background:#fef2f2; opacity:0.6;"><i class="fa-solid fa-xmark"></i></td>`;
@@ -214,7 +222,7 @@ function renderAdminTable(records) {
             colBooked = `<td class="stage-cell stage-pending"><i class="fa-solid fa-minus"></i></td>`;
         }
 
-        // Stage 4: Completed
+        // Stage 5: Completed
         let colCompleted = '';
         if (statusStr === 'rejected' || statusStr === 'denied') {
             colCompleted = `<td class="stage-cell stage-danger" style="background:#fef2f2; opacity:0.6;"><i class="fa-solid fa-xmark"></i></td>`;
@@ -243,7 +251,9 @@ function renderAdminTable(records) {
                     <div class="font-bold">${App.utils.escHtml(r.patient_name || (r.p_first_name + ' ' + r.p_last_name))}</div>
                     <div class="text-xs mt-1" style="max-width:240px;">${proceduresHtml}</div>
                     <div class="text-xs mt-1 text-muted"><i class="fa-solid fa-house-medical"></i> ${App.utils.escHtml(r.clinic_name || r.office_name)}</div>
+                    <div class="text-xs mt-1 text-muted"><i class="fa-solid fa-file"></i> Case No : #${App.utils.escHtml(r.case_id || r.office_name)}</div>
                 </td>
+                ${colRequested}
                 ${colSent}
                 ${colDecision}
                 ${colBooked}
@@ -252,10 +262,6 @@ function renderAdminTable(records) {
                     <button class="btn btn-sm btn-ghost btn-view" data-id="${r.id}" title="View Timeline Lifecycle">
                         <i class="fa-solid fa-eye"></i>
                     </button>
-
-                  <a href="/adm-add-pre-auth.php?id=${r.id}" class="btn btn-sm btn-ghost btn-view" title="Edit Pre-Auth Record">
-                        <i class="fa-solid fa-pen"></i>
-                  </a>
                 </td>
             </tr>`;
     });
@@ -292,15 +298,19 @@ function viewLifecycleDetails(id) {
                 $.each(data.procedures_list, function (idx, item) {
                     listHtml += `<div style="padding: var(--sp-2) 0; border-bottom: 1px dashed #e2e8f0;">
                                     <i class="fa-solid fa-circle-chevron-right text-primary text-sm mr-2"></i> 
-                                    <strong>Tooth ${item.tooth_number}:</strong> ${App.utils.escHtml(item.procedure_name)}
+                                    <strong>Tooth ${item.tooth_number || data.tooth_numbers || 'N/A'}:</strong> ${App.utils.escHtml(item.procedure_name || data.procedure_name)}
                                  </div>`;
                 });
             } else {
-                listHtml = `<div class="text-muted">No itemized treatments mapped to this pre-auth.</div>`;
+                // Fallback to primary flat strings context if procedures_list is completely empty
+                listHtml = `<div style="padding: var(--sp-2) 0; border-bottom: 1px dashed #e2e8f0;">
+                                <i class="fa-solid fa-circle-chevron-right text-primary text-sm mr-2"></i> 
+                                <strong>Tooth ${data.tooth_numbers || 'N/A'}:</strong> ${App.utils.escHtml(data.procedure_name || '—')}
+                            </div>`;
             }
 
-            // Extract exact tracking arrays configuration from employee module
-            const statusStr = (data.status || 'Created').toLowerCase();
+            // Extract exact tracking arrays configuration matching baseline status flow
+            const statusStr = (data.status || 'Requested').toLowerCase();
             let progressWidth = '0%';
             let themeColor = '#3b82f6';
             let isRejectedState = (statusStr === 'rejected' || statusStr === 'denied');
@@ -312,6 +322,7 @@ function viewLifecycleDetails(id) {
             switch (statusStr) {
                 case 'create':
                 case 'created':
+                case 'requested':
                 case 'pending':
                     steps = [1, 0, 0, 0, 0];
                     progressWidth = '0%';
@@ -352,7 +363,7 @@ function viewLifecycleDetails(id) {
                     break;
                 case 'rejected':
                 case 'denied':
-                    steps = [1, 1, 2, 0, 0]; // Milestone broken at valuation step
+                    steps = [1, 1, 2, 0, 0]; // Milestone broken at evaluation step
                     progressWidth = '50%';
                     themeColor = '#ef4444';
                     break;
@@ -387,7 +398,7 @@ function viewLifecycleDetails(id) {
             <div class="status-progress-wrapper" style="margin-bottom: var(--sp-6); background: #f8fafc; padding: var(--sp-5) var(--sp-4); border-radius: var(--radius-md); border: 1px solid #e2e8f0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <span class="text-xs font-bold uppercase text-muted" style="letter-spacing:0.5px;">Authorization Pipeline Status</span>
-                    <span class="status-badge" style="background: ${themeColor}; color: #fff; font-size: 0.75rem; padding: 3px 10px; border-radius: 50px; text-transform: uppercase; font-weight: 700;">${data.status || 'Create'}</span>
+                    <span class="status-badge" style="background: ${themeColor}; color: #fff; font-size: 0.75rem; padding: 3px 10px; border-radius: 50px; text-transform: uppercase; font-weight: 700;">${data.status || 'Requested'}</span>
                 </div>
                 
                 <div class="progress-bar-container" style="position: relative; height: 6px; background: #e2e8f0; border-radius: 4px; margin: 25px var(--sp-4) 15px var(--sp-4);">
@@ -403,7 +414,7 @@ function viewLifecycleDetails(id) {
                 </div>
                 
                 <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #64748b; font-weight: 700; padding: 0 2px; text-transform: uppercase;">
-                    <span style="${steps[0] ? 'color:#1e293b' : ''}">Create</span>
+                    <span style="${steps[0] ? 'color:#1e293b' : ''}">Requested</span>
                     <span style="${steps[1] ? 'color:#1e293b' : ''}">Sent</span>
                     <span style="${steps[2] ? (isRejectedState ? 'color:#ef4444' : (isAppealedState ? 'color:#f59e0b' : 'color:#1e293b')) : ''}">${stepThreeText}</span>
                     <span style="${steps[3] ? (statusStr === 'expired' ? 'color:#ef4444' : 'color:#1e293b') : ''}">Scheduled</span>
@@ -411,8 +422,8 @@ function viewLifecycleDetails(id) {
                 </div>
             </div>`;
 
-            // Helper structural definitions mirroring parent template
-            let approverRow = data.approved_by
+            // Evaluate if an approver name is explicitly available in response data payload 
+            let approverRow = (data.approver_name && data.approver_name !== '—')
                 ? `<span class="text-success" style="font-weight:600;"><i class="fa-solid fa-user-check"></i> ${App.utils.escHtml(data.approver_name)}</span>`
                 : '<span class="text-muted" style="font-style: italic;"><i class="fa-solid fa-hourglass-half"></i> Pending Review Evaluation</span>';
 
@@ -420,11 +431,12 @@ function viewLifecycleDetails(id) {
                 ? `<strong class="text-dark">${App.utils.escHtml(data.approval_expire_date)}</strong>`
                 : '<span class="text-muted">—</span>';
 
-            let editorRow = data.edited_by
+            // Verify if edit metrics exist dynamically based on payload text contents
+            let editorRow = (data.editor_name && data.editor_name !== '—')
                 ? `<span><i class="fa-solid fa-user-pen"></i> ${App.utils.escHtml(data.editor_name)} <small class="text-muted">(${data.formatted_edit_time || 'Recent'})</small></span>`
                 : '<span class="text-muted" style="font-style: italic;">Never modified</span>';
 
-            // Inline Row Builder utility structure
+            // Inline Row Builder utility structure context mapper
             function infoRow(label, value) {
                 return `<div class="info-row mb-2">
                     <span class="text-muted" style="width:130px; display:inline-block; font-size:0.85rem">${label}:</span>
@@ -438,10 +450,11 @@ function viewLifecycleDetails(id) {
 
                 '<div>' +
                 '<div class="form-section-title mb-4" style="color:var(--color-primary); border-bottom:2px solid #f1f5f9; padding-bottom:5px;"><i class="fa-solid fa-user"></i> Patient Information</div>' +
-                infoRow('Full Name', App.utils.escHtml(data.patient_name || (data.p_first_name + ' ' + data.p_last_name))) +
+                infoRow('Full Name', App.utils.escHtml(data.patient_name || '—')) +
                 infoRow('Date of Birth', App.utils.escHtml(data.p_dob || data.patient_dob || '—')) +
                 infoRow('Insurance Plan', App.utils.escHtml(data.insurance_name || '—')) +
-                infoRow('Member ID', App.utils.escHtml(data.p_insurance_id || '—')) +
+                infoRow('Case No', App.utils.escHtml(data.case_id)) + // Guarding placeholder mapping match
+                infoRow('Provider Doctor', App.utils.escHtml(data.doctor_name)) +
 
                 '<div class="form-section-title mt-6 mb-4" style="color:var(--color-primary); border-bottom:2px solid #f1f5f9; padding-bottom:5px;"><i class="fa-solid fa-stethoscope"></i> Treatment Details</div>' +
                 '<div class="mb-2" style="line-height:1.6; max-height:220px; overflow-y:auto; padding-right:5px;">' + listHtml + '</div>' +
@@ -451,8 +464,8 @@ function viewLifecycleDetails(id) {
                 '<div class="form-section-title mb-4" style="color:var(--color-primary); border-bottom:2px solid #f1f5f9; padding-bottom:5px;"><i class="fa-solid fa-shield-halved"></i> Authorization & Audit</div>' +
                 infoRow('Clinic Site', App.utils.escHtml(data.clinic_name || data.office_name || '—')) +
                 infoRow('Authorized By', approverRow) +
-                infoRow('Expiration Date', expireRow) +
-                infoRow('Appointment Linked', App.utils.escHtml(data.appointment_date_fmt || data.appointment_date || 'None scheduled')) +
+                infoRow('Expiration Date', data.approval_expire_date) +
+                infoRow('Appointment Linked', App.utils.escHtml(data.appointment_date_fmt && data.appointment_date_fmt !== '—' ? data.appointment_date_fmt : 'None scheduled')) +
                 infoRow('Last Edited By', editorRow) +
                 infoRow('Submitted By', App.utils.escHtml(data.creator_name || data.staff_name || 'System') + (data.time_ago ? ' <small class="text-muted">(' + data.time_ago + ')</small>' : '')) +
 

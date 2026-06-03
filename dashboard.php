@@ -71,95 +71,93 @@
           </div>
 
           <?php
-        } else if($currentUser['role'] == 'm-staff'){
+        } else if ($currentUser['role'] == 'm-staff') {
 
-        }
-        
-        else {
+        } else {
           ?>
-          <div class="table-wrapper">
-            <table class="data-table" id="order-table">
-              <thead>
-                <tr>
-                  <th class="sortable" data-col="id">#</th>
-                  <th class="sortable" data-col="name">Order Number</th>
-                  <th class="sortable" data-col="name">From Office </th>
-                  <th class="sortable" data-col="name">Order date</th>
-                  <th class="sortable" data-col="name">Delivery date</th>
-                  <th class="sortable" data-col="name">Order By</th>
-                  <th class="sortable" data-col="name">Approved By</th>
-                  <th>Order Amount</th>
-                  <th>status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="order-tbody">
-                <tr>
-                  <td colspan="8">
-                    <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="table-pagination" id="order-pagination">
-              <span id="patients-info" class="text-muted text-sm">—</span>
-              <div class="pagination" id="pagination-btns"></div>
+            <div class="table-wrapper">
+              <table class="data-table" id="order-table">
+                <thead>
+                  <tr>
+                    <th class="sortable" data-col="id">#</th>
+                    <th class="sortable" data-col="name">Order Number</th>
+                    <th class="sortable" data-col="name">From Office </th>
+                    <th class="sortable" data-col="name">Order date</th>
+                    <th class="sortable" data-col="name">Delivery date</th>
+                    <th class="sortable" data-col="name">Order By</th>
+                    <th class="sortable" data-col="name">Approved By</th>
+                    <th>Order Amount</th>
+                    <th>status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="order-tbody">
+                  <tr>
+                    <td colspan="8">
+                      <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="table-pagination" id="order-pagination">
+                <span id="patients-info" class="text-muted text-sm">—</span>
+                <div class="pagination" id="pagination-btns"></div>
+              </div>
             </div>
-          </div>
 
-          <!-- ============================================================
+            <!-- ============================================================
      VIEW PATIENT MODAL
 ============================================================ -->
-          <div class="modal-backdrop" id="view-order-modal">
-            <div class="modal modal-lg xl">
-              <div class="modal-header">
-                <div class="modal-title">Order Details</div>
-                <button class="modal-close" data-close-modal="view-order-modal">&#x2715;</button>
-              </div>
-              <div class="modal-body">
-                <div class="grid-2" style="gap:var(--sp-8)">
-                  <div id="view-order-details">
+            <div class="modal-backdrop" id="view-order-modal">
+              <div class="modal modal-lg xl">
+                <div class="modal-header">
+                  <div class="modal-title">Order Details</div>
+                  <button class="modal-close" data-close-modal="view-order-modal">&#x2715;</button>
+                </div>
+                <div class="modal-body">
+                  <div class="grid-2" style="gap:var(--sp-8)">
+                    <div id="view-order-details">
 
-                  </div>
-                  <div>
-                    <div class="form-section-title mb-4"><i class="fa-solid fa-pills"></i> Order Items </div>
-                    <div class="table-wrapper">
-                      <table class="data-table">
-                        <thead>
-                          <tr>
+                    </div>
+                    <div>
+                      <div class="form-section-title mb-4"><i class="fa-solid fa-pills"></i> Order Items </div>
+                      <div class="table-wrapper">
+                        <table class="data-table">
+                          <thead>
+                            <tr>
 
-                            <th class="sortable" data-col="name">Name</th>
-                            <th>Qty</th>
-                            <th>Price </th>
-                            <th>Sub Total</th>
-                          </tr>
-                        </thead>
-                        <tbody id="order-items-tbody">
-                          <tr>
-                            <td colspan="8">
-                              <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      <div class="table-pagination" id="order-pagination">
-                        <div class="pagination"> Total : <span id="order-grand-total-display"></span></div>
+                              <th class="sortable" data-col="name">Name</th>
+                              <th>Qty</th>
+                              <th>Price </th>
+                              <th>Sub Total</th>
+                            </tr>
+                          </thead>
+                          <tbody id="order-items-tbody">
+                            <tr>
+                              <td colspan="8">
+                                <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        <div class="table-pagination" id="order-pagination">
+                          <div class="pagination"> Total : <span id="order-grand-total-display"></span></div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div class="modal-footer">
-                <button class="btn btn-ghost" data-close-modal="view-order-modal">Close</button>
-                <button class="btn btn-primary" id="btn-edit-from-view">
-                  <i class="fa-solid fa-pen"></i> Edit
-                </button>
+                <div class="modal-footer">
+                  <button class="btn btn-ghost" data-close-modal="view-order-modal">Close</button>
+                  <button class="btn btn-primary" id="btn-edit-from-view">
+                    <i class="fa-solid fa-pen"></i> Edit
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
 
     <?php
         }
@@ -262,6 +260,16 @@
             var percentage = data.percentage;
             var statusClass = data.status_class;
 
+            let barColor = '#28a745'; // Green (under 50%)
+
+            if (percentage > 100) {
+              barColor = '#dc3545'; // Dark Red
+            } else if (percentage >= 80) {
+              barColor = '#ff6b6b'; // Light Red
+            } else if (percentage >= 50) {
+              barColor = '#94d82d'; // Light Green / Lime
+            }
+
             var html =
               '<div class="budget-progress-container" style="width:500px;">' +
               '<div class="d-flex justify-content-between mb-1">' +
@@ -272,7 +280,7 @@
               '<span class="text-sm ' + (percentage > 100 ? 'text-danger' : '') + '">' + percentage + '%</span>' +
               '</div>' +
               '<div class="progress-track" style="height:8px; background:#eee; border-radius:10px; overflow:hidden;">' +
-              '<div class="progress-fill ' + statusClass + '" style="width: ' + Math.min(percentage, 100) + '%; height:100%;"></div>' +
+              '<div class="progress-fill" style="background-color: ' + barColor + '; width: ' + Math.min(percentage, 100) + '%; height: 100%; transition: width 0.4s; background-size: cover;"></div>' +
               '</div>' +
               '<div class="mt-2 text-xs text-muted">Monthly Spending Limit (' + data.month_name + ')</div>' +
               '</div>';

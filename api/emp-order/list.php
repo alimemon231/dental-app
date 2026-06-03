@@ -51,17 +51,15 @@ LEFT JOIN users u1 ON o.created_by = u1.user_id
 LEFT JOIN users u2 ON o.approved_by = u2.user_id
 LEFT JOIN order_items oi ON o.id = oi.order_id
 WHERE o.activation = 'active' 
+  AND o.status ='pending'
   AND o.office_id = ? 
 GROUP BY o.id
-ORDER BY o.id DESC
-LIMIT ? OFFSET ?";
+ORDER BY o.id DESC";
 
 $orders = $db->query($sql, [
     $currentUserId, 
     $currentUserId, 
     $officeId, // Added officeId to parameters
-    $limit, 
-    $offset
 ]);
 
 // 4. Fetch total count for pagination metadata (Filtered by office)

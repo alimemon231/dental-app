@@ -36,46 +36,53 @@ $(document).ready(function () {
             }
         });
     }
+function renderTable(patients) {
+    if (!patients || !patients.length) {
+        $('#order-tbody').html(
+            '<tr><td colspan="8"><div class="table-empty"><i class="fa-solid fa-bag-shopping"></i> No orders found.</div></td></tr>'
+        );
+        return;
+    }
 
-    function renderTable(patients) {
-        if (!patients || !patients.length) {
-            $('#order-tbody').html(
-                '<tr><td colspan="8"><div class="table-empty"><i class="fa-solid fa-bag-shopping"></i> No orders found.</div></td></tr>'
-            );
-            return;
+    var rows = '';
+    $.each(patients, function (i, p) {
+        const orderStatus = (p.status || '').toLowerCase();
+
+        // Always keep the view button accessible
+        let actionButtonsHtml = '<button class="btn btn-ghost btn-sm btn-view" data-id="' + p.id + '" title="View"><i class="fa-solid fa-eye"></i></button>';
+
+        // Only add Approve and Reject options if the status is NOT approved
+        if (orderStatus !== 'approved') {
+            actionButtonsHtml += 
+                '<button class="btn btn-ghost btn-sm btn-approve" data-id="' + p.id + '" title="Approve"><i class="fa-solid fa-check"></i> Approve</button>' +
+                '<button class="btn btn-ghost btn-sm btn-delete" data-id="' + p.id + '" data-name="ORD-' + App.utils.escHtml(p.id) + '" title="Reject" style="color:var(--color-danger)"><i class="fa-solid fa-trash"></i>Rej</button>';
         }
 
-        var rows = '';
-        $.each(patients, function (i, p) {
-            rows += '<tr>' +
-                '<td><strong>#' +( i + 1) + '</strong></td>' +
-                '<td> ORD-' + App.utils.escHtml(p.id) + '</td>' +
-                '<td>' +
-                '<div class="flex flex-align gap-3">' +
-                '<div>' +
-                App.utils.escHtml(p.order_date) +
-                '</div>' +
-                '</div>' +
-                '</td>' +
+        rows += '<tr>' +
+            '<td><strong>#' + (i + 1) + '</strong></td>' +
+            '<td> ORD-' + App.utils.escHtml(p.id) + '</td>' +
+            '<td>' +
+            '<div class="flex flex-align gap-3">' +
+            '<div>' +
+            App.utils.escHtml(p.order_date) +
+            '</div>' +
+            '</div>' +
+            '</td>' +
+            '<td>' + App.utils.escHtml(p.expected_received_date) + '</td>' +
+            '<td>' + App.utils.escHtml(p.creator_name) + '</td>' +
+            '<td>' + App.utils.escHtml(p.approver_name || '—') + '</td>' + // Fallback if no approver yet
+            '<td>$' + parseFloat(p.total_amount).toFixed(2) + '</td>' +
+            '<td>' + App.utils.escHtml(p.status) + '</td>' +
+            '<td>' +
+            '<div class="actions" style="display: flex; gap: 4px;">' +
+            actionButtonsHtml +
+            '</div>' +
+            '</td>' +
+            '</tr>';
+    });
 
-
-                '<td>' + App.utils.escHtml(p.expected_received_date) + '</td>' +
-                '<td>' + App.utils.escHtml(p.creator_name) + '</td>' +
-                '<td>' + App.utils.escHtml(p.approver_name) + '</td>' +
-                '<td>' + App.utils.escHtml(p.total_amount) + '</td>' +
-                '<td>' + App.utils.escHtml(p.status) + '</td>' +
-                '<td>' +
-                '<div class="actions">' +
-                '<button class="btn btn-ghost btn-sm btn-view" data-id="' + p.id + '" title="View"><i class="fa-solid fa-eye"></i></button>' +
-                '<button class="btn btn-ghost btn-sm btn-approve" data-id="' + p.id + '" title="Edit"><i class="fa-solid fa-check"></i> Approve</button>' +
-                '<button class="btn btn-ghost btn-sm btn-delete" data-id="' + p.id + '" data-name="ORD-' + App.utils.escHtml(p.id) + '" title="Delete" style="color:var(--color-danger)"><i class="fa-solid fa-trash"></i>Rej</button>' +
-                '</div>' +
-                '</td>' +
-                '</tr>';
-        });
-
-        $('#order-tbody').html(rows);
-    }
+    $('#order-tbody').html(rows);
+}
 
     function renderPagination(meta) {
         var total = meta.total || 0;

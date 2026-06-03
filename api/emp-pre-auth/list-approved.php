@@ -1,7 +1,8 @@
 <?php
 /**
  * GET api/emp-pre-auth/list-approved.php
- * List only approved pre-auths for the logged-in office staff, including itemized treatments.
+ * Lists unique pre-auth cases alongside their individual itemized treatments matching the 'Approved' status constraints.
+ * Filters out individual itemized lines that are not approved or have already been scheduled.
  */
 require_once __DIR__ . '/../../includes/Auth.php';
 
@@ -18,113 +19,149 @@ if ($sessionOfficeId <= 0) {
 }
 
 try {
-    // 1. Fetch parent pre-auth entries joined with patient, insurance, creator, and management approver data
-    $sql = "SELECT 
-                pa.id,
-                pa.patient_id,
-                pa.p_insurance_plan,
-                pa.office_id,
-                pa.created_at,
-                pa.created_by,
-                pa.status,
-                pa.approved_by,
-                pa.approval_expire_date,
-                pat.name AS patient_name,
-                pat.dob AS patient_dob,
-                ins.name AS insurance_name,
-                u_creator.name AS creator_name,
-                u_approver.name AS approver_name
-            FROM `pre-auth` pa
-            INNER JOIN `patient` pat ON pa.patient_id = pat.id
-            LEFT JOIN `insurance` ins ON pa.p_insurance_plan = ins.id
-            LEFT JOIN `users` u_creator ON pa.created_by = u_creator.user_id
-            LEFT JOIN `users` u_approver ON pa.approved_by = u_approver.user_id
-            WHERE pa.office_id = ? 
-              AND pa.status = 'Approved'
-              AND pa.appointment_date IS NULL
-            ORDER BY pa.id DESC";
+    // 1. Fetch parent cases that contain AT LEAST ONE item matching our active target status ('Approved')
+    $caseSql = "SELECT 
+                    pac.id AS case_id,
+                    pac.patient_id,
+                    pac.doctor_id,
+                    pac.office_id,
+                    pat.name AS patient_name,
+                    pat.dob AS patient_dob,
+                    doc.name AS doctor_name
+                FROM `pre_auth_cases` pac
+                INNER JOIN `patient` pat ON pac.patient_id = pat.id
+                LEFT JOIN `users` doc ON pac.doctor_id = doc.user_id
+                WHERE pac.office_id = ? 
+                  AND EXISTS (
+                      SELECT 1 FROM `pre-auth` pa 
+                      WHERE pa.case_id = pac.id 
+                        AND pa.status = 'Approved'
+                        AND pa.appointment_date IS NULL
+                  )
+                ORDER BY pac.id DESC";
 
-    $records = $db->query($sql, [$sessionOfficeId]);
+    $cases = $db->query($caseSql, [$sessionOfficeId]);
 
-    if (empty($records)) {
+    if (empty($cases)) {
         Api::success([], 'Success');
         exit;
     }
 
-    // Extract all parent record IDs to fetch child procedures efficiently in a single batch query
-    $preAuthIds = array_column($records, 'id');
-    $placeholders = implode(',', array_fill(0, count($preAuthIds), '?'));
+    // Extract case IDs to process itemized procedures collectively
+    $caseIds = array_column($cases, 'case_id');
+    $placeholders = implode(',', array_fill(0, count($caseIds), '?'));
 
-    // 2. Query all linked procedures and tooth numbers for these approved records
-    $procSql = "SELECT 
-                    pap.pre_auth_id,
-                    pap.procedure_id,
-                    pap.tooth_number,
-                    proc.name AS procedure_name
-                FROM `pre_auth_procedures` pap
-                INNER JOIN `procedures` proc ON pap.procedure_id = proc.id
-                WHERE pap.pre_auth_id IN ($placeholders)";
+    // 2. Fetch ONLY individual itemized entries matching the target status constraints
+    // Joins 'users' as 'u_app' to identify the administrative user who marked the item as approved.
+    $itemizedSql = "SELECT 
+                        pa.id AS pre_auth_id,
+                        pa.case_id,
+                        pa.procedure_id,
+                        pa.teeth_number AS tooth_number,
+                        pa.p_insurance_plan,
+                        pa.appointment_date,
+                        pa.created_at,
+                        pa.created_by,
+                        pa.status,
+                        pa.notes,
+                        proc.name AS procedure_name,
+                        ins.name AS insurance_name,
+                        u.name AS creator_name,
+                        u_app.name AS approver_name
+                    FROM `pre-auth` pa
+                    INNER JOIN `procedures` proc ON pa.procedure_id = proc.id
+                    LEFT JOIN `insurance` ins ON pa.p_insurance_plan = ins.id
+                    LEFT JOIN `users` u ON pa.created_by = u.user_id
+                    LEFT JOIN `users` u_app ON pa.approved_by = u_app.user_id
+                    WHERE pa.case_id IN ($placeholders)
+                      AND pa.status = 'Approved'
+                      AND pa.appointment_date IS NULL
+                    ORDER BY pa.id ASC";
 
-    $allProcedures = $db->query($procSql, $preAuthIds);
+    $allItems = $db->query($itemizedSql, $caseIds);
 
-    // Map child procedures arrays onto their respective parent IDs
-    $proceduresGrouped = [];
-    foreach ($allProcedures as $proc) {
-        $proceduresGrouped[$proc['pre_auth_id']][] = [
-            'procedure_id'   => $proc['procedure_id'],
-            'procedure_name' => $proc['procedure_name'],
-            'tooth_number'   => $proc['tooth_number']
+    // Group matching rows by their parent case reference container
+    $itemsGroupedByCase = [];
+    foreach ($allItems as $item) {
+        $itemsGroupedByCase[$item['case_id']][] = [
+            'pre_auth_id'          => (int)$item['pre_auth_id'],
+            'procedure_id'         => (int)$item['procedure_id'],
+            'procedure_name'       => $item['procedure_name'],
+            'tooth_number'         => $item['tooth_number'],
+            'p_insurance_plan'     => (int)$item['p_insurance_plan'],
+            'insurance_name'       => $item['insurance_name'] ?: 'No Insurance',
+            'status'               => $item['status'],
+            'appointment_date'     => $item['appointment_date'],
+            'created_at'           => $item['created_at'],
+            'created_by'           => (int)$item['created_by'],
+            'submitted_by'         => ((int)$item['created_by'] === (int)$currentUserId) ? 'You' : ($item['creator_name'] ?: 'System User'),
+            'approver_name'        => $item['approver_name'] ?: 'Management',
+            'time_ago'             => timeAgo($item['created_at']),
+            'formatted_date'       => date('M d, Y', strtotime($item['created_at'])),
+            'notes'                => $item['notes']
         ];
     }
 
-    // 3. Process, combine, and construct output data objects payload
-    foreach ($records as &$r) {
-        $r['time_ago'] = timeAgo($r['created_at']);
-        $r['formatted_date'] = date('M d, Y', strtotime($r['created_at']));
+    // 3. Construct response structure to maintain front-end loop structures precisely
+    $finalResponseData = [];
+    foreach ($cases as $c) {
+        $caseId = $c['case_id'];
         
-        // Dynamic submission creator ownership string conversion
-        if ((int)$r['created_by'] === (int)$currentUserId) {
-            $r['submitted_by'] = 'You';
-        } else {
-            $r['submitted_by'] = $r['creator_name'] ?: 'System User';
+        // Retrieve filtered procedures matching the state list
+        $proceduresList = $itemsGroupedByCase[$caseId] ?? [];
+        
+        // Skip formatting if no lines in this case matched the status rules
+        if (empty($proceduresList)) {
+            continue;
         }
 
-        // Attach child procedure objects list array segment
-        $r['procedures_list'] = $proceduresGrouped[$r['id']] ?? [];
+        // Draw backward-compatible metadata from the first valid active line item
+        $primaryItem = $proceduresList[0];
 
-        // Build dynamic fallback strings to remain backwards-compatible with standard columns layout logic
-        if (!empty($r['procedures_list'])) {
-            $names = [];
-            $teeth = [];
-            foreach ($r['procedures_list'] as $item) {
-                $names[] = $item['procedure_name'];
-                $teeth[] = $item['tooth_number'];
-            }
-            $r['procedure_name'] = implode(', ', $names);
-            $r['tooth_numbers']  = implode(', ', $teeth);
-        } else {
-            $r['procedure_name'] = 'No procedures assigned';
-            $r['tooth_numbers']  = '—';
-        }
-        
-        // Clean up unneeded relational cache references from final object representation
-        unset($r['creator_name']);
+        // Compile comma-delimited fields for list dashboard summary row displays
+        $names = array_column($proceduresList, 'procedure_name');
+        $teeth = array_column($proceduresList, 'tooth_number');
+
+        $finalResponseData[] = [
+            'id'                 => $caseId, // Targets the envelope case identification index on the frontend
+            'patient_id'         => (int)$c['patient_id'],
+            'patient_name'       => $c['patient_name'],
+            'patient_dob'        => $c['patient_dob'],
+            'doctor_id'          => (int)$c['doctor_id'],
+            'doctor_name'        => $c['doctor_name'] ?: 'Unassigned Doctor',
+            'office_id'          => (int)$c['office_id'],
+            
+            // Legacy mappings drawing properties safely from the primary tracking instance
+            'p_insurance_plan'   => $primaryItem['p_insurance_plan'],
+            'insurance_name'     => $primaryItem['insurance_name'],
+            'created_at'         => $primaryItem['created_at'],
+            'time_ago'           => $primaryItem['time_ago'],
+            'formatted_date'     => $primaryItem['formatted_date'],
+            'submitted_by'       => $primaryItem['submitted_by'],
+            'approver_name'      => $primaryItem['approver_name'],
+            'status'             => $primaryItem['status'],
+
+            // Joined visualization variables displaying active strings in table layout cells
+            'procedure_name'     => implode(', ', $names),
+            'tooth_numbers'      => implode(', ', $teeth),
+            
+            // Filtered array map elements processed by your custom JS loops
+            'procedures_list'    => $proceduresList
+        ];
     }
-    unset($r); // Loop references safeguard breakdown reset
 
-    Api::success($records, 'Success');
+    Api::success($finalResponseData, 'Success');
 
 } catch (Exception $e) {
-    Api::error('Relational approved-list data mapping failure: ' . $e->getMessage(), 500);
+    Api::error('Data stream mapping failure: ' . $e->getMessage(), 500);
 }
 
 /**
- * Helper: Convert datetime to relative string representation
+ * Helper: Convert datetime to relative string
  */
 function timeAgo($datetime) {
+    if (!$datetime || $datetime === '0000-00-00 00:00:00') return '—';
     $time = strtotime($datetime);
-    if (!$time) return '—';
-    
     $now = time();
     $diff = $now - $time;
 

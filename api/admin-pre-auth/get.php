@@ -1,7 +1,8 @@
 <?php
 /**
- * GET api/emp-pre-auth/get.php?id=XX
+ * GET api/admin-pre-auth/get.php?id=XX
  * Fetches exactly ONE specific itemized pre-auth record row alongside its parent case demographics.
+ * Global admin scope bypasses office location session isolation boundaries.
  */
 require_once __DIR__ . '/../../includes/Auth.php';
 
@@ -9,17 +10,22 @@ $db   = new Database();
 $auth = new Auth($db);
 $auth->requireAuth();
 
-// 1. Validation and Parameter Capture
+// 1. Admin Role Enforcement Override Middleware Validation
+$currentUser = $auth->user();
+if ($currentUser['role'] !== 'admin') {
+    Api::error('Unauthorized access. Admin privileges required.', 403);
+    exit;
+}
+
+// 2. Validation and Parameter Capture
 $preAuthId = (int)($_GET['id'] ?? 0);
 if (!$preAuthId) { 
     Api::error('Pre-Auth individual item ID parameter is required.'); 
     exit; 
 }
 
-$sessionOfficeId = (int)($_SESSION['office_id'] ?? 0);
-
 try {
-    // 2. Fetch the exactly specified single pre-auth row item details
+    // 3. Fetch the exactly specified single pre-auth row item details
     $procSql = "
         SELECT 
             pa.id AS pre_auth_id,
@@ -60,7 +66,10 @@ try {
 
     $caseId = (int)$procedureItem['case_id'];
 
-    // 3. Fetch ONLY the single parent Case Master Metadata Record
+    /**
+     * 4. Fetch the single parent Case Master Metadata Record
+     * REMOVED: pac.office_id constraint checking to grant cross-office admin permissions
+     */
     $caseSql = "
         SELECT 
             pac.id AS case_id,
@@ -75,18 +84,18 @@ try {
         INNER JOIN `patient` pat ON pac.patient_id = pat.id
         LEFT JOIN `offices` o ON pac.office_id = o.id
         LEFT JOIN `users` doc ON pac.doctor_id = doc.user_id
-        WHERE pac.id = ? AND pac.office_id = ?
+        WHERE pac.id = ?
         LIMIT 1
     ";
 
-    $caseMetadata = $db->queryOne($caseSql, [$caseId, $sessionOfficeId]);
+    $caseMetadata = $db->queryOne($caseSql, [$caseId]);
 
     if (!$caseMetadata) { 
-        Api::error('Pre-Auth parent case profile access denied or mismatch for this location window.', 404); 
+        Api::error('Pre-Auth parent case profile could not be found or access denied.', 404); 
         exit; 
     }
 
-    // 4. Format timelines for this isolated single record entry row
+    // 5. Format timelines for this isolated single record entry row
     $procedureItem['pre_auth_id'] = (int)$procedureItem['pre_auth_id'];
     $procedureItem['case_id']     = (int)$procedureItem['case_id'];
     $procedureItem['time_ago']    = timeAgo($procedureItem['created_at']);
@@ -102,9 +111,9 @@ try {
         $procedureItem['formatted_expiry'] = date('M d, Y', strtotime($procedureItem['approval_expire_date']));
     }
 
-    // 5. Structure clean response output with parent case details + single child procedure parameters
+    // 6. Structure clean response output with parent case details + single child procedure parameters
     $response = [
-        'id'               => $preAuthId, // Targets the individual pre-auth row explicitly
+        'id'               => $preAuthId, 
         'pre_auth_id'      => $preAuthId,
         'case_id'          => $caseId,
         'patient_id'       => (int)$caseMetadata['patient_id'],
@@ -113,7 +122,7 @@ try {
         'doctor_id'        => (int)$caseMetadata['doctor_id'],
         'doctor_name'      => $caseMetadata['doctor_name'] ?: 'Unassigned Doctor',
         'office_id'        => (int)$caseMetadata['office_id'],
-        'clinic_name'      => $caseMetadata['clinic_name'],
+        'clinic_name'      => $caseMetadata['clinic_name'] ?: 'Unknown Clinic Location',
         
         // Directly maps the selected single row values straight down to the frontend variables layout
         'procedure_id'     => (int)$procedureItem['procedure_id'],
@@ -130,6 +139,8 @@ try {
         'editor_name'      => $procedureItem['editor_name'] ?: '—',
         'approver_name'    => $procedureItem['approver_name'] ?: '—',
         'notes'            => $procedureItem['notes'] ?: '',
+        'approval_expire_date' => $procedureItem['approval_expire_date'],
+        'appointment_date'    =>  $procedureItem['appointment_date'],
         
         // Single-element fallback inside an array if old timeline modals expect a list loop syntax
         'procedures_list'  => [$procedureItem]

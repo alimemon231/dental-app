@@ -30,7 +30,8 @@
                     <table class="data-table" id="labs-done-table">
                         <thead>
                             <tr>
-                                <th>Patient Name</th>
+                                <th>Lab Case NO#</th>
+                                 <th>Patient Name</th>
                                 <th>Scheduled Date</th>
                                 <th>Doctor</th>
                                 <th>Case Type</th>

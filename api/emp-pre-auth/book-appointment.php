@@ -2,7 +2,7 @@
 /**
  * API: Book Appointment
  * Path: /api/emp-pre-auth/book-appointment.php
- * Promotes an approved pre-auth record status condition securely to 'Scheduled' and validates expiry rules.
+ * Promotes the explicitly targeted approved pre-auth item record line to 'Scheduled' and validates expiry rules.
  */
 
 require_once __DIR__ . '/../../includes/Auth.php';
@@ -17,11 +17,11 @@ if (Api::method() !== 'POST') {
     exit; 
 }
 
-// 1. Validate Target Parameters
-$id              = (int)($_POST['id'] ?? 0);
+// 1. Validate Target Parameters (Accepts the specific line-level pre_auth_id from the frontend)
+$preAuthId       = (int)($_POST['id'] ?? 0);
 $appointmentDate = trim($_POST['appointment_date'] ?? '');
 
-if ($id <= 0 || empty($appointmentDate)) {
+if ($preAuthId <= 0 || empty($appointmentDate)) {
     Api::error('A valid Pre-Authorization ID and Appointment Date are required to execute scheduling.');
     exit;
 }
@@ -35,67 +35,70 @@ if ($sessionOfficeId <= 0) {
 }
 
 try {
-    // 2. Verify that the targeted record exists, belongs to the active clinic scope, and contains approval details
-    $record = $db->queryOne(
-        "SELECT id, status, patient_id, p_insurance_plan, office_id, approval_expire_date 
-         FROM `pre-auth` 
-         WHERE id = ? AND office_id = ? LIMIT 1",
-        [$id, $sessionOfficeId]
+    // 2. Fetch only the specifically targeted procedure line item row details
+    $targetLine = $db->queryOne(
+        "SELECT pa.id, pa.case_id, pa.status, pa.p_insurance_plan, pa.approval_expire_date, pa.teeth_number,
+                proc.name AS procedure_name
+         FROM `pre-auth` pa
+         INNER JOIN `procedures` proc ON pa.procedure_id = proc.id
+         WHERE pa.id = ? LIMIT 1",
+        [$preAuthId]
     );
 
-    if (!$record) {
-        Api::error('Target pre-authorization record could not be found or access is restricted.', 404);
+    if (!$targetLine) {
+        Api::error('Target pre-authorization record could not be found.', 404);
         exit;
     }
 
-    if (strtolower($record['status']) !== 'approved') {
-        Api::error('Only Approved requests can be scheduled. Current status is: ' . $record['status'], 400);
+    // Validate that the line status is active and approved before booking
+    if (strtolower($targetLine['status']) !== 'approved') {
+        Api::error('Only Approved requests can be scheduled. Current status is: ' . $targetLine['status'], 400);
         exit;
     }
 
-    // 3. Perform Insurance Expiry Validation Checks against requested Date
-    if (!empty($record['approval_expire_date'])) {
-        $expiryTs = strtotime($record['approval_expire_date']);
+    // 3. Perform Insurance Expiry Validation Check against the requested appointment date
+    if (!empty($targetLine['approval_expire_date'])) {
+        $expiryTs  = strtotime($targetLine['approval_expire_date']);
         $bookingTs = strtotime($appointmentDate);
 
         if ($bookingTs > $expiryTs) {
             $formattedExpiry = date('M d, Y', $expiryTs);
-            Api::error("Cannot schedule appointment. The insurance approval expires on {$formattedExpiry}. Please book an appointment before the approval expires.", 400);
+            Api::error("Cannot schedule appointment. The insurance approval for procedure '{$targetLine['procedure_name']}' expires on {$formattedExpiry}. Please book an appointment before the approval expires.", 400);
             exit;
         }
     }
 
-    // 4. Gather Context Data for Audit Records and Email Content Logs
+    // 4. Discover parent context envelope properties securely using the record's linked case identifier
+    $caseId = !empty($targetLine['case_id']) ? (int)$targetLine['case_id'] : (int)$targetLine['id'];
+    
+    $caseRecord = $db->queryOne(
+        "SELECT pac.id AS case_id, pac.patient_id, pac.doctor_id, pac.office_id,
+                pat.name AS patient_name, pat.dob AS patient_dob
+         FROM `pre_auth_cases` pac
+         INNER JOIN `patient` pat ON pac.patient_id = pat.id
+         WHERE pac.id = ? AND pac.office_id = ? LIMIT 1",
+        [$caseId, $sessionOfficeId]
+    );
+
+    if (!$caseRecord) {
+        Api::error('Access restricted or clinic scope mismatch for this record context.', 403);
+        exit;
+    }
+
+    // 5. Gather Context Data for Audit Records and Email Content Logs
     $officeRow  = $db->queryOne("SELECT office_name FROM offices WHERE id = ? LIMIT 1", [$sessionOfficeId]);
     $officeName = $officeRow ? $officeRow['office_name'] : 'Unknown Clinic';
 
     $creator     = $db->queryOne("SELECT name FROM users WHERE user_id = ? LIMIT 1", [$currentUserId]);
     $creatorName = $creator ? $creator['name'] : 'Unknown User';
 
-    $patientRow  = $db->queryOne("SELECT name, dob FROM patient WHERE id = ? LIMIT 1", [$record['patient_id']]);
-    $patientName = $patientRow ? $patientRow['name'] : "Patient ID: #{$record['patient_id']}";
-    $patientDob  = $patientRow ? $patientRow['dob'] : '—';
+    $patientName = $caseRecord['patient_name'];
+    $patientDob  = $caseRecord['patient_dob'] ?: '—';
 
-    // 5. Fetch linked itemized procedures for this specific pre-auth
-    $proceduresList = $db->query(
-        "SELECT pap.tooth_number, proc.name AS procedure_name 
-         FROM `pre_auth_procedures` pap
-         INNER JOIN `procedures` proc ON pap.procedure_id = proc.id
-         WHERE pap.pre_auth_id = ?",
-        [$id]
-    ) ?: [];
+    // Format single target procedure neatly for the notification summary text log block
+    $itemizedEmailRows = "  - Tooth {$targetLine['teeth_number']}: {$targetLine['procedure_name']}\r\n";
 
-    // Format itemized dynamic loops row rows cleanly for the text document block
-    $itemizedEmailRows = "";
-    if (!empty($proceduresList)) {
-        foreach ($proceduresList as $proc) {
-            $itemizedEmailRows .= "  - Tooth {$proc['tooth_number']}: {$proc['procedure_name']}\r\n";
-        }
-    } else {
-        $itemizedEmailRows .= "  - No itemized procedures attached.\r\n";
-    }
-
-    // 6. Execute State Transformation Updates with tracking timestamps
+    // 6. Execute State Transformation Updates ONLY on the clicked item row
     $updateData = [
         'status'           => 'Scheduled',
         'appointment_date' => $appointmentDate,
@@ -103,23 +106,23 @@ try {
         'edit_time'        => date('Y-m-d H:i:s')
     ];
 
-    $db->update('pre-auth', $updateData, ['id' => $id]);
+    $db->update('pre-auth', $updateData, ['id' => $preAuthId]);
 
     // 7. Build and Dispatch Email Notifications Packet
     $subject = "Appointment Scheduled: {$patientName} ({$officeName})";
 
-    $emailBody = "Patient Appointment Scheduled\r\n";
+    $emailBody = "Patient Appointment Scheduled (Isolated Item Execution)\r\n";
     $emailBody .= "---------------------------------------------\r\n";
-    $emailBody .= "Pre-Auth Reference ID: #" . $id . "\r\n";
-    $emailBody .= "Office Scope:         " . $officeName . "\r\n";
-    $emailBody .= "Patient Directory:    " . $patientName . " (ID: #" . $record['patient_id'] . ")\r\n";
-    $emailBody .= "Date of Birth:        " . $patientDob . "\r\n";
-    $emailBody .= "Insurance Plan ID:    " . $record['p_insurance_plan'] . "\r\n";
-    $emailBody .= "Appointment Date:     " . date('M d, Y', strtotime($appointmentDate)) . "\r\n";
-    $emailBody .= "Approval Expiry Date: " . ($record['approval_expire_date'] ? date('M d, Y', strtotime($record['approval_expire_date'])) : 'N/A') . "\r\n";
-    $emailBody .= "Scheduled By Staff:   " . $creatorName . "\r\n";
+    $emailBody .= "Pre-Auth Reference ID: #" . $preAuthId . "\r\n";
+    $emailBody .= "Case Group Envelope:   #" . $caseId . "\r\n";
+    $emailBody .= "Office Scope:          " . $officeName . "\r\n";
+    $emailBody .= "Patient Directory:     " . $patientName . " (ID: #" . $caseRecord['patient_id'] . ")\r\n";
+    $emailBody .= "Date of Birth:         " . $patientDob . "\r\n";
+    $emailBody .= "Insurance Plan ID:     " . ($targetLine['p_insurance_plan'] ?: 'N/A') . "\r\n";
+    $emailBody .= "Appointment Date:      " . date('M d, Y', strtotime($appointmentDate)) . "\r\n";
+    $emailBody .= "Scheduled By Staff:    " . $creatorName . "\r\n";
     $emailBody .= "---------------------------------------------\r\n";
-    $emailBody .= "Itemized Treatments Matrix:\r\n";
+    $emailBody .= "Scheduled Treatment:\r\n";
     $emailBody .= $itemizedEmailRows;
     $emailBody .= "---------------------------------------------\r\n";
 
@@ -127,8 +130,8 @@ try {
     // EmailSender::send('Ourayfax@gmail.com', $subject, $emailBody);
 
     // 8. Return standard API Success Object
-    Api::success(null, 'Pre-authorization reference #' . $id . ' has been updated to Scheduled and appointment set.');
+    Api::success(null, 'Pre-authorization reference #' . $preAuthId . ' has been successfully updated to Scheduled.');
 
 } catch (Exception $e) {
-    Api::error('Scheduling state modification or notification failure: ' . $e->getMessage(), 500);
+    Api::error('Scheduling state modification or procedure isolation failure: ' . $e->getMessage(), 500);
 }

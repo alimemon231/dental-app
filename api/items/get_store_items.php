@@ -56,12 +56,11 @@ $sql = "SELECT
         LEFT JOIN categories c ON ic.category_id = c.id
         WHERE $whereSql
         GROUP BY i.id
-        ORDER BY i.id DESC
-        LIMIT ? OFFSET ?";
+        ORDER BY i.id DESC";
 
 // Pagination parameters always come last
-$queryData = array_merge($params, [$limit, $offset]);
-$items = $db->query($sql, $queryData);
+
+$items = $db->query($sql, $params);
 
 // 4. Total Count for Pagination[cite: 4]
 $countSql = "SELECT COUNT(DISTINCT i.id) as total FROM items i 

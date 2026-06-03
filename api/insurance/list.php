@@ -19,16 +19,15 @@ if ($search) {
     $like = '%' . $search . '%';
     // Search by company name, email, or notes
     $insurance = $db->query(
-        "SELECT id, name, email, phone ,description, status
+        "SELECT *
          FROM insurance 
-         WHERE name LIKE ? OR email LIKE ? OR notes LIKE ?
          ORDER BY name ASC",
-        [$like, $like, $like]
+        []
     );
 } else {
     // Return all providers ordered by newest first for the management table
     $insurance = $db->query(
-        "SELECT id, name, email, phone , description, status
+        "SELECT id, name, email , description, status
          FROM insurance 
          ORDER BY id DESC"
     );

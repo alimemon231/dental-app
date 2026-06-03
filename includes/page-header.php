@@ -61,6 +61,7 @@ if ($currentUser['role'] == 'admin') {
     'Supply Settings' => [
       ['label' => 'Supply Items', 'icon' => 'fa-box', 'href' => '/items.php', 'key' => 'items'],
       ['label' => 'Supply Categories', 'icon' => 'fa-boxes', 'href' => '/categories.php', 'key' => 'categories'],
+      ['label' => 'Orders', 'icon' => 'fa-shopping-bag', 'href' => '/doc-order.php', 'key' => 'order'],
 
     ],
 
@@ -91,6 +92,7 @@ if ($currentUser['role'] == 'admin') {
     'Supply Settings' => [
       ['label' => 'Order History', 'icon' => 'fa-shopping-bag', 'href' => '/emp-order.php', 'key' => 'order'],
       ['label' => 'Supply Items', 'icon' => 'fa-pills', 'href' => '/emp-items.php', 'key' => 'dashboard'],
+      ['label' => 'Orders', 'icon' => 'fa-shopping-bag', 'href' => '/doc-order.php', 'key' => 'order'],
     ],
 
   ];

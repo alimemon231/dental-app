@@ -1,7 +1,7 @@
 <?php
 /**
  * GET api/patient/pre-auth-his.php?patient_id=XX
- * Fetches the entire multi-row Pre-Auth history for a specific patient.
+ * Fetches the entire multi-row split Pre-Auth history timeline for a specific patient matching the new schema architecture.
  */
 require_once __DIR__ . '/../../includes/Auth.php';
 
@@ -9,134 +9,157 @@ $db   = new Database();
 $auth = new Auth($db);
 $auth->requireAuth();
 
-// 1. Role Authorization Gate
+// 1. Role Authorization Gate Checking (Bypass role assignments validation block safely)
 $userRole = $auth->userRole();
 if ($userRole !== 'admin' && $userRole !== 'staff' && $userRole !== 'doctor') {
-    Api::error('Unauthorized access. Operational privileges required.', 403);
+    Api::error('Unauthorized access. Operational privilege credentials clearance failure.', 403);
     exit;
 }
 
-// 2. Validate input parameter
+// 2. Validate Target Input Parameters
 $patientId = (int)($_GET['patient_id'] ?? 0);
 if (!$patientId) {
-    Api::error('A valid Patient ID is required to fetch pre-auth history.');
+    Api::error('A valid Patient ID configuration argument is required to fetch history profiles.');
     exit;
 }
 
-// Capture current clinic context for workspace security scoping rules
+// Capture current clinic context for workforce workspace security checking
 $sessionOfficeId = (int)($_SESSION['office_id'] ?? 0);
 
 try {
     /**
-     * 3. Complete Relational Master History Query
-     * Filters strictly by patient_id instead of a single document record key.
+     * 3. Complete Relational Master History Compilation Query
+     * Selects individual itemized line procedures from `pre-auth` joined directly onto parent master cases mapping `patient_id`.
      */
     $sql = "
         SELECT 
-            pa.*,
-            o.office_name,
-            o.office_name AS clinic_name,
+            pa.id AS pre_auth_id,
+            pa.id AS id,
+            pa.case_id,
+            pa.procedure_id,
+            pa.teeth_number AS tooth_number,
+            pa.p_insurance_plan,
+            pa.appointment_date,
+            pa.created_at,
+            pa.created_by,
+            pa.approved_by,
+            pa.approval_expire_date,
+            pa.status,
+            pa.edited_by,
+            pa.edit_time,
+            pa.notes,
+            proc.name AS procedure_name,
             ins.name AS insurance_name,
+            pac.patient_id,
+            pac.doctor_id,
+            pac.office_id,
+            o.office_name AS clinic_name,
+            o.office_name AS office_name,
             pat.name AS patient_name,
             pat.dob AS patient_dob,
+            doc.name AS doctor_name,
             u_creator.name AS creator_name,
             u_creator.name AS staff_name,
             u_editor.name AS editor_name,
             u_approver.name AS approver_name
         FROM `pre-auth` pa
-        INNER JOIN `patient` pat ON pa.patient_id = pat.id
-        LEFT JOIN offices o ON pa.office_id = o.id
-        LEFT JOIN insurance ins ON pa.p_insurance_plan = ins.id
-        LEFT JOIN users u_creator ON pa.created_by = u_creator.user_id
-        LEFT JOIN users u_editor ON pa.edited_by = u_editor.user_id
-        LEFT JOIN users u_approver ON pa.approved_by = u_approver.user_id
-        WHERE pa.patient_id = ?
+        INNER JOIN `pre_auth_cases` pac ON pa.case_id = pac.id
+        INNER JOIN `patient` pat ON pac.patient_id = pat.id
+        LEFT JOIN `procedures` proc ON pa.procedure_id = proc.id
+        LEFT JOIN `offices` o ON pac.office_id = o.id
+        LEFT JOIN `insurance` ins ON pa.p_insurance_plan = ins.id
+        LEFT JOIN `users` doc ON pac.doctor_id = doc.user_id
+        LEFT JOIN `users` u_creator ON pa.created_by = u_creator.user_id
+        LEFT JOIN `users` u_editor ON pa.edited_by = u_editor.user_id
+        LEFT JOIN `users` u_approver ON pa.approved_by = u_approver.user_id
+        WHERE pac.patient_id = ?
         ORDER BY pa.id DESC
     ";
 
     $records = $db->query($sql, [$patientId]) ?: [];
+    $filteredRecords = [];
 
     /**
-     * 4. Multi-Row Parsing Loop & Security Workspace Gate checking
+     * 4. Multi-Row Parameter Normalization & Workspace Security Gate Processing
      */
-    foreach ($records as &$record) {
-        // Workspace Security: staff users can only view records matching their clinic session
+    foreach ($records as $record) {
+        // Workspace Security Separation: staff users can only access records tracking their active clinic workspace location
         if (($userRole === 'staff' || $userRole === 'employee') && $sessionOfficeId > 0 && (int)$record['office_id'] !== $sessionOfficeId) {
-            // Mask or omit cross-clinic data if strict data separation rule applies
+            // Drop out of the matrix assignment loop to isolate target record entries securely
             continue;
         }
 
-        $record['notes'] = !empty($record['notes']) ? $record['notes'] : 'No additional notes provided by operational staff.';
-        
-        // Safely format patient dates of birth
+        // Clean values formatting fallback operations
+        $record['pre_auth_id']    = (int)$record['pre_auth_id'];
+        $record['case_id']        = (int)$record['case_id'];
+        $record['patient_id']     = (int)$record['patient_id'];
+        $record['doctor_id']      = (int)$record['doctor_id'];
+        $record['office_id']      = (int)$record['office_id'];
+        $record['procedure_id']   = (int)$record['procedure_id'];
+        $record['p_insurance_plan'] = (int)$record['p_insurance_plan'];
+
+        $record['notes']          = !empty($record['notes']) ? $record['notes'] : '';
+        $record['doctor_name']    = $record['doctor_name'] ?: 'Unassigned Doctor';
+        $record['clinic_name']    = $record['clinic_name'] ?: 'Unknown Clinic Location';
+        $record['insurance_name'] = $record['insurance_name'] ?: 'No Insurance';
+        $record['creator_name']   = $record['creator_name'] ?: 'System';
+        $record['editor_name']    = $record['editor_name'] ?: '—';
+        $record['approver_name']  = $record['approver_name'] ?: '—';
+        $record['p_insurance_id'] = $record['insurance_name'];
+
+        // Format dynamic patient demographics attributes
         if (!empty($record['patient_dob'])) {
             $record['p_dob'] = date('M d, Y', strtotime($record['patient_dob']));
         } else {
             $record['p_dob'] = '—';
         }
 
-        // Apply fallback timeline UI date strings
-        $record['created_at_fmt'] = date('m/d/Y h:i A', strtotime($record['created_at']));
-        $record['formatted_date'] = date('M d, Y h:i A', strtotime($record['created_at']));
-        $record['time_ago']        = timeAgo($record['created_at']);
+        // Apply fallback timeline UI date template strings matching schema specification properties
+        $record['created_at_fmt']      = date('m/d/Y h:i A', strtotime($record['created_at']));
+        $record['formatted_date']      = date('M d, Y h:i A', strtotime($record['created_at']));
+        $record['formatted_created_at'] = date('M d, Y h:i A', strtotime($record['created_at']));
+        $record['time_ago']            = timeAgo($record['created_at']);
         
-        if (!empty($record['edit_time'])) {
+        if (!empty($record['edit_time']) && $record['edit_time'] !== '0000-00-00 00:00:00') {
             $record['formatted_edit_time'] = date('M d, Y h:i A', strtotime($record['edit_time']));
         } else {
-            $record['formatted_edit_time'] = null;
+            $record['formatted_edit_time'] = '—';
         }
 
-        if (!empty($record['appointment_date'])) {
+        if (!empty($record['approval_expire_date'])) {
+            $record['formatted_expiry'] = date('M d, Y', strtotime($record['approval_expire_date']));
+        } else {
+            $record['formatted_expiry'] = '—';
+        }
+
+        if (!empty($record['appointment_date']) && $record['appointment_date'] !== '0000-00-00 00:00:00') {
             $record['appointment_date_fmt'] = date('M d, Y h:i A', strtotime($record['appointment_date']));
         } else {
             $record['appointment_date_fmt'] = '—';
         }
 
-        $record['p_insurance_id'] = $record['insurance_name'] ?? '—'; 
+        // Structural fallback wrapper array to guarantee backward compatibility with multi-procedure loop expectations
+        $record['procedures_list'] = [[
+            'procedure_id'   => $record['procedure_id'],
+            'tooth_number'   => $record['tooth_number'],
+            'procedure_name' => $record['procedure_name']
+        ]];
 
-        /**
-         * 5. Collect Multi-Row Linked Treatment Matrices for this individual entry
-         */
-        $procSql = "
-            SELECT 
-                pap.procedure_id,
-                pap.tooth_number,
-                proc.name AS procedure_name
-            FROM `pre_auth_procedures` pap
-            INNER JOIN `procedures` proc ON pap.procedure_id = proc.id
-            WHERE pap.pre_auth_id = ?
-        ";
-        $record['procedures_list'] = $db->query($procSql, [$record['id']]) ?: [];
-
-        // Compile relational arrays into readable strings for direct front-end consumption
-        if (!empty($record['procedures_list'])) {
-            $names = [];
-            $teeth = [];
-            foreach ($record['procedures_list'] as $item) {
-                $names[] = $item['procedure_name'];
-                $teeth[] = $item['tooth_number'];
-            }
-            $record['procedure_name'] = implode(', ', $names);
-            $record['tooth_numbers']  = implode(', ', $teeth);
-        } else {
-            $record['procedure_name'] = $record['procedure_name'] ?? 'No procedures assigned';
-            $record['tooth_numbers']  = $record['tooth_numbers'] ?? '—';
-        }
+        $filteredRecords[] = $record;
     }
-    unset($record); // Clear reference pointer
 
-    // 6. Return response array structure via the standard success envelope
-    Api::success($records, 'Patient authorization history timeline fetched successfully.');
+    // 5. Return compiled records data payload context array matrix structure 
+    Api::success($filteredRecords, 'Patient authorization history timeline tracking profiles compiled successfully.');
 
 } catch (Exception $e) {
-    Api::error('Database lookup failed: ' . $e->getMessage(), 500);
+    Api::error('Global database query engine lookup processing failure: ' . $e->getMessage(), 500);
 }
 
 /**
- * Helper: Human-readable relative time
+ * Helper: Human-readable relative calculation timestamps metric system
  */
 function timeAgo($datetime) {
-    if (empty($datetime)) return '—';
+    if (!$datetime || $datetime === '0000-00-00 00:00:00') return '—';
     $time = strtotime($datetime);
     if (!$time) return '—';
     

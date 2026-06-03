@@ -1,7 +1,7 @@
 <?php
 /**
  * POST api/emp-pre-auth/send-pre-auth.php
- * Promotes a pre-auth record status condition securely to 'Sent' and handles management email alerts.
+ * Promotes an individual procedure row status to 'Sent' and dispatches case email alerts.
  */
 require_once __DIR__ . '/../../includes/Auth.php';
 require_once __DIR__ . '/../../includes/EmailSender.php';
@@ -31,10 +31,10 @@ if ($sessionOfficeId <= 0) {
 }
 
 try {
-    // 2. Verify that the targeted record exists and belongs to the active clinic group
+    // 2. Verify that the targeted row exists and matches session context parameters
     $record = $db->queryOne(
-        "SELECT id, status, patient_id, p_insurance_plan, office_id FROM `pre-auth` WHERE id = ? AND office_id = ? LIMIT 1",
-        [$id, $sessionOfficeId]
+        "SELECT * FROM `pre-auth` WHERE id = ? LIMIT 1",
+        [$id]
     );
 
     if (!$record) {
@@ -42,7 +42,22 @@ try {
         exit;
     }
 
-    if (strtolower($record['status']) !== 'create') {
+    $caseId = (int)$record['case_id'];
+
+    // Double check authorization safety context via parent case profile lookup
+    $caseMetadata = $db->queryOne(
+        "SELECT id, patient_id, office_id FROM `pre_auth_cases` WHERE id = ? AND office_id = ? LIMIT 1",
+        [$caseId, $sessionOfficeId]
+    );
+
+    if (!$caseMetadata) {
+        Api::error('Pre-Auth record context lost or access denied across clinic branches.', 403);
+        exit;
+    }
+
+    // Allow states matching 'requested', 'create', or 'created' variations flexibly
+    $normalizedStatus = strtolower(trim($record['status']));
+    if ($normalizedStatus !== 'create' && $normalizedStatus !== 'created' && $normalizedStatus !== 'requested') {
         Api::error('This record cannot be marked as sent because its current state is: ' . $record['status'], 400);
         exit;
     }
@@ -54,30 +69,32 @@ try {
     $creator     = $db->queryOne("SELECT name FROM users WHERE user_id = ? LIMIT 1", [$currentUserId]);
     $creatorName = $creator ? $creator['name'] : 'Unknown User';
 
-    $patientRow  = $db->queryOne("SELECT name, dob FROM patient WHERE id = ? LIMIT 1", [$record['patient_id']]);
-    $patientName = $patientRow ? $patientRow['name'] : "Patient ID: #{$record['patient_id']}";
+    // FIX: Grab patient details via the caseMetadata ID array key instead of itemized record array key
+    $patientRow  = $db->queryOne("SELECT name, dob FROM patient WHERE id = ? LIMIT 1", [$caseMetadata['patient_id']]);
+    $patientName = $patientRow ? $patientRow['name'] : "Patient ID: #{$caseMetadata['patient_id']}";
     $patientDob  = $patientRow ? $patientRow['dob'] : '—';
 
-    // 4. Fetch the linked itemized procedures for this specific pre-auth
+    // 4. Fetch the target row's details using your schema format
     $proceduresList = $db->query(
-        "SELECT pap.tooth_number, proc.name AS procedure_name 
-         FROM `pre_auth_procedures` pap
-         INNER JOIN `procedures` proc ON pap.procedure_id = proc.id
-         WHERE pap.pre_auth_id = ?",
+        "SELECT pa.teeth_number AS tooth_number, proc.name AS procedure_name 
+         FROM `pre-auth` pa
+         INNER JOIN `procedures` proc ON pa.procedure_id = proc.id
+         WHERE pa.id = ? 
+         LIMIT 1",
         [$id]
     ) ?: [];
 
-    // Format child loop information rows cleanly for the email text string
+    // Format target procedure details loop cleanly for the text string
     $itemizedEmailRows = "";
     if (!empty($proceduresList)) {
         foreach ($proceduresList as $proc) {
-            $itemizedEmailRows .= "  - Tooth {$proc['tooth_number']}: {$proc['procedure_name']}\r\n";
+            $itemizedEmailRows .= "  - Tooth " . ($proc['tooth_number'] ?: '—') . ": {$proc['procedure_name']}\r\n";
         }
     } else {
         $itemizedEmailRows .= "  - No itemized procedures attached.\r\n";
     }
 
-    // 5. Execute State Transformation Update inside a clean try block
+    // 5. Execute State Transformation Update
     $updateData = [
         'status'    => 'Sent',
         'edited_by' => $currentUserId,
@@ -90,8 +107,10 @@ try {
     $emailBody = "Pre-Authorization Dispatched / Marked as Sent\r\n";
     $emailBody .= "---------------------------------------------\r\n";
     $emailBody .= "Pre-Auth Reference ID: #" . $id . "\r\n";
-    $emailBody .= "Office Scope:         " . $officeName . "\r\n";
-    $emailBody .= "Patient Directory:    " . $patientName . " (ID: #" . $record['patient_id'] . ")\r\n";
+    $emailBody .= "Parent Case ID:        #" . $caseId . "\r\n";
+    $emailBody .= "Office Scope:          " . $officeName . "\r\n";
+    // FIX: Map text block references from caseMetadata configuration data maps
+    $emailBody .= "Patient Directory:    " . $patientName . " (ID: #" . $caseMetadata['patient_id'] . ")\r\n";
     $emailBody .= "Date of Birth:        " . $patientDob . "\r\n";
     $emailBody .= "Insurance Plan ID:    " . $record['p_insurance_plan'] . "\r\n";
     $emailBody .= "Status Condition:     Sent\r\n";
@@ -102,10 +121,10 @@ try {
     $emailBody .= "---------------------------------------------\r\n";
 
     // Dispatching out to fax dashboard inbox email destination hook
-    //EmailSender::send('Ourayfax@gmail.com', "Dispatched Pre-Auth: {$patientName} ({$officeName})", $emailBody);
+    // EmailSender::send('Ourayfax@gmail.com', "Dispatched Pre-Auth: {$patientName} ({$officeName})", $emailBody);
 
     // 7. Return API Success Object
-    Api::success(null, 'Pre-authorization reference #' . $id . ' has been updated to Sent and management notified.');
+    Api::success(null, 'Pre-authorization reference #' . $id . ' has been updated to Sent and metrics dispatched.');
 
 } catch (Exception $e) {
     Api::error('Transmission state modification or notification failure: ' . $e->getMessage(), 500);

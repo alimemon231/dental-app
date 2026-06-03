@@ -161,6 +161,9 @@
                             <div id="status-options" class="card shadow-sm"
                                 style="display:none; position:absolute; top:100%; left:0; width:100%; z-index:100; padding:10px; max-height:250px; overflow-y:auto;">
                                 <label class="flex flex-align gap-2 mb-2" style="cursor:pointer">
+                                    <input type="checkbox" class="status-checkbox" value="Requested"> Requested
+                                </label>
+                                 <label class="flex flex-align gap-2 mb-2" style="cursor:pointer">
                                     <input type="checkbox" class="status-checkbox" value="Sent"> Pending (Sent)
                                 </label>
                                 <label class="flex flex-align gap-2 mb-2" style="cursor:pointer">
@@ -227,10 +230,11 @@
                         <thead>
                             <tr>
                                 <th style="min-width: 200px;">Patient & Treatment</th>
-                                <th class="text-center">1. Sent</th>
-                                <th class="text-center">2. Decision</th>
-                                <th class="text-center">3. Booking</th>
-                                <th class="text-center">4. Result</th>
+                                 <th class="text-center">1. Requested</th>
+                                <th class="text-center">2. Sent</th>
+                                <th class="text-center">3. Decision</th>
+                                <th class="text-center">4. Booking</th>
+                                <th class="text-center">5. Result</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
