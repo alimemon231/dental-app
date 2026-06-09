@@ -442,6 +442,46 @@ $(document).ready(function () {
     }
 
     /* ================================================================
+        AUTOMATED AMERICAN PHONE FORMATTER MATRIX
+    ============================================================ */
+    $(document).on('input keydown', 'input[name="phone"], #phone', function (e) {
+        // Allow structural control keys to process normally (Backspace, Delete, Tab, Arrow Keys, etc.)
+        if (e.type === 'keydown' && [8, 9, 13, 16, 27, 35, 36, 37, 38, 39, 40, 46].indexOf(e.keyCode) !== -1) {
+            return;
+        }
+
+        var input = $(this);
+        // Strips everything except integers/digits
+        var num = input.val().replace(/\D/g, ''); 
+        
+        // Strict boundary gate validation: drop extra trailing input characters
+        if (num.length > 10) {
+            num = num.substring(0, 10);
+        }
+        
+        // Format assembly strings based on current active length coordinates
+        var formatted = '';
+        if (num.length > 0) {
+            formatted += '(' + num.substring(0, 3);
+        }
+        if (num.length >= 3) {
+            formatted += ') ';
+        }
+        if (num.length > 3) {
+            formatted += num.substring(3, 6);
+        }
+        if (num.length >= 6) {
+            formatted += '-';
+        }
+        if (num.length > 6) {
+            formatted += num.substring(6, 10);
+        }
+        
+        // Return structured string configuration safely to the input layout view
+        input.val(formatted);
+    });
+
+    /* ================================================================
         INITIALIZATION HOOKS
     ============================================================ */
     populateOfficeDropdowns();

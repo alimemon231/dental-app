@@ -1,7 +1,9 @@
 $(document).ready(function () {
     loadScheduledLabs();
 
-    // Open Completion Modal (Kept as is, but updated to pass relational patient name)
+    // ==========================================
+    // WORKFLOW TASK A: COMPLETE LAB PROCESS
+    // ==========================================
     $(document).on('click', '.btn-mark-done', function () {
         const id = $(this).data('id');
         const name = $(this).data('name');
@@ -10,7 +12,6 @@ $(document).ready(function () {
         App.modal.open('complete-modal');
     });
 
-    // Handle AJAX Completion (Unchanged)
     $('#btn-confirm-done').on('click', function () {
         const id = $('#complete-lab-id').val();
         const btn = $(this);
@@ -28,7 +29,50 @@ $(document).ready(function () {
         });
     });
 
-    // View Details (Updated rendering parameters to map your new API structure)
+    // ==========================================
+    // WORKFLOW TASK B: RESCHEDULE LAB ENGINE
+    // ==========================================
+    $(document).on('click', '.btn-rescedule', function () {
+        const id = $(this).data('id');
+        const name = $(this).data('name');
+        
+        // Populate modal data targets
+        $('#reschedule-lab-id').val(id);
+        $('#reschedule-patient-name').text(name);
+        $('#reschedule-date').val(''); // Reset input value element matrix
+        
+        App.modal.open('reschedule-modal');
+    });
+
+    $('#btn-confirm-reschedule').on('click', function () {
+        const id = $('#reschedule-lab-id').val();
+        const newDate = $('#reschedule-date').val();
+        const btn = $(this);
+
+        if (!newDate) {
+            App.toast.error('Validation Error', 'Please select a valid future date and time coordinate.');
+            return;
+        }
+
+        App.ajax({
+            url: '/emp-labs/reschedule.php',
+            method: 'POST',
+            data: { 
+                id: id,
+                date_scheduled: newDate 
+            },
+            btn: btn,
+            onSuccess: function (d, msg) {
+                App.toast.success('Rescheduled', msg);
+                App.modal.close('reschedule-modal');
+                loadScheduledLabs();
+            }
+        });
+    });
+
+    // ==========================================
+    // WORKFLOW TASK C: RENDER DETAIL PROFILES
+    // ==========================================
     $(document).on('click', '.btn-view', function () {
         var id = $(this).data('id');
 
@@ -39,7 +83,6 @@ $(document).ready(function () {
                 var html =
                     '<div class="grid-2" style="gap:var(--sp-8)">' +
 
-                    // Left Column: Patient, Provider & Clinic Context
                     '<div>' +
                     '<div class="form-section-title mb-4"><i class="fa-solid fa-user-doctor"></i> General Information</div>' +
                     infoRow('Lab ID', '<span class="text-bold text-primary">#LAB-' + r.id + '</span>') +
@@ -55,7 +98,6 @@ $(document).ready(function () {
                     infoRow('Lower Arch', App.utils.escHtml(r.l_arch || '—')) +
                     '</div>' +
 
-                    // Right Column: Workflow Status, Timeline Logs & Follow-up
                     '<div>' +
                     '<div class="form-section-title mb-4"><i class="fa-solid fa-circle-info"></i> Workflow Status</div>' +
                     infoRow('Current Status', '<span class="status-badge status-' + (r.status || 'sent').toLowerCase() + '">' + (r.status || 'Sent') + '</span>') +
@@ -71,7 +113,6 @@ $(document).ready(function () {
                     '<div class="form-section-title mt-6 mb-4"><i class="fa-solid fa-calendar-check"></i> Follow-up</div>' +
                     infoRow('Next Procedure', App.utils.escHtml(r.next_visit_step_name || '—')) +
 
-                    // Notes Section
                     '<div class="mt-4 p-3 bg-light border-radius-sm" style="border-left: 3px solid var(--color-primary); padding-left:12px;">' +
                     '<small class="text-muted d-block mb-1">Lab Notes:</small>' +
                     '<div style="white-space: pre-wrap;">' + App.utils.escHtml(r.notes || 'No specific instructions provided.') + '</div>' +
@@ -88,7 +129,9 @@ $(document).ready(function () {
     });
 });
 
-// Load Scheduled Labs (Updated variables mapping to the array format)
+// ==========================================
+// DATA RETRIEVAL GENERATION MATRIX
+// ==========================================
 function loadScheduledLabs() {
     App.ajax({
         url: '/emp-labs/list-scheduled.php',
@@ -112,6 +155,9 @@ function loadScheduledLabs() {
                                 </button>
                                 <button class="btn btn-primary btn-sm btn-mark-done" data-id="${r.id}" data-name="${App.utils.escHtml(r.patient_name || 'Patient')}">
                                     <i class="fa-solid fa-check"></i> Done
+                                </button>
+                                <button class="btn btn-danger btn-sm btn-rescedule" data-id="${r.id}" data-name="${App.utils.escHtml(r.patient_name || 'Patient')}" title="Reschedule Appointment">
+                                    <i class="fa-solid fa-rotate"></i>
                                 </button>
                             </div>
                         </td>

@@ -12,17 +12,18 @@
 
 <body>
     <div class="app-shell">
-        <?php 
+        <?php
         $pageTitle = "Finalize Lab Cases";
         $activePage = "labs_done";
-        require_once "includes/page-header.php"; 
+        require_once "includes/page-header.php";
         ?>
         <main class="main-content">
             <div class="page-wrapper">
                 <div class="page-header">
                     <div class="page-header-left">
                         <h1>Finalize Lab Procedures</h1>
-                        <div class="page-header-sub">Mark scheduled lab cases as completed once the procedure is finished.</div>
+                        <div class="page-header-sub">Mark scheduled lab cases as completed once the procedure is
+                            finished.</div>
                     </div>
                 </div>
 
@@ -31,7 +32,7 @@
                         <thead>
                             <tr>
                                 <th>Lab Case NO#</th>
-                                 <th>Patient Name</th>
+                                <th>Patient Name</th>
                                 <th>Scheduled Date</th>
                                 <th>Doctor</th>
                                 <th>Case Type</th>
@@ -42,7 +43,8 @@
                         <tbody id="labs-done-tbody">
                             <tr>
                                 <td colspan="6">
-                                    <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading Scheduled Cases...</div>
+                                    <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading
+                                        Scheduled Cases...</div>
                                 </td>
                             </tr>
                         </tbody>
@@ -90,14 +92,46 @@
                             <div class="mb-4">
                                 <i class="fa-solid fa-circle-check text-success" style="font-size: 3rem;"></i>
                             </div>
-                            <p>Are you sure the procedure for <strong id="complete-patient-name"></strong> is <strong>Finished</strong>?</p>
-                            <p class="text-muted text-sm">This will mark the lab case as "Done" and record today's date as the completion date.</p>
+                            <p>Are you sure the procedure for <strong id="complete-patient-name"></strong> is
+                                <strong>Finished</strong>?</p>
+                            <p class="text-muted text-sm">This will mark the lab case as "Done" and record today's date
+                                as the completion date.</p>
                             <input type="hidden" id="complete-lab-id">
                         </div>
                         <div class="modal-footer">
                             <button class="btn btn-ghost" data-close-modal="complete-modal">Cancel</button>
                             <button class="btn btn-primary" id="btn-confirm-done">
                                 <i class="fa-solid fa-check-double"></i> Yes, Procedure Done
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-backdrop" id="reschedule-modal">
+                    <div class="modal modal-sm">
+                        <div class="modal-header">
+                            <div class="modal-title">Reschedule Lab Appointment</div>
+                            <button class="modal-close" data-close-modal="reschedule-modal">&#x2715;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="text-center mb-4">
+                                <i class="fa-solid fa-calendar-days text-danger" style="font-size: 3rem;"></i>
+                                <p class="mt-2">Select a new treatment timeline deployment date for <strong
+                                        id="reschedule-patient-name"></strong>.</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="reschedule-date" class="form-label text-sm text-muted">New Scheduled Date &
+                                    Time</label>
+                                <input type="date" id="reschedule-date" class="form-control" required>
+                            </div>
+
+                            <input type="hidden" id="reschedule-lab-id">
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-ghost" data-close-modal="reschedule-modal">Cancel</button>
+                            <button class="btn btn-danger" id="btn-confirm-reschedule">
+                                <i class="fa-solid fa-clock"></i> Save New Schedule
                             </button>
                         </div>
                     </div>
@@ -113,8 +147,9 @@
     <script>
         $(document).ready(function () {
             App.auth.check();
-            App.auth.role(['staff' , 'doctor']);
+            App.auth.role(['staff', 'doctor']);
         });
     </script>
 </body>
+
 </html>

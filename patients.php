@@ -115,7 +115,7 @@
                                             <label class="form-label">Phone Number <span
                                                     class="required">*</span></label>
                                             <input type="tel" name="phone" id="phone" class="form-control"
-                                                placeholder="e.g. +1 (555) 000-0000" required>
+                                                placeholder="e.g. (555) 000-0000" required>
                                             <span class="form-error">Phone number is required.</span>
                                         </div>
                                         <div class="form-group">
