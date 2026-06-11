@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="assets/css/global.css">
     <link rel="stylesheet" href="assets/css/layout.css">
-    <link rel="stylesheet" href="assets/css/lab-monitor-custom.css">
+    
     <style>
         /* Progress Bar Styles */
         .progress-track {
@@ -253,6 +253,24 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="modal-backdrop" id="confirm-modal">
+                    <div class="modal modal-sm">
+                        <div class="modal-header">
+                            <div class="modal-title" id="confirm-title">Confirm Action</div>
+                            <button class="modal-close" data-close-modal="confirm-modal">&#x2715;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="confirm-body-content"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-ghost" data-close-modal="confirm-modal" id="confirm-cancel">Cancel</button>
+                            <button class="btn" id="confirm-ok">Proceed</button>
+                        </div>
+                    </div>
+                </div>
+
+                
             </div>
         </main>
     </div>

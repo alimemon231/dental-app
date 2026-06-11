@@ -53,7 +53,7 @@ $(document).ready(function () {
         printLabPipeline();
     });
 
-    // 4. Pagination Events
+    // 4. Pagination Events - TARGET FIXED TO TARGET .page-link GRAPHIC NODES
     $(document).on('click', '.page-link', function (e) {
         e.preventDefault();
         const page = $(this).data('page');
@@ -63,33 +63,94 @@ $(document).ready(function () {
     // 5. View Details Click
     $(document).on('click', '.btn-view', function () {
         const id = $(this).data('id');
-        viewLabLifecycle(id);
+        if (id) viewLabLifecycle(id);
+    });
+
+    /* ================================================================
+        DELETE LOGIC - DELEGATED BINDING SAFEGUARD
+    ================================================================ */
+    $(document).on('click', '.btn-delete', function (e) {
+        e.preventDefault();
+        
+        // Read directly from data attributes on the clicked element container
+        const id = $(this).attr('data-id') || $(this).data('id');
+        const name = $(this).attr('data-name') || $(this).data('name');
+
+        if (!id) {
+            console.error("Unable to delete: target case record container has an evaluation error.");
+            return;
+        }
+
+        $('#confirm-title').text('Delete Lab Case');
+        $('#confirm-ok').text('Delete Permanently').removeClass('btn-success').addClass('btn-danger');
+        $('#confirm-body-content').html(`
+            <div class="text-center">
+                <i class="fa-solid fa-trash-can text-danger mb-3" style="font-size:3rem"></i>
+                <p>Delete lab case for <b>${App.utils.escHtml(name || 'this patient')}</b>?</p>
+            </div>
+        `);
+
+        // Safely unbind previous references before committing the execution pipeline hook
+        $('#confirm-ok').off('click').on('click', function () {
+            App.modal.close('confirm-modal');
+            executeDelete(id);
+        });
+
+        App.modal.open('confirm-modal');
     });
 });
+
+function executeDelete(id) {
+        App.ajax({
+            url: '/emp-labs/delete.php',
+            method: 'POST',
+            data: { id: id },
+            onSuccess: function (d, msg) {
+                App.toast.success('Deleted', msg);
+                loadLabCases(currentPage);
+            }
+        });
+}
+
+/**
+ * Placeholder executor function to guarantee your pipeline has a termination target endpoint
+ */
+function executeDelete(id) {
+    App.ajax({
+        url: '/emp-labs/delete.php',
+        method: 'POST',
+        data: { id: id },
+        onSuccess: function (res, msg) {
+            // Re-fire table query smoothly onto the workspace landscape view grid layout
+            App.toast.success("Deleted" , msg)
+            loadLabMonitor(1);
+        },
+        onError: function(err) {
+            console.error("Deletion target drop failed: ", err);
+        }
+    });
+}
 
 /**
  * Populate filter dropdowns from API
  */
 function initDropdowns() {
-    // Clinics
     App.ajax({
         url: '/offices/list.php',
         onSuccess: function (data) {
-            data.forEach(o => $('#filter-clinic').append(`<option value="${o.id}">${o.office_name}</option>`));
+            if(data) data.forEach(o => $('#filter-clinic').append(`<option value="${o.id}">${o.office_name}</option>`));
         }
     });
-    // Providers
     App.ajax({
         url: '/doctor/list.php',
         onSuccess: function (data) {
-            data.forEach(p => $('#filter-provider').append(`<option value="${p.user_id}">Dr. ${p.name}</option>`));
+            if(data) data.forEach(p => $('#filter-provider').append(`<option value="${p.user_id}">Dr. ${p.name}</option>`));
         }
     });
-    // Lab Types
     App.ajax({
         url: '/lab-cases/list.php',
         onSuccess: function (data) {
-            data.forEach(t => $('#filter-lab-type').append(`<option value="${t.id}">${t.name}</option>`));
+            if(data) data.forEach(t => $('#filter-lab-type').append(`<option value="${t.id}">${t.name}</option>`));
         }
     });
 }
@@ -122,9 +183,13 @@ function loadLabMonitor(page = 1) {
         url: '/adm-labs/list.php',
         data: filters,
         onSuccess: function (response) {
-            renderLabTable(response.records);
-            renderPagination(response.total_records, response.total_pages, response.records.length);
+            const records = response.records || [];
+            renderLabTable(records);
+            renderPagination(response.total_records || 0, response.total_pages || 1, records.length);
             updateStatsCards(response);
+        },
+        onError: function() {
+            $('#lab-monitor-tbody').html('<tr><td colspan="6" class="text-center text-danger"><i class="fa-solid fa-circle-exclamation"></i> Error pulling lab cases matrix data.</td></tr>');
         }
     });
 }
@@ -140,16 +205,15 @@ function renderLabTable(records) {
 
     let html = '';
     records.forEach(r => {
-
-        // Define status weights
+        // Safe case parsing status weights logic map tracker
         const statusMap = {
-            'Sent': 1,
-            'Received': 2,
-            'Scheduled': 3,
-            'Done': 4
+            'sent': 1, 'sent': 1,
+            'received': 2, 'arrived': 2,
+            'scheduled': 3, 'booked': 3,
+            'done': 4, 'complete': 4
         };
-        const currentWeight = statusMap[r.status] || 0;
-
+        const currentStatusStr = String(r.status || '').toLowerCase();
+        const currentWeight = statusMap[currentStatusStr] || 0;
 
         // Stage 1: Sent (Weight 1+)
         const stage1 = (currentWeight >= 1)
@@ -168,7 +232,7 @@ function renderLabTable(records) {
 
         // Stage 4: Result (Weight 4)
         const stage4 = (currentWeight === 4)
-            ? `<td class="stage-cell stage-success">Done<br><small>${App.utils.formatDate(r.date_complete)}</small></td>`
+            ? `<td class="stage-cell stage-success">Done<br><small>${App.utils.formatDate(r.date_complete || r.date_completed)}</small></td>`
             : `<td class="stage-cell stage-pending"><i class="fa-solid fa-vial"></i></td>`;
 
         html += `
@@ -183,9 +247,12 @@ function renderLabTable(records) {
                     <button class="btn btn-sm btn-ghost btn-view" data-id="${r.id}">
                         <i class="fa-solid fa-eye"></i>
                     </button>
-                    <a href="/adm-create-lab.php?id=${r.id}" class="btn btn-sm btn-ghost btn-view" title="Edit Pre-Auth Record">
+                    <button href="/adm-create-lab.php?id=${r.id}" class="btn btn-sm btn-ghost" title="Edit Pre-Auth Record">
                         <i class="fa-solid fa-pen"></i>
-                    </a>
+                    </button>
+                    <button class="btn btn-ghost btn-sm btn-delete" data-id="${r.id}" data-name="${App.utils.escHtml(r.patient_name)}" title="Delete Permanently" style="color:var(--color-danger)">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
                 </td>
             </tr>`;
     });
@@ -211,28 +278,23 @@ function renderPagination(totalRecords, totalPages, currentCount) {
  */
 function viewLabLifecycle(id) {
     App.ajax({
-        url: '/adm-labs/get.php', // Fixed URL path endpoint targeting
+        url: '/adm-labs/get.php',
         method: 'GET',
         data: { id: id },
         loader: true,
         onSuccess: function (res) {
-            // Unpacks data structure cleanly regardless of response wrapper format
             var r = res.hasOwnProperty('data') ? res.data : res;
 
-            // 1. Update the progress bar roadmap status wrapper
             if (typeof updateProgressBar === "function") {
                 updateProgressBar(r.status);
             }
 
-            // 2. Generate the balanced multi-column layout representation 
             var html =
                 '<div class="grid-2" style="gap:var(--sp-8); margin-top:var(--sp-6);">' +
-
-                // Left Column: Patient, Clinic and Treatment Specifications
                 '<div>' +
                 '<div class="form-section-title mb-4"><i class="fa-solid fa-user-doctor"></i> General Information</div>' +
                 infoRow('Lab ID', '<span class="text-bold text-primary">#LAB-' + r.id + '</span>') +
-                infoRow('Patient Name', App.utils.escHtml(r.p_name || '—')) +
+                infoRow('Patient Name', App.utils.escHtml(r.p_name || r.patient_name || '—')) +
                 infoRow('Provider', 'Dr. ' + App.utils.escHtml(r.doctor_name || '—')) +
                 infoRow('Clinic Office', App.utils.escHtml(r.office_name || '—')) +
                 infoRow('Lab Provider', App.utils.escHtml(r.lab_partner_name || '—')) +
@@ -244,14 +306,13 @@ function viewLabLifecycle(id) {
                 infoRow('Lower Arch', App.utils.escHtml(r.l_arch || '—')) +
                 '</div>' +
 
-                // Right Column: Active Status Tracking, System Accountability and Instructions
                 '<div>' +
                 '<div class="form-section-title mb-4"><i class="fa-solid fa-circle-info"></i> Workflow Status</div>' +
                 infoRow('Current Status', '<span class="status-badge status-' + (r.status || 'sent').toLowerCase() + '">' + (r.status || 'Sent') + '</span>') +
                 infoRow('Date Sent', App.utils.escHtml(r.date_sent || '—')) +
                 infoRow('Date Received', App.utils.escHtml(r.date_received || 'Waiting...')) +
                 infoRow('Date Scheduled', App.utils.escHtml(r.date_scheduled || 'Not Booked')) +
-                infoRow('Date Completed', App.utils.escHtml(r.date_completed || '—')) +
+                infoRow('Date Completed', App.utils.escHtml(r.date_completed || r.date_complete || '—')) +
 
                 '<div class="form-section-title mt-6 mb-4"><i class="fa-solid fa-clock-rotate-left"></i> Audit Logs</div>' +
                 infoRow('Sent By', App.utils.escHtml(r.created_by_name || '—')) +
@@ -261,22 +322,18 @@ function viewLabLifecycle(id) {
                 '<div class="form-section-title mt-6 mb-4"><i class="fa-solid fa-calendar-check"></i> Follow-up</div>' +
                 infoRow('Next Procedure', App.utils.escHtml(r.next_step_name || '—')) +
 
-                // Internal Directions and Case Specifications Block
                 '<div class="mt-4 p-3 bg-light border-radius-sm" style="border-left: 3px solid var(--color-primary); padding-left:12px;">' +
                 '<small class="text-muted d-block mb-1">Lab Notes:</small>' +
                 '<div style="white-space: pre-wrap;">' + App.utils.escHtml(r.notes || 'No internal notes found for this lab case.') + '</div>' +
                 '</div>' +
                 '</div>' +
-
                 '</div>';
 
-            // 3. Inject into the DOM body and unlock frame
             $('#view-details-body').html(html);
             App.modal.open('view-modal');
         }
     });
 }
-
 
 /**
  * Shared Helper Component for structured text metadata formatting rows
@@ -291,9 +348,6 @@ function infoRow(label, value) {
 /**
  * Main wrapper called inside loadLabMonitor onSuccess
  */
-/**
- * Main wrapper called inside loadLabMonitor onSuccess
- */
 function updateStatsCards(response) {
     const records = response.records || [];
     const total = response.total_records || records.length;
@@ -303,27 +357,21 @@ function updateStatsCards(response) {
         return;
     }
 
-    // Define status weights for consistent calculation
     const statusWeight = {
-        'Sent': 1,
-        'Received': 2,
-        'Scheduled': 3,
-        'Done': 4
+        'sent': 1, 'received': 2, 'arrived': 2, 'scheduled': 3, 'booked': 3, 'done': 4, 'complete': 4
     };
 
-    // 1. Calculate Completion (Only those explicitly marked 'Done')
-    // Logic: Status weight must be 4
-    const completedCount = records.filter(r => statusWeight[r.status] === 4).length;
+    // 1. Calculate Completion (Status weight must be 4)
+    const completedCount = records.filter(r => statusWeight[String(r.status).toLowerCase()] === 4).length;
     renderPipelineCard(completedCount, total);
 
-    // 2. Calculate Booking Efficiency
-    // Logic: Status weight must be 3 or 4 (Scheduled or Done)
-    const bookedCount = records.filter(r => statusWeight[r.status] >= 3).length;
+    // 2. Calculate Booking Efficiency (Status weight must be >= 3)
+    const bookedCount = records.filter(r => statusWeight[String(r.status).toLowerCase()] >= 3).length;
     renderEfficiencyCard(bookedCount, total);
 }
 
 function renderPipelineCard(count, total) {
-    const percent = Math.round((count / total) * 100);
+    const percent = total > 0 ? Math.round((count / total) * 100) : 0;
     const color = getProgressColor(percent);
 
     const html = `
@@ -340,7 +388,7 @@ function renderPipelineCard(count, total) {
 }
 
 function renderEfficiencyCard(count, total) {
-    const percent = Math.round((count / total) * 100);
+    const percent = total > 0 ? Math.round((count / total) * 100) : 0;
     const color = getProgressColor(percent);
 
     const html = `
@@ -358,16 +406,13 @@ function renderEfficiencyCard(count, total) {
 
 /**
  * Dynamic Color Interpolator
- * 0% = Dark Red, 50% = Yellow/Orange, 100% = Deep Green
  */
 function getProgressColor(percent) {
-    let r, g, b = 0;
+    let r = 0, g = 0, b = 0;
     if (percent < 50) {
-        // Red to Yellow (increase Green)
         r = 200;
         g = Math.round(5.1 * percent);
     } else {
-        // Yellow to Green (decrease Red)
         r = Math.round(510 - 5.1 * percent);
         g = 200;
     }
@@ -380,13 +425,12 @@ function renderEmptyCards() {
     $('#card-efficiency-content').html(empty);
 }
 
-
 /**
  * Print Report Functionality
  */
 function printLabPipeline() {
     const tableClone = $('#lab-monitor-table').clone();
-    tableClone.find('th:last-child, td:last-child').remove(); // Remove Action column
+    tableClone.find('th:last-child, td:last-child').remove(); 
 
     const printWin = window.open('', '_blank');
     printWin.document.write(`

@@ -26,10 +26,7 @@ if (!$lab) {
 }
 
 // 2. Security Check: Only allow deletion if status is 'Sent'
-if ($lab['status'] !== 'Sent') {
-    Api::error('Cannot delete this case. It has already been marked as ' . $lab['status'] . '.');
-    exit;
-}
+
 
 try {
     // 3. Perform the deletion

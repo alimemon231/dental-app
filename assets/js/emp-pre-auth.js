@@ -289,9 +289,7 @@ $(document).ready(function () {
                         <button class="btn btn-ghost btn-sm btn-send-preauth" data-id="${targetPreAuthId}" title="Send to Management Review" style="color:var(--color-success)">
                             <i class="fa-solid fa-paper-plane"></i>
                         </button>
-                        <button class="btn btn-ghost btn-sm btn-delete-item" data-id="${targetPreAuthId}" title="Delete Authorization Row" style="color:var(--color-danger)">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
+                        
                     `;
                     }
                     // Condition B: STATUS == 'SENT' (View, Edit, Approve, Reject lifecycle adjustments)

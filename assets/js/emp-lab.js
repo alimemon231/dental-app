@@ -211,9 +211,7 @@ $(document).ready(function () {
                 </button>
                 <button class="btn btn-ghost btn-sm btn-view" data-id="${r.id}" title="View Case Details"><i class="fa-solid fa-eye"></i></button>
                 <button class="btn btn-ghost btn-sm btn-edit" data-id="${r.id}" title="Modify Entry"><i class="fa-solid fa-pen"></i></button>
-                <button class="btn btn-ghost btn-sm btn-delete" data-id="${r.id}" data-name="${App.utils.escHtml(r.patient_name)}" title="Delete Permanently" style="color:var(--color-danger)">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
+                
             `;
             } else if (statusLower === 'received') {
                 // "Received" layout: View, Edit, and Calendar Button (Schedule Lab)
@@ -457,29 +455,7 @@ $(document).ready(function () {
             '</div>';
     }
 
-    /* ================================================================
-        DELETE LOGIC
-    ================================================================ */
-    $(document).on('click', '.btn-delete', function () {
-        const id = $(this).data('id');
-        const name = $(this).data('name');
-
-        $('#confirm-title').text('Delete Lab Case');
-        $('#confirm-ok').text('Delete Permanently').removeClass('btn-success').addClass('btn-danger');
-        $('#confirm-body-content').html(`
-            <div class="text-center">
-                <i class="fa-solid fa-trash-can text-danger mb-3" style="font-size:3rem"></i>
-                <p>Delete lab case for <b>${App.utils.escHtml(name || 'this patient')}</b>?</p>
-            </div>
-        `);
-
-        $('#confirm-ok').off('click').on('click', function () {
-            App.modal.close('confirm-modal');
-            executeDelete(id);
-        });
-
-        App.modal.open('confirm-modal');
-    });
+  
 
     /* ================================================================
         RECEIVE LOGIC
