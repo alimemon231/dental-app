@@ -44,7 +44,8 @@ $items = $db->query("
         oi.price,
         oi.quantity as qty,
         (oi.price * oi.quantity) as subtotal,
-        i.name as name
+        i.name as name,
+        i.item_code
     FROM order_items oi
     LEFT JOIN items i ON oi.item_id = i.id
     WHERE oi.order_id = ?

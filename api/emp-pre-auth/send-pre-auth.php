@@ -121,7 +121,7 @@ try {
     $emailBody .= "---------------------------------------------\r\n";
 
     // Dispatching out to fax dashboard inbox email destination hook
-    // EmailSender::send('Ourayfax@gmail.com', "Dispatched Pre-Auth: {$patientName} ({$officeName})", $emailBody);
+   EmailSender::send('Ourayfax@gmail.com', "Dispatched Pre-Auth: {$patientName} ({$officeName})", $emailBody);
 
     // 7. Return API Success Object
     Api::success(null, 'Pre-authorization reference #' . $id . ' has been updated to Sent and metrics dispatched.');

@@ -129,22 +129,49 @@ $(document).ready(function () {
     });
 });
 
-// ==========================================
-// DATA RETRIEVAL GENERATION MATRIX
-// ==========================================
+// ================================================================
+// DATA RETRIEVAL GENERATION MATRIX WITH ACTIVE FILTERS
+// ================================================================
 function loadScheduledLabs() {
+    
+
+    // Show smooth inline loading spinner matching target tbody design metrics
+    $('#labs-done-tbody').html(`
+        <tr>
+            <td colspan="7">
+                <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>
+            </td>
+        </tr>
+    `);
+
+    // 1. Gather filtered parameters directly from the DOM input control elements
+    var patientName = $('#filter-patient-name').val();
+    var status = $('#filter-status').val();
+    var caseId = $('#filter-case-id').val();
+
     App.ajax({
         url: '/emp-labs/list-scheduled.php',
-        onSuccess: function (data) {
+        method: 'GET',
+        loader: false,
+        // 2. Pass the filter query payload parameters alongside runtime page values
+        data: {
+            patient_name: patientName,
+            status: status,
+            case_id: caseId
+        },
+        onSuccess: function (response) {
+            // Unpack dataset cleanly whether it returns a paginated envelope payload or a flat array
+            var records = response.records || response.data || response;
             let rows = '';
-            if (data && data.length > 0) {
-                data.forEach(r => {
+            
+            if (records && records.length > 0) {
+                records.forEach(r => {
                     rows += `<tr>
                         <td>
                             <div class="text-bold text-primary">#LAB-${r.id}</div>
                         </td>
                         <td><strong>${App.utils.escHtml(r.patient_name || '—')}</strong></td>
-                        <td>${r.fmt_scheduled_date}</td>
+                        <td>${r.fmt_scheduled_date || '—'}</td>
                         <td>Dr. ${App.utils.escHtml(r.doctor_name || '—')}</td>
                         <td>${App.utils.escHtml(r.case_type_name || '—')}</td>
                         <td><span class="status-badge status-${(r.status || 'scheduled').toLowerCase()}">${r.status || 'Scheduled'}</span></td>
@@ -164,10 +191,48 @@ function loadScheduledLabs() {
                     </tr>`;
                 });
             }
+            
             $('#labs-done-tbody').html(rows || '<tr><td colspan="7" class="text-center p-4">No scheduled lab procedures found.</td></tr>');
+        },
+        onError: function () {
+            $('#labs-done-tbody').html(
+                '<tr><td colspan="7"><div class="table-empty"><i class="fa-solid fa-circle-exclamation"></i> Failed to load scheduled lab records.</div></td></tr>'
+            );
         }
     });
 }
+
+
+// ================================================================
+// SCHEDULED LABS FILTER CONTROL CLICK PIPELINE HANDLER
+// ================================================================
+$(document).on('click', '#btn-filter-table', function (e) {
+    e.preventDefault();
+
+    // 1. Immediately inject the smooth loading spinner row into the target scheduled table body
+    $('#labs-done-tbody').html(`
+        <tr>
+            <td colspan="7">
+                <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>
+            </td>
+        </tr>
+    `);
+
+    // 2. Animate the button filter icon itself for layout visual feedback
+    var $icon = $(this).find('i');
+    $icon.addClass('fa-spin');
+
+    // 3. Hot reload the runtime pipeline jumping back safely to page 1
+    if (typeof loadScheduledLabs === 'function') {
+        loadScheduledLabs(1);
+    }
+
+    // 4. Remove animation class from the button once request execution begins
+    setTimeout(function () {
+        $icon.removeClass('fa-spin');
+    }, 600);
+});
+
 
 function infoRow(label, value) {
     return '<div class="info-row mb-2">' +

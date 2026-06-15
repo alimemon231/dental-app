@@ -91,7 +91,7 @@ try {
     $emailBody .= "-----------------------------------\r\n";
 
     // Notify the fax/admin email
-    //EmailSender::send('Ourayfax@gmail.com', "Modified Pre-Auth: {$newData['p_first_name']} {$newData['p_last_name']} ({$officeName})", $emailBody);
+    EmailSender::send('Ourayfax@gmail.com', "Modified Pre-Auth: {$newData['p_first_name']} {$newData['p_last_name']} ({$officeName})", $emailBody);
 
     Api::success(null, 'Pre-Auth updated and notification sent.');
 

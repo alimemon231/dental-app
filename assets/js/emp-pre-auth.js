@@ -172,13 +172,25 @@ $(document).ready(function () {
         page = page || 1;
         currentPage = page;
 
+        // 1. Gather values from the filter input elements
+        var patientName = $('#filter-patient-name').val();
+        var status = $('#filter-status').val();
+        var caseId = $('#filter-case-id').val();
+
         App.ajax({
             url: '/emp-pre-auth/list.php',
             method: 'GET',
             loader: false,
-            data: { page: page, limit: perPage },
+            // 2. Pass the parameters alongside pagination variables
+            data: {
+                page: page,
+                limit: perPage,
+                patient_name: patientName,
+                status: status,
+                case_id: caseId
+            },
             onSuccess: function (data, msg, res) {
-                renderTable(data);
+                renderTable(data.records);
             },
             onError: function () {
                 $('#preauth-tbody').html(
@@ -338,7 +350,7 @@ $(document).ready(function () {
                     // ================================================================
                     // COLUMN BLOCK 4: GLOBAL CONTAINER CASE ACTIONS (Rendered only on the first row)
                     // ================================================================
-                   
+
 
                     rows += `</tr>`;
                 }
@@ -638,9 +650,9 @@ $(document).ready(function () {
     $(document).on('click', '.btn-delete-item', function () {
         var id = $(this).data('id');
         var name = $(this).data('name');
-         $('#rejection-notes-container').hide();
+        $('#rejection-notes-container').hide();
         $('#approval-expiry-container').hide();
-         $('#confirm-body-content').html(`
+        $('#confirm-body-content').html(`
         <div class="text-center">
             <i class="fa-solid fa-circle-check text-danger mb-3" style="font-size:3rem"></i>
             <p>Are you sure you want to <strong>Delete</strong> the request for <b>${App.utils.escHtml(name)}</b>?</p>
@@ -675,9 +687,9 @@ $(document).ready(function () {
     $(document).on('click', '.btn-send-preauth', function () {
         var id = $(this).data('id');
 
-         $('#rejection-notes-container').hide();
+        $('#rejection-notes-container').hide();
         $('#approval-expiry-container').hide();
-         $('#confirm-body-content').html(`
+        $('#confirm-body-content').html(`
         <div class="text-center">
             <i class="fa-solid fa-circle-check text-danger mb-3" style="font-size:3rem"></i>
             <p>Are you sure you want to <strong>Sent</strong> the request for <b>${App.utils.escHtml(name)}</b>?</p>
@@ -704,9 +716,9 @@ $(document).ready(function () {
     $(document).on('click', '.btn-appeal-preauth', function () {
         var id = $(this).data('id');
 
-         $('#rejection-notes-container').hide();
+        $('#rejection-notes-container').hide();
         $('#approval-expiry-container').hide();
-         $('#confirm-body-content').html(`
+        $('#confirm-body-content').html(`
         <div class="text-center">
             <i class="fa-solid fa-circle-check text-danger mb-3" style="font-size:3rem"></i>
             <p>Are you sure you want to <strong>Appeal</strong> the request for <b>${App.utils.escHtml(name)}</b>?</p>
@@ -730,7 +742,7 @@ $(document).ready(function () {
     /* ================================================================
     ACTION TRIGGER: FORCE RUNTIME REFRESH / RELOAD LIVE RECORD PIPELINE
 ================================================================ */
-    $(document).on('click', '#btn-refresh-table', function (e) {
+    $(document).on('click', '#btn-filter-table', function (e) {
         e.preventDefault();
 
         // 1. Immediately inject the smooth loading spinner row into the table body

@@ -64,13 +64,11 @@ $(document).ready(function () {
                 '<td>' + App.utils.escHtml(p.expected_received_date) + '</td>' +
                 '<td>' + App.utils.escHtml(p.creator_name) + '</td>' +
                 '<td>' + App.utils.escHtml(p.approver_name) + '</td>' +
-                '<td>' + App.utils.escHtml(p.total_amount) + '</td>' +
+                '<td>$' + App.utils.escHtml(p.total_amount) + '</td>' +
                 '<td>' + App.utils.escHtml(p.status) + '</td>' +
                 '<td>' +
                 '<div class="actions">' +
                 '<button class="btn btn-ghost btn-sm btn-view" data-id="' + p.id + '" title="View"><i class="fa-solid fa-eye"></i></button>' +
-                '<button class="btn btn-ghost btn-sm btn-edit" data-id="' + p.id + '" title="Edit"><i class="fa-solid fa-pen"></i></button>' +
-                '<button class="btn btn-ghost btn-sm btn-delete" data-id="' + p.id + '" data-name="ORD-' + App.utils.escHtml(p.id) + '" title="Delete" style="color:var(--color-danger)"><i class="fa-solid fa-trash"></i></button>' +
                 '</div>' +
                 '</td>' +
                 '</tr>';
@@ -198,7 +196,7 @@ $(document).ready(function () {
 
                     
                     rows += '<tr>'+
-                    '<td>' + item.name + '</td>'+
+                    '<td>' + item.name + ' <small style="display:block;color:green;">' + (item.item_code || '-') + '</small></td>'+
                     '<td>' + item.qty + '</td>'+
                     '<td>' + item.price + '</td>'+
                     '<td>' + item.subtotal + '</td>'+

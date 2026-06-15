@@ -242,9 +242,9 @@
 }
 .page-wrapper {
   padding: var(--sp-8);
-  max-width: var(--content-max-width);
-  max-width: 1020px;
-  overflow-x: auto;;
+  max-width: 1440px;
+  overflow-x: auto;
+  padding-right: 0px;
 }
 .page-header {
   display: flex;

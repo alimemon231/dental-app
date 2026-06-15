@@ -167,19 +167,39 @@ $(document).ready(function () {
     }
 
     /* ================================================================
-        LOAD TABLE GRID DATA
-    ================================================================ */
+    LOAD TABLE GRID DATA WITH ACTIVE FILTERS
+================================================================ */
     function loadLabCases(page) {
         page = page || 1;
         currentPage = page;
+
+        // Show smooth inline loading spinner matching target tbody design metrics
+        $('#lab-tbody').html(`
+        <tr>
+            <td colspan="7">
+                <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>
+            </td>
+        </tr>
+    `);
+
+        // 1. Gather filtered parameters directly from the DOM input control elements
+        var patientName = $('#filter-patient-name').val();
+        var status = $('#filter-status').val();
+        var caseId = $('#filter-case-id').val();
 
         App.ajax({
             url: '/emp-labs/list.php',
             method: 'GET',
             loader: false,
-            data: { page: page, limit: perPage },
+            // 2. Pass the filter query payload parameters alongside runtime page values
+            data: {
+                page: page,
+                patient_name: patientName,
+                status: status,
+                case_id: caseId
+            },
             onSuccess: function (data) {
-                renderTable(data);
+                renderTable(data.records);
             },
             onError: function () {
                 $('#lab-tbody').html(
@@ -188,6 +208,7 @@ $(document).ready(function () {
             }
         });
     }
+
 
     function renderTable(records) {
         if (!records || records.length === 0) {
@@ -258,6 +279,36 @@ $(document).ready(function () {
         $('#lab-tbody').html(rows);
     }
 
+
+    /* ================================================================
+    LAB FILTER CONTROL CLICK PIPELINE HANDLER
+================================================================ */
+    $(document).on('click', '#btn-filter-table', function (e) {
+        e.preventDefault();
+
+        // 1. Immediately inject the smooth loading spinner row into the target lab table body
+        $('#lab-tbody').html(`
+        <tr>
+            <td colspan="7">
+                <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>
+            </td>
+        </tr>
+    `);
+
+        // 2. Animate the button filter icon itself for layout visual feedback
+        var $icon = $(this).find('i');
+        $icon.addClass('fa-spin');
+
+        // 3. Hot reload the runtime pipeline jumping back safely to page 1
+        if (typeof loadLabCases === 'function') {
+            loadLabCases(1);
+        }
+
+        // 4. Remove animation class from the button once request execution begins
+        setTimeout(function () {
+            $icon.removeClass('fa-spin');
+        }, 600);
+    });
     /* ================================================================
          SAVE / UPDATE LAB CASE
      ================================================================ */
@@ -455,7 +506,7 @@ $(document).ready(function () {
             '</div>';
     }
 
-  
+
 
     /* ================================================================
         RECEIVE LOGIC
@@ -505,7 +556,7 @@ $(document).ready(function () {
         });
     }
 
-     // Open Schedule Modal (Kept Unchanged)
+    // Open Schedule Modal (Kept Unchanged)
     $(document).on('click', '.btn-schedule', function () {
         const id = $(this).data('id');
         $('#schedule-lab-id').val(id);

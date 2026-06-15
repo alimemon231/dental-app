@@ -62,7 +62,7 @@ try {
         $emailBody .= "Date:       " . date('Y-m-d H:i:s') . "\r\n";
         $emailBody .= "-------------------------------------\r\n";
 
-        //EmailSender::send('Ourayfax@gmail.com', "Deleted Pre-Auth: {$record['p_first_name']} {$record['p_last_name']}", $emailBody);
+        EmailSender::send('Ourayfax@gmail.com', "Deleted Pre-Auth: {$record['p_first_name']} {$record['p_last_name']}", $emailBody);
 
         Api::success(null, 'Pre-Auth record successfully deleted.');
     } else {

@@ -88,7 +88,7 @@ try {
     $emailBody .= "---------------------------\r\n";
 
     // Notify the fax/admin email
-    //EmailSender::send('Ourayfax@gmail.com', "New Pre-Auth: {$p_first_name} {$p_last_name} ({$officeName})", $emailBody);
+    EmailSender::send('Ourayfax@gmail.com', "New Pre-Auth: {$p_first_name} {$p_last_name} ({$officeName})", $emailBody);
 
     // 9. Success Response
     Api::success(null, 'Pre-Auth created and notification sent.');

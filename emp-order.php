@@ -27,9 +27,6 @@
             <div class="page-header-sub">Manage all orders here.</div>
           </div>
           <div class="page-header-actions">
-            <button class="btn btn-primary" id="btn-add-order">
-              <i class="fa-solid fa-bag-shopping"></i> Add Oorder
-            </button>
           </div>
         </div>
 
@@ -65,96 +62,7 @@
           </div>
         </div>
 
-        <!-- ============================================================
-     ADD / EDIT OFFICE MODAL
-============================================================ -->
-        <div class="modal-backdrop" id="order-modal">
-          <div class="modal modal-lg">
-            <div class="modal-header">
-              <div class="modal-title" id="order-modal-title">Add New Order</div>
-              <button class="modal-close" data-close-modal="order-modal">&#x2715;</button>
-            </div>
-            <div class="modal-body">
-              <form id="order-form" novalidate>
-                <input type="hidden" name="order_id" id="order-id" value="">
-
-                <!-- Personal Info -->
-                <div class="form-section">
-                  <div class="form-section-title"><i class="fa-solid fa-bag-shopping"></i> Order Information</div>
-                  <div class="form-row">
-                    <div class="form-group">
-                      <label class="form-label">Order Date <span class="required">*</span></label>
-                      <input type="date" name="o_date" id="o-date" class="form-control" placeholder="e.g. 23/4/2026"
-                        required>
-                      <span class="form-error">Date is required.</span>
-                    </div>
-                    <div class="form-group">
-                      <label class="form-label"> Expected Recive Date <span class="required">*</span></label>
-                      <input type="date" name="r_date" id="r_date" class="form-control" placeholder="e.g. 23/4/2026"
-                        required>
-                      <span class="form-error">Reciving date is required</span>
-                    </div>
-                  </div>
-
-                  <div class="form-row" style="grid-template-columns: repeat(3, 1fr);align-items:end;">
-                    <div class="form-group">
-                      <label class="form-label">Order Date <span class="required">*</span></label>
-                      <select id="order-items" class="form-control">
-                        <option value="" selected disabled> Select Item </option>
-                      </select>
-                    </div>
-
-                    <div class="form-group">
-                      <label class="form-label">Quantity <span class="required">*</span></label>
-                      <input type="number" class="form-control" name="qty" id="qty" placeholder="Select Quantity"
-                        min="1">
-                    </div>
-
-                    <div class="form-group">
-                      <button class="btn btn-primary" id="btn-add-item" style="margin-bottom: var(--sp-5);">
-                        <span class="btn-text">Add Item</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </form>
-
-              <div class="table-wrapper">
-                <table class="data-table" id="order-table">
-                  <thead>
-                    <tr>
-                      <th class="sortable" data-col="id">#</th>
-                      <th class="sortable" data-col="name">Name</th>
-                      <th>Price </th>
-                      <th>Qty</th>
-                      <th>Sub Total</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="added-items-tbody">
-                    <tr>
-                      <td colspan="8">
-                        <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <div class="table-pagination" id="order-pagination">
-                  <div class="pagination"> Total : <span id="grand-total-display"></span></div>
-                </div>
-              </div>
-
-
-            </div>
-            <div class="modal-footer">
-              <button class="btn btn-ghost" data-close-modal="order-modal">Cancel</button>
-              <button class="btn btn-primary" id="btn-save-order">
-                <span class="btn-spinner"></span>
-                <span class="btn-text">Save Order</span>
-              </button>
-            </div>
-          </div>
-        </div>
+      
 
         <!-- ============================================================
      VIEW PATIENT MODAL
@@ -171,7 +79,7 @@
 
                 </div>
                 <div>
-                  '<div class="form-section-title mb-4"><i class="fa-solid fa-pills"></i> Order Items </div>' +
+                  <div class="form-section-title mb-4"><i class="fa-solid fa-pills"></i> Order Items </div>
                   <div class="table-wrapper">
                     <table class="data-table">
                       <thead>
@@ -200,9 +108,6 @@
             </div>
             <div class="modal-footer">
               <button class="btn btn-ghost" data-close-modal="view-order-modal">Close</button>
-              <button class="btn btn-primary" id="btn-edit-from-view">
-                <i class="fa-solid fa-pen"></i> Edit
-              </button>
             </div>
           </div>
         </div>

@@ -17,7 +17,7 @@ if ($currentUser['role'] !== 'doctor' && $currentUser['role'] !== 'staff') {
 }
 
 // 2. Capture Filters & Pagination
-$limit  = 600000000;
+$limit  = 200;
 $page   = max((int) ($_GET['page'] ?? 1), 1);
 $offset = ($page - 1) * $limit;
 

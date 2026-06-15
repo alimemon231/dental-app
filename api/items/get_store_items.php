@@ -45,11 +45,7 @@ $whereSql = implode(" AND ", $where);
 
 // 3. Main Query
 $sql = "SELECT 
-            i.id, 
-            i.name, 
-            i.price, 
-            i.description, 
-            i.image_path,
+            i.*,
             GROUP_CONCAT(c.name SEPARATOR ', ') AS category_names
         FROM items i
         LEFT JOIN item_categories ic ON i.id = ic.item_id

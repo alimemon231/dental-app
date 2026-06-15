@@ -153,7 +153,7 @@ try {
     $emailBody .= $itemizedEmailRows;
     $emailBody .= "---------------------------------------------\r\n";
 
-    // EmailSender::send('Ourayfax@gmail.com', "New Case Pre-Auth: {$patientName} ({$officeName})", $emailBody);
+   EmailSender::send('Ourayfax@gmail.com', "New Case Pre-Auth: {$patientName} ({$officeName})", $emailBody);
 
     // 11. Complete Operation Status Success Payload Return
     Api::success(['case_id' => $caseId], 'Pre-Auth case metrics and itemized tracking rows split and created successfully.');

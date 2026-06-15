@@ -104,7 +104,7 @@ try {
     $emailBody .= "---------------------------------------------\r\n";
     $emailBody .= "Treatment:       Tooth {$targetLine['teeth_number']}: {$targetLine['procedure_name']}\r\n";
 
-    // EmailSender::send('Ourayfax@gmail.com', "Admin Scheduled: {$caseRecord['patient_name']}", $emailBody);
+   EmailSender::send('Ourayfax@gmail.com', "Admin Scheduled: {$caseRecord['patient_name']}", $emailBody);
 
     Api::success(null, 'Pre-authorization #' . $preAuthId . ' has been scheduled by Admin.');
 

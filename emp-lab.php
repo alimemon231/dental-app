@@ -104,7 +104,41 @@ require_once "includes/Auth.php";
                     </div>
                 </div>
 
-                <div class="table-wrapper">
+                <div class="table-controls-container">
+                    <form id="admin-filter-form" class="filter-grid-layout" onsubmit="return false;"
+                        style="width: 100%; display: flex; flex-wrap: wrap; gap: var(--sp-4); align-items: flex-end;">
+
+                        <div class="filter-group">
+                            <label class="filter-label">Patient Name</label>
+                            <input type="text" id="filter-patient-name" class="form-control"
+                                placeholder="Search patient...">
+                        </div>
+
+
+                        <div class="filter-group">
+                            <label class="filter-label">Pipeline Status</label>
+                            <select id="filter-status" class="form-control">
+                                <option value="">All Statuses</option>
+                                <option value="Sent">Sent</option>
+                                <option value="">Received</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label class="filter-label">Lab Case No.</label>
+                            <input type="number" id="filter-case-id" class="form-control" placeholder="e.g. 280"
+                                min="1">
+                        </div>
+
+                        <button type="button" id="btn-filter-table" class="btn btn-primary btn-filter"
+                            title="Apply Pipeline Filters">
+                            <i class="fa-solid fa-filter"></i> <span>Filter</span>
+                        </button>
+
+                    </form>
+                </div>
+
+                <div class="table-wrapper" style="margin-top:20px;">
                     <table class="data-table" id="lab-table">
                         <thead>
                             <tr>

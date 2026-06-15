@@ -2,7 +2,7 @@
 /**
  * GET api/emp-pre-auth/list.php
  * Lists unique pre-auth cases alongside their individual itemized treatments matching status constraints.
- * Filters out individual itemized lines that are not in the targeted actionable status pool.
+ * Filters out individual itemized lines that are not in the targeted actionable status pool or filter limits.
  */
 require_once __DIR__ . '/../../includes/Auth.php';
 
@@ -18,9 +18,70 @@ if ($sessionOfficeId <= 0) {
     exit;
 }
 
+// 1. Capture incoming filter criteria and pagination arrays matching the JS parameters exactly
+$limit       = min((int)($_GET['limit'] ?? 15), 100);
+$page        = max((int)($_GET['page'] ?? 1), 1);
+$offset      = ($page - 1) * $limit;
+
+$patientName = trim($_GET['patient_name'] ?? '');
+$statusFilter = trim($_GET['status'] ?? '');
+$caseIdFilter = trim($_GET['case_id'] ?? '');
+
+// 2. Build Dynamic WHERE Conditions for the Case Parent records
+$whereClauses = ["pac.office_id = ?"];
+$whereParams  = [$sessionOfficeId];
+
+// If patient name filter string is provided
+if (!empty($patientName)) {
+    $whereClauses[] = "pat.name LIKE ?";
+    $whereParams[]  = '%' . $patientName . '%';
+}
+
+// If specific Case ID is filtered (Checks explicit matching integers)
+if (!empty($caseIdFilter) && is_numeric($caseIdFilter)) {
+    $whereClauses[] = "pac.id = ?";
+    $whereParams[]  = (int)$caseIdFilter;
+}
+
+// Combine target system status rules alongside runtime filter dropdown flags
+$statusTargetList = ['Requested', 'Sent', 'Rejected', 'Appealed'];
+if (!empty($statusFilter)) {
+    // Overwrite target pool with explicit selection if validly itemized
+    if (in_array($statusFilter, $statusTargetList)) {
+        $statusTargetList = [$statusFilter];
+    } else {
+        // Drop into empty payload state if explicit frontend selection breaks pool boundary bounds
+        Api::success([], 'Success');
+        exit;
+    }
+}
+
+$statusPlaceholders = implode(',', array_fill(0, count($statusTargetList), '?'));
+$existsSubQueryCondition = "EXISTS (
+    SELECT 1 FROM `pre-auth` pa 
+    WHERE pa.case_id = pac.id 
+      AND pa.status IN ($statusPlaceholders)
+)";
+
+$whereClauses[] = $existsSubQueryCondition;
+foreach ($statusTargetList as $st) {
+    $whereParams[] = $st;
+}
+
+$whereSql = "WHERE " . implode(" AND ", $whereClauses);
+
 try {
-    // 1. Fetch parent cases that contain AT LEAST ONE item matching our active target statuses
-    // Using EXISTS eliminates duplicate case entries cleanly without requiring a heavy DISTINCT grouping pass
+    // 3. Count matching structural records cleanly to pass pagination envelopes down
+    $countSql = "SELECT COUNT(DISTINCT pac.id) AS total
+                 FROM `pre_auth_cases` pac
+                 INNER JOIN `patient` pat ON pac.patient_id = pat.id
+                 $whereSql";
+    
+    $totalCountResult = $db->queryOne($countSql, $whereParams);
+    $totalCount = isset($totalCountResult['total']) ? (int)$totalCountResult['total'] : 0;
+    $totalPages = ceil($totalCount / $limit);
+
+    // 4. Fetch the paginated subset of parent cases matching parameters
     $caseSql = "SELECT 
                     pac.id AS case_id,
                     pac.patient_id,
@@ -32,27 +93,32 @@ try {
                 FROM `pre_auth_cases` pac
                 INNER JOIN `patient` pat ON pac.patient_id = pat.id
                 LEFT JOIN `users` doc ON pac.doctor_id = doc.user_id
-                WHERE pac.office_id = ? 
-                  AND EXISTS (
-                      SELECT 1 FROM `pre-auth` pa 
-                      WHERE pa.case_id = pac.id 
-                        AND pa.status IN ('Requested', 'Sent', 'Rejected', 'Appealed')
-                  )
-                ORDER BY pac.id DESC";
+                $whereSql
+                ORDER BY pac.id DESC
+                LIMIT ? OFFSET ?";
 
-    $cases = $db->query($caseSql, [$sessionOfficeId]);
+    // Push calculation thresholds safely without casting problems on custom PDO instances
+    $queryParams = $whereParams;
+    $queryParams[] = $limit;
+    $queryParams[] = $offset;
+
+    $cases = $db->query($caseSql, $queryParams) ?: [];
 
     if (empty($cases)) {
-        Api::success([], 'Success');
+        Api::success([
+            'records'       => [],
+            'total_records' => 0,
+            'total_pages'   => 0,
+            'current_page'  => $page
+        ], 'Success');
         exit;
     }
 
-    // Extract case IDs to process itemized procedures collectively
+    // Extract precise targeted Case IDs subset to gather procedure records collections
     $caseIds = array_column($cases, 'case_id');
     $placeholders = implode(',', array_fill(0, count($caseIds), '?'));
 
-    // 2. Fetch ONLY individual itemized entries matching the target status constraints
-    // Any line item with an unlisted status (e.g., 'Approved') is strictly omitted here
+    // 5. Fetch structural line items matching statuses restricted exclusively to active IDs
     $itemizedSql = "SELECT 
                         pa.id AS pre_auth_id,
                         pa.case_id,
@@ -72,12 +138,14 @@ try {
                     LEFT JOIN `insurance` ins ON pa.p_insurance_plan = ins.id
                     LEFT JOIN `users` u ON pa.created_by = u.user_id
                     WHERE pa.case_id IN ($placeholders)
-                      AND pa.status IN ('Requested', 'Sent', 'Rejected', 'Appealed')
+                      AND pa.status IN ($statusPlaceholders)
                     ORDER BY pa.id ASC";
 
-    $allItems = $db->query($itemizedSql, $caseIds);
+    // Combine runtime case query limits with target lookup status strings cleanly
+    $itemizedParams = array_merge($caseIds, $statusTargetList);
+    $allItems = $db->query($itemizedSql, $itemizedParams) ?: [];
 
-    // Group matching rows by their parent case reference container
+    // Group structural treatments payload lists relative to matching Case references
     $itemsGroupedByCase = [];
     foreach ($allItems as $item) {
         $itemsGroupedByCase[$item['case_id']][] = [
@@ -97,28 +165,23 @@ try {
         ];
     }
 
-    // 3. Construct response structure to maintain front-end loop structures precisely
+    // 6. Compile data rows structurally, maintaining matching arrays for frontend js parsing loops
     $finalResponseData = [];
     foreach ($cases as $c) {
         $caseId = $c['case_id'];
-        
-        // Retrieve filtered procedures matching the state list
         $proceduresList = $itemsGroupedByCase[$caseId] ?? [];
         
-        // Skip formatting if no lines in this case matched the status rules
+        // Safety skip checks mapping active array profiles cleanly
         if (empty($proceduresList)) {
             continue;
         }
 
-        // Draw backward-compatible metadata from the first valid active line item
         $primaryItem = $proceduresList[0];
-
-        // Compile comma-delimited fields for list dashboard summary row displays
         $names = array_column($proceduresList, 'procedure_name');
         $teeth = array_column($proceduresList, 'tooth_number');
 
         $finalResponseData[] = [
-            'id'                 => $caseId, // Targets the envelope case identification index on the frontend
+            'id'                 => $caseId,
             'patient_id'         => (int)$c['patient_id'],
             'patient_name'       => $c['patient_name'],
             'patient_dob'        => $c['patient_dob'],
@@ -126,7 +189,7 @@ try {
             'doctor_name'        => $c['doctor_name'] ?: 'Unassigned Doctor',
             'office_id'          => (int)$c['office_id'],
             
-            // Legacy mappings drawing properties safely from the primary tracking instance
+            // Core references matching initial template mapping expectations
             'p_insurance_plan'   => $primaryItem['p_insurance_plan'],
             'insurance_name'     => $primaryItem['insurance_name'],
             'created_at'         => $primaryItem['created_at'],
@@ -134,30 +197,34 @@ try {
             'submitted_by'       => $primaryItem['submitted_by'],
             'status'             => $primaryItem['status'],
 
-            // Joined visualization variables displaying active strings in table layout cells
+            // Imploded structural presentation mapping layouts
             'procedure_name'     => implode(', ', $names),
             'tooth_numbers'      => implode(', ', $teeth),
-            
-            // Filtered array map elements processed by your custom JS loops
             'procedures_list'    => $proceduresList
         ];
     }
 
-    Api::success($finalResponseData, 'Success');
+    // 7. Returns response schema wrapped into page indexing properties
+    Api::success([
+        'records'       => $finalResponseData,
+        'total_records' => (int)$totalCount,
+        'total_pages'   => (int)$totalPages,
+        'current_page'  => $page
+    ], 'Success');
 
 } catch (Exception $e) {
     Api::error('Data stream mapping failure: ' . $e->getMessage(), 500);
 }
 
 /**
- * Helper: Convert datetime to relative string
+ * Helper: Convert standard datetime into historical scale tracking variants
  */
 function timeAgo($datetime) {
     if (!$datetime || $datetime === '0000-00-00 00:00:00') return '—';
     $time = strtotime($datetime);
-    $now = time();
-    $diff = $now - $time;
-
+    if (!$time) return '—';
+    
+    $diff = time() - $time;
     if ($diff < 60) return 'Just now';
     if ($diff < 3600) return floor($diff / 60) . ' mins ago';
     if ($diff < 86400) return floor($diff / 3600) . ' hours ago';

@@ -127,7 +127,7 @@ try {
     $emailBody .= "---------------------------------------------\r\n";
 
     // Dispatching out to fax dashboard inbox email destination hook
-    // EmailSender::send('Ourayfax@gmail.com', $subject, $emailBody);
+   EmailSender::send('Ourayfax@gmail.com', $subject, $emailBody);
 
     // 8. Return standard API Success Object
     Api::success(null, 'Pre-authorization reference #' . $preAuthId . ' has been successfully updated to Scheduled.');

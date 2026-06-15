@@ -12,7 +12,11 @@ $(document).ready(function () {
 /**
  * 1. Load only Approved Pre-Auths for the logged-in office
  */
-function loadApprovedRequests(page = 1) {
+/**
+ * 1. Load only Approved Pre-Auths for the logged-in office with filters
+ */
+function loadApprovedRequests(page) {
+    page = page || 1;
     currentPage = page;
     
     $('#appointment-tbody').html(`
@@ -23,16 +27,60 @@ function loadApprovedRequests(page = 1) {
         </tr>
     `);
 
+    // 1. Gather values from the exact same filter input elements
+    var patientName = $('#filter-patient-name').val();
+    var status = $('#filter-status').val();
+    var caseId = $('#filter-case-id').val();
+
     App.ajax({
         url: '/emp-pre-auth/list-approved.php', 
-        data: { page: page },
+        method: 'GET',
+        loader: false,
+        // 2. Pass the filter parameters alongside pagination variables
+        data: { 
+            page: page, 
+            patient_name: patientName,
+            status: status,
+            case_id: caseId
+        },
         onSuccess: function (response) {
-            // Target the root level 'data' array from your JSON wrapper
-            let sourceRecords = response;
-            renderTable(sourceRecords);
+            
+            renderTable(response.records);
+        },
+        onError: function () {
+            $('#appointment-tbody').html(
+                '<tr><td colspan="7"><div class="table-empty"><i class="fa-solid fa-circle-exclamation"></i> Failed to load approved records.</div></td></tr>'
+            );
         }
     });
 }
+
+$(document).on('click', '#btn-filter-table', function (e) {
+    e.preventDefault();
+
+    // 1. Immediately inject the smooth loading spinner row into the table body
+    $('#preauth-tbody').html(`
+        <tr>
+            <td colspan="7">
+                <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>
+            </td>
+        </tr>
+    `);
+
+    // 2. Animate the button icon itself for secondary visual feedback
+    var $icon = $(this).find('i');
+    $icon.addClass('fa-spin');
+
+    // 3. Hot reload the runtime pipeline
+    if (typeof loadApprovedRequests === 'function') {
+        loadApprovedRequests(1);
+    }
+
+    // 4. Remove animation class from the button once request execution begins
+    setTimeout(function () {
+        $icon.removeClass('fa-spin');
+    }, 600);
+});
 
 /**
  * 2. Render the Table with streamlined Management actions
@@ -175,21 +223,21 @@ $(document).on('click', '.btn-view', function () {
 
             // Pipeline Progress Tracking Elements
             let progressWidth = '50%';
-            let themeColor = '#059669'; 
-            let steps = [1, 1, 1, 0, 0]; 
+            let themeColor = '#059669';
+            let steps = [1, 1, 1, 0, 0];
 
-            if (statusStr === 'scheduled') { 
-                steps = [1, 1, 1, 1, 0]; 
-                progressWidth = '75%'; 
-                themeColor = '#8b5cf6'; 
-            } else if (statusStr === 'completed' || statusStr === 'complete' || statusStr === 'done') { 
-                steps = [1, 1, 1, 1, 1]; 
-                progressWidth = '100%'; 
-                themeColor = '#10b981'; 
-            } else if (statusStr === 'expired') { 
-                steps = [1, 1, 1, 2, 0]; 
-                progressWidth = '75%'; 
-                themeColor = '#6b7280'; 
+            if (statusStr === 'scheduled') {
+                steps = [1, 1, 1, 1, 0];
+                progressWidth = '75%';
+                themeColor = '#8b5cf6';
+            } else if (statusStr === 'completed' || statusStr === 'complete' || statusStr === 'done') {
+                steps = [1, 1, 1, 1, 1];
+                progressWidth = '100%';
+                themeColor = '#10b981';
+            } else if (statusStr === 'expired') {
+                steps = [1, 1, 1, 2, 0];
+                progressWidth = '75%';
+                themeColor = '#6b7280';
             }
 
             function getNodeStyle(stepIndex) {
@@ -225,11 +273,11 @@ $(document).on('click', '.btn-view', function () {
             </div>`;
 
             var approverRow = r.approver_name
-                ? `<span class="text-success" style="font-weight:600;"><i class="fa-solid fa-user-check"></i> ${App.utils.escHtml(r.approver_name || 'Management')}</span>` 
+                ? `<span class="text-success" style="font-weight:600;"><i class="fa-solid fa-user-check"></i> ${App.utils.escHtml(r.approver_name || 'Management')}</span>`
                 : '<span class="text-muted" style="font-style: italic;">—</span>';
 
-            var editorRow = r.edited_by 
-                ? `<span><i class="fa-solid fa-user-pen"></i> ${App.utils.escHtml(r.editor_name)}</span>` 
+            var editorRow = r.edited_by
+                ? `<span><i class="fa-solid fa-user-pen"></i> ${App.utils.escHtml(r.editor_name)}</span>`
                 : '<span class="text-muted" style="font-style: italic;">Never modified</span>';
 
             const html = progressBarHtml + `
@@ -265,7 +313,7 @@ $(document).on('click', '.btn-view', function () {
                     </div>
                 </div>
             `;
-            $('#view-details-body').html(html); 
+            $('#view-details-body').html(html);
             App.modal.open('view-modal');
         }
     });

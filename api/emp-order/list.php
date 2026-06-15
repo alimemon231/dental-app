@@ -16,17 +16,7 @@ $offset = ($page - 1) * $limit;
 
 $currentUserId = $_SESSION['user_id'];
 
-// 2. Identify the User's Office ID
-$officeRow = $db->queryOne(
-    "SELECT office_id FROM office_users WHERE user_id = ? LIMIT 1",
-    [$currentUserId]
-);
-
-if (!$officeRow) {
-    Api::success([], 'No office assigned to user.'); // Return empty list if no office
-    exit;
-}
-$officeId = $officeRow['office_id'];
+$officeId = $_SESSION["office_id"];
 
 // 3. The SQL Query (Filtered by o.office_id)
 $sql = "SELECT 
@@ -51,7 +41,6 @@ LEFT JOIN users u1 ON o.created_by = u1.user_id
 LEFT JOIN users u2 ON o.approved_by = u2.user_id
 LEFT JOIN order_items oi ON o.id = oi.order_id
 WHERE o.activation = 'active' 
-  AND o.status ='pending'
   AND o.office_id = ? 
 GROUP BY o.id
 ORDER BY o.id DESC";

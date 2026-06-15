@@ -18,11 +18,52 @@
                 <div class="page-header">
                     <div class="page-header-left">
                         <h1>Manage Appointments</h1>
-                        <div class="page-header-sub">Finalize treatment for scheduled patients or reschedule as needed.</div>
+                        <div class="page-header-sub">Finalize treatment for scheduled patients or reschedule as needed.
+                        </div>
                     </div>
                 </div>
 
-                <div class="table-wrapper">
+                <div class="table-controls-container">
+                    <form id="admin-filter-form" class="filter-grid-layout" onsubmit="return false;"
+                        style="width: 100%; display: flex; flex-wrap: wrap; gap: var(--sp-4); align-items: flex-end;">
+
+                        <div class="filter-group">
+                            <label class="filter-label">Patient Name</label>
+                            <input type="text" id="filter-patient-name" class="form-control"
+                                placeholder="Search patient...">
+                        </div>
+
+
+                        <div class="filter-group">
+                            <label class="filter-label">Pipeline Status</label>
+                            <select id="filter-status" class="form-control">
+                                <option value="">All Statuses</option>
+                                <option value="Requested">Requested</option>
+                                <option value="Sent">Sent</option>
+                                <option value="Approved">Approved</option>
+                                <option value="Appealed">Appealed</option>
+                                <option value="Scheduled">Scheduled</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Expired">Expired</option>
+                                <option value="Rejected">Rejected</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label class="filter-label">Case File No.</label>
+                            <input type="number" id="filter-case-id" class="form-control" placeholder="e.g. 280"
+                                min="1">
+                        </div>
+
+                        <button type="button" id="btn-filter-table" class="btn btn-primary btn-filter"
+                            title="Apply Pipeline Filters">
+                            <i class="fa-solid fa-filter"></i> <span>Filter</span>
+                        </button>
+
+                    </form>
+                </div>
+
+                <div class="table-wrapper" style="margin-top:20px;">
                     <table class="data-table" id="manage-appointments-table">
                         <thead>
                             <tr>
@@ -38,7 +79,8 @@
                         <tbody id="manage-appointments-tbody">
                             <tr>
                                 <td colspan="6">
-                                    <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading Scheduled Appointments...</div>
+                                    <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading
+                                        Scheduled Appointments...</div>
                                 </td>
                             </tr>
                         </tbody>
@@ -59,7 +101,7 @@
                             <button class="modal-close" data-close-modal="view-modal">&#x2715;</button>
                         </div>
                         <div class="modal-body">
-                           <div id="view-preauth-body">
+                            <div id="view-preauth-body">
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -82,7 +124,8 @@
                                 <i class="fa-solid fa-circle-check text-success" style="font-size: 3rem;"></i>
                             </div>
                             <p>Are you sure you want to mark this procedure as <strong>Completed</strong>?</p>
-                            <p class="text-muted text-sm">This will finalize the patient journey for this pre-authorization.</p>
+                            <p class="text-muted text-sm">This will finalize the patient journey for this
+                                pre-authorization.</p>
                             <input type="hidden" id="complete-preauth-id">
                         </div>
                         <div class="modal-footer">
@@ -108,7 +151,8 @@
                                 <i class="fa-solid fa-calendar-minus text-warning" style="font-size: 3rem;"></i>
                             </div>
                             <p>Are you sure you want to <strong>Reschedule</strong> this patient?</p>
-                            <p class="text-muted text-sm">This will clear the current appointment date and move the record back to the "Book Appointments" list.</p>
+                            <p class="text-muted text-sm">This will clear the current appointment date and move the
+                                record back to the "Book Appointments" list.</p>
                             <input type="hidden" id="reschedule-preauth-id">
                         </div>
                         <div class="modal-footer">
@@ -130,9 +174,10 @@
     <script>
         $(document).ready(function () {
             App.auth.check();
-            App.auth.role(['staff' , 'doctor']);
+            App.auth.role(['staff', 'doctor']);
 
         });
     </script>
 </body>
+
 </html>

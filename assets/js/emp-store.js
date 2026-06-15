@@ -15,20 +15,20 @@ let currentCartItems = []; // To hold items for the order submission
 /**
  * INITIAL LOAD
  */
-$(document).ready(function() {
+$(document).ready(function () {
     // 1. Get today's date
     let targetDate = new Date();
-    
+
     // 2. Add 7 days to it
     targetDate.setDate(targetDate.getDate() + 7);
-    
+
     // 3. Format to YYYY-MM-DD
     let yyyy = targetDate.getFullYear();
     let mm = String(targetDate.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
     let dd = String(targetDate.getDate()).padStart(2, '0');
-    
+
     let minDateString = `${yyyy}-${mm}-${dd}`; // e.g., "2026-06-10"
-    
+
     // 4. Inject the min attribute into your input field
     $('#expected-date').attr('min', minDateString);
     loadProducts();
@@ -43,8 +43,8 @@ $('#store-search').on('input', function () {
     clearTimeout(searchTimer);
     currentFilters.search = $(this).val();
     currentFilters.page = 1; // Reset to page 1 on new search
-    
-    searchTimer = setTimeout(function() {
+
+    searchTimer = setTimeout(function () {
         loadProducts();
     }, 300);
 });
@@ -89,7 +89,7 @@ function loadProducts() {
         data: currentFilters,
         onSuccess: function (response) {
             let html = '';
-            
+
             if (response.items.length === 0) {
                 $('#product-grid').html('<p class="text-muted">No products found matching your criteria.</p>');
                 return;
@@ -129,11 +129,11 @@ $('#clear-filters').on('click', function () {
     currentFilters.search = '';
     currentFilters.category_id = 'all';
     currentFilters.page = 1;
-    
+
     $('#store-search').val('');
     $('#category-filters li').removeClass('active');
     $('#category-filters li[data-cat="all"]').addClass('active');
-    
+
     loadProducts();
 });
 
@@ -161,7 +161,7 @@ function loadCategories() {
             // 3. Inject into the list
             $('#category-filters').html(html);
         },
-        onError: function() {
+        onError: function () {
             $('#category-filters').html('<li class="text-danger">Error loading categories</li>');
         }
     });
@@ -184,15 +184,16 @@ function openProductModal(id) {
             $('#modal-img').attr('src', item.image_path || 'assets/img/placeholder.png');
             $('#modal-name').text(item.name);
             $('#modal-cats').text(item.category_names || 'General');
+            $('#item-code').text(item.item_code || '-');
             $('#modal-price').text('$' + parseFloat(item.price).toFixed(2));
             $('#modal-desc').text(item.description || 'No description available.');
-            
+
             // 2. Reset quantity to 1 every time modal opens
             $('#purchase-qty').val(1);
 
             // 3. Attach click event to the "Add to Cart" button
             // We use .off() first to prevent multiple event handlers if opened multiple times
-            $('#btn-confirm-add').off('click').on('click', function() {
+            $('#btn-confirm-add').off('click').on('click', function () {
                 const qty = $('#purchase-qty').val();
                 addToCart(item.id, qty, item.name);
             });
@@ -232,7 +233,7 @@ function addToCart(itemId, quantity, itemName) {
         onSuccess: function (response) {
             App.toast.success('success', itemName + ' added to cart!');
             App.modal.close('product-modal');
-            
+
             // Update the cart count in the header[cite: 2]
             let currentCount = parseInt($('#cart-count').text()) || 0;
             $('#cart-count').text(currentCount + parseInt(quantity));
@@ -250,10 +251,12 @@ function loadCartItems() {
             currentCartItems = items; // Store for order placement
             let html = '';
             let grandTotal = 0;
+            let totalBadgeCount = 0; // Tracks precise accumulated sum of pieces
 
             if (items.length === 0) {
                 $('#cart-items').html('<p class="text-muted text-center">Your cart is empty.</p>');
                 $('#place-order').prop('disabled', true);
+                $('#cart-count').text('0');
                 return;
             }
 
@@ -262,20 +265,28 @@ function loadCartItems() {
             items.forEach(item => {
                 const subtotal = parseFloat(item.price) * parseInt(item.quantity);
                 grandTotal += subtotal;
+                totalBadgeCount += parseInt(item.quantity);
 
                 html += `
                     <div class="cart-item-row d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
-
                         <div>
-                            <img src="${item.image_path}">
+                            <img src="${item.image_path || 'assets/img/placeholder.png'}" style="width:50px; height:50px; object-fit:cover; border-radius:4px;">
                         </div>
-                        <div>
+                        <div class="flex-grow-1 ms-3">
                             <div class="fw-bold">${item.name}</div>
-                            <small class="text-muted">Qty: ${item.quantity} @ $${parseFloat(item.price).toFixed(2)}</small>
+                            <div class="d-flex align-items-center mt-1">
+                                <span class="text-muted me-2" style="font-size:0.85rem">$${parseFloat(item.price).toFixed(2)} × </span>
+                                <input type="number" 
+                                       class="form-control form-control-sm text-center cart-qty-input" 
+                                       style="width: 70px; padding: 2px 5px;" 
+                                       value="${item.quantity}" 
+                                       min="1" 
+                                       onchange="updateCartQty(${item.id}, this.value)">
+                            </div>
                         </div>
                         <div class="text-end">
                             <div class="fw-bold">$${subtotal.toFixed(2)}</div>
-                            <button class="btn btn-sm text-danger p-0" onclick="removeFromCart(${item.id})">
+                            <button class="btn btn-sm text-danger p-0 mt-1" onclick="removeFromCart(${item.id})">
                                 <i class="fa-solid fa-trash-can"></i>
                             </button>
                         </div>
@@ -291,11 +302,43 @@ function loadCartItems() {
             `;
 
             $('#cart-items').html(html);
-            $('#cart-count').text(items.length); // Update header badge
+            $('#cart-count').text(totalBadgeCount); // Sync header badge to aggregate quantities
         }
     });
 }
 
+
+/**
+ * UPDATE CART QUANTITY
+ * Sends the dynamic adjusted count down mutations endpoints manually
+ */
+function updateCartQty(cartId, newQty) {
+    var qtyParsed = parseInt(newQty);
+
+    // Safeguard verification layer: ensure quantities stay above 0
+    if (isNaN(qtyParsed) || qtyParsed < 1) {
+        App.toast.warning('Invalid Value', 'Quantity must be 1 or greater.');
+        loadCartItems(); // Revert display modification down state parameters safely
+        return;
+    }
+
+    App.ajax({
+        url: '/cart/update.php',
+        method: 'POST',
+        data: {
+            id: cartId,
+            quantity: qtyParsed
+        },
+        onSuccess: function (response) {
+            // Re-fetch ledger configurations array to balance totals out live
+            loadCartItems();
+        },
+        onError: function (err) {
+            App.toast.danger('Sync Error', err.message || 'Failed to update item count.');
+            loadCartItems(); // Revert field back to its server state baseline
+        }
+    });
+}
 function removeFromCart(cartId) {
     App.ajax({
         url: '/cart/remove.php',
@@ -316,7 +359,7 @@ $('#place-order').on('click', function () {
     const orderDate = $('#order-date').val();
     const expectedDate = $('#expected-date').val();
 
-    
+
 
     if (currentCartItems.length === 0) {
         App.toast.error('error', 'Cannot place an empty order.');
@@ -342,10 +385,10 @@ $('#place-order').on('click', function () {
         onSuccess: function (response) {
             App.toast.success('success', 'Order #' + response.order_id + ' placed successfully!');
             App.modal.close('cart-modal');
-            
+
             // Reset UI
             $('#order-date, #expected-date').val('');
-           loadCartItems()
+            loadCartItems()
             $('#cart-count').text('0');
         }
     });

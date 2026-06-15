@@ -72,7 +72,7 @@ try {
         $message .= "System Generated Notification";
 
         // Attempt to send email
-        //EmailSender::send($lab['office_email'], $subject, $message);
+        EmailSender::send($lab['office_email'], $subject, $message);
     }
 
     Api::success(null, 'Lab case scheduled successfully. Clinic has been notified.');

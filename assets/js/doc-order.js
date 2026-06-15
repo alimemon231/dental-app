@@ -1,7 +1,6 @@
 /**
- * assets/js/order.js
- * CRUD logic for the Order page.
- * This file is the template/pattern to copy when building any new module.
+ * assets/js/doc-order.js
+ * CRUD logic for the Order page (Doctor View with full Edit & Approval rights).
  */
 
 $(document).ready(function () {
@@ -9,7 +8,9 @@ $(document).ready(function () {
     /* ── State ── */
     var currentPage = 1;
     var perPage = 20;
-    
+    var editingId = null;   // null = adding new, number = editing
+    var selected_items = [];
+
     /* ================================================================
        LOAD TABLE
     ================================================================ */
@@ -30,59 +31,61 @@ $(document).ready(function () {
                 renderPagination(res.meta || {});
             },
             onError: function () {
-                $('#patients-tbody').html(
-                    '<tr><td colspan="8"><div class="table-empty"><i class="fa-solid fa-circle-exclamation"></i> Failed to load patients.</div></td></tr>'
+                $('#order-tbody').html(
+                    '<tr><td colspan="8"><div class="table-empty"><i class="fa-solid fa-circle-exclamation"></i> Failed to load orders.</div></td></tr>'
                 );
             }
         });
     }
-function renderTable(patients) {
-    if (!patients || !patients.length) {
-        $('#order-tbody').html(
-            '<tr><td colspan="8"><div class="table-empty"><i class="fa-solid fa-bag-shopping"></i> No orders found.</div></td></tr>'
-        );
-        return;
-    }
 
-    var rows = '';
-    $.each(patients, function (i, p) {
-        const orderStatus = (p.status || '').toLowerCase();
-
-        // Always keep the view button accessible
-        let actionButtonsHtml = '<button class="btn btn-ghost btn-sm btn-view" data-id="' + p.id + '" title="View"><i class="fa-solid fa-eye"></i></button>';
-
-        // Only add Approve and Reject options if the status is NOT approved
-        if (orderStatus !== 'approved') {
-            actionButtonsHtml += 
-                '<button class="btn btn-ghost btn-sm btn-approve" data-id="' + p.id + '" title="Approve"><i class="fa-solid fa-check"></i> Approve</button>' +
-                '<button class="btn btn-ghost btn-sm btn-delete" data-id="' + p.id + '" data-name="ORD-' + App.utils.escHtml(p.id) + '" title="Reject" style="color:var(--color-danger)"><i class="fa-solid fa-trash"></i>Rej</button>';
+    function renderTable(patients) {
+        if (!patients || !patients.length) {
+            $('#order-tbody').html(
+                '<tr><td colspan="8"><div class="table-empty"><i class="fa-solid fa-bag-shopping"></i> No orders found.</div></td></tr>'
+            );
+            return;
         }
 
-        rows += '<tr>' +
-            '<td><strong>#' + (i + 1) + '</strong></td>' +
-            '<td> ORD-' + App.utils.escHtml(p.id) + '</td>' +
-            '<td>' +
-            '<div class="flex flex-align gap-3">' +
-            '<div>' +
-            App.utils.escHtml(p.order_date) +
-            '</div>' +
-            '</div>' +
-            '</td>' +
-            '<td>' + App.utils.escHtml(p.expected_received_date) + '</td>' +
-            '<td>' + App.utils.escHtml(p.creator_name) + '</td>' +
-            '<td>' + App.utils.escHtml(p.approver_name || '—') + '</td>' + // Fallback if no approver yet
-            '<td>$' + parseFloat(p.total_amount).toFixed(2) + '</td>' +
-            '<td>' + App.utils.escHtml(p.status) + '</td>' +
-            '<td>' +
-            '<div class="actions" style="display: flex; gap: 4px;">' +
-            actionButtonsHtml +
-            '</div>' +
-            '</td>' +
-            '</tr>';
-    });
+        var rows = '';
+        $.each(patients, function (i, p) {
+            const orderStatus = (p.status || '').toLowerCase();
 
-    $('#order-tbody').html(rows);
-}
+            // Always keep the view button accessible
+            let actionButtonsHtml = '<button class="btn btn-ghost btn-sm btn-view" data-id="' + p.id + '" title="View"><i class="fa-solid fa-eye"></i></button>';
+
+            // Show Edit, Approve and Reject options if the status is NOT approved
+            if (orderStatus !== 'approved') {
+                actionButtonsHtml += 
+                    '<button class="btn btn-ghost btn-sm btn-edit" data-id="' + p.id + '" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>' +
+                    '<button class="btn btn-ghost btn-sm btn-approve" data-id="' + p.id + '" title="Approve"><i class="fa-solid fa-check"></i> Approve</button>' +
+                    '<button class="btn btn-ghost btn-sm btn-delete" data-id="' + p.id + '" data-name="ORD-' + App.utils.escHtml(p.id) + '" title="Reject" style="color:var(--color-danger)"><i class="fa-solid fa-trash"></i> Rej</button>';
+            }
+
+            rows += '<tr>' +
+                '<td><strong>#' + (i + 1) + '</strong></td>' +
+                '<td> ORD-' + App.utils.escHtml(p.id) + '</td>' +
+                '<td>' +
+                '<div class="flex flex-align gap-3">' +
+                '<div>' +
+                App.utils.escHtml(p.order_date) +
+                '</div>' +
+                '</div>' +
+                '</td>' +
+                '<td>' + App.utils.escHtml(p.expected_received_date) + '</td>' +
+                '<td>' + App.utils.escHtml(p.creator_name) + '</td>' +
+                '<td>' + App.utils.escHtml(p.approver_name || '—') + '</td>' + 
+                '<td>$' + parseFloat(p.total_amount).toFixed(2) + '</td>' +
+                '<td>' + App.utils.escHtml(p.status) + '</td>' +
+                '<td>' +
+                '<div class="actions" style="display: flex; gap: 4px;">' +
+                actionButtonsHtml +
+                '</div>' +
+                '</td>' +
+                '</tr>';
+        });
+
+        $('#order-tbody').html(rows);
+    }
 
     function renderPagination(meta) {
         var total = meta.total || 0;
@@ -91,7 +94,7 @@ function renderTable(patients) {
         var from = total ? ((current - 1) * perPage + 1) : 0;
         var to = Math.min(current * perPage, total);
 
-        $('#patients-info').text('Showing ' + from + '–' + to + ' of ' + total + ' patients');
+        $('#patients-info').text('Showing ' + from + '–' + to + ' of ' + total + ' orders');
 
         var btns = '';
         btns += '<button class="page-btn" id="pg-prev" ' + (current <= 1 ? 'disabled' : '') + '><i class="fa-solid fa-chevron-left"></i></button>';
@@ -107,18 +110,57 @@ function renderTable(patients) {
         $('#pagination-btns').html(btns);
     }
 
-
-    /* Pagination */
+    /* Pagination Event Listeners */
     $(document).on('click', '.page-btn[data-page]', function () {
-        loadPatients(parseInt($(this).data('page')));
+        loadOrder(parseInt($(this).data('page')));
     });
-    $(document).on('click', '#pg-prev', function () { if (currentPage > 1) loadPatients(currentPage - 1); });
-    $(document).on('click', '#pg-next', function () { loadPatients(currentPage + 1); });
-
-   
+    $(document).on('click', '#pg-prev', function () { if (currentPage > 1) loadOrder(currentPage - 1); });
+    $(document).on('click', '#pg-next', function () { loadOrder(currentPage + 1); });
 
     /* ================================================================
-       VIEW PATIENT
+       SAVE ORDER (create or update)
+    ================================================================ */
+    $('#btn-save-order').on('click', function () {
+        var form = $('#order-form');
+
+        // Front-end validation
+        App.form.clearErrors(form);
+        if (!App.form.validate(form)) {
+            App.toast.warning('Validation', 'Please fill in all required fields.');
+            return;
+        }
+
+        if (!selected_items || selected_items.length === 0) {
+            App.toast.warning('Empty Order', 'Please add at least one item to the order before saving.');
+            return;
+        }
+
+        var data = App.form.toObject(form);
+        var isEditing = !!editingId;
+        var url = isEditing
+            ? '/emp-order/update.php'
+            : '/emp-order/create.php';
+
+        if (isEditing) data.order_id = editingId; // Map ID assignment payload key explicitly
+        data.items = selected_items;
+
+        App.ajax({
+            url: url,
+            method: 'POST',
+            data: data,
+            btn: $('#btn-save-order'),
+            loaderMsg: isEditing ? 'Saving changes…' : 'Creating Order…',
+            onSuccess: function (d, msg) {
+                App.modal.close('order-modal');
+                App.toast.success('Success', msg);
+                loadOrder(currentPage);
+                selected_items = [];
+            }
+        });
+    });
+
+    /* ================================================================
+       VIEW ORDER DETAILS
     ================================================================ */
     $(document).on('click', '.btn-view', function () {
         var id = $(this).data('id');
@@ -127,12 +169,10 @@ function renderTable(patients) {
             url: '/emp-order/get.php?id=' + id,
             loader: false,
             onSuccess: function (p) {
-
-                console.log(p)
                 var html =
                     '<div>' +
-                    '<div class="form-section-title mb-4"><i class="fa-solid fa-shoping-bag"></i> Order Info</div>' +
-                    infoRow('Order Numbber', p.id || '—') +
+                    '<div class="form-section-title mb-4"><i class="fa-solid fa-shopping-bag"></i> Order Info</div>' +
+                    infoRow('Order Number', p.id || '—') +
                     infoRow('Order Date', p.order_date || '—') +
                     infoRow('Delivery Date', p.expected_received_date || '—') +
                     infoRow('Total Order Amount', p.total_amount || '—') +
@@ -144,18 +184,24 @@ function renderTable(patients) {
                 var rows = "";
                 $.each(p.items, function (index, item) {
                     rows += '<tr>'+
-                    '<td>' + item.name + '</td>'+
+                    '<td>' + item.name + ' <small style="display:block;color:green;">' + (item.item_code || '-') + '</small></td>'+
                     '<td>' + item.qty + '</td>'+
-                    '<td>' + item.price + '</td>'+
-                    '<td>' + item.subtotal + '</td>'+
-                    
+                    '<td>' + parseFloat(item.price).toFixed(2) + '</td>'+
+                    '<td>' + parseFloat(item.subtotal).toFixed(2) + '</td>'+
                     '</tr>';
                 });
 
                 $('#view-order-details').html(html);
                 $('#order-items-tbody').html(rows);
-                $('#order-grand-total-display').html(p.total_amount);
-                $('#btn-edit-from-view').data('id', id);
+                $('#order-grand-total-display').html(parseFloat(p.total_amount).toFixed(2));
+                
+                // Keep modal button visibility synced to status context rules
+                if ((p.status || '').toLowerCase() === 'approved') {
+                    $('#btn-edit-from-view').hide();
+                } else {
+                    $('#btn-edit-from-view').show().data('id', id);
+                }
+
                 App.modal.open('view-order-modal');
             }
         });
@@ -168,29 +214,52 @@ function renderTable(patients) {
             '</div>';
     }
 
-    function ucFirst(str) { return str ? str.charAt(0).toUpperCase() + str.slice(1) : ''; }
-
     $('#btn-edit-from-view').on('click', function () {
-        App.modal.close('view-patient-modal');
+        App.modal.close('view-order-modal');
         openEditModal($(this).data('id'));
     });
 
-    
+    /* ================================================================
+       EDIT ORDER FUNCTIONALITIES
+    ================================================================ */
+    $(document).on('click', '.btn-edit', function () {
+        openEditModal($(this).data('id'));
+    });
+
+    function openEditModal(id) {
+        App.ajax({
+            url: '/emp-order/get.php?id=' + id,
+            loader: false,
+            onSuccess: function (p) {
+                resetForm();
+                editingId = p.id;
+                $('#order-modal-title').text('Edit Order');
+
+                // Populate fields
+                $('#order-id').val(p.id);
+                $('[name="o_date"]').val(p.order_date);
+                $('[name="r_date"]').val(p.expected_received_date);
+                selected_items = p.items;
+                
+                renderOrderTable();
+                App.modal.open('order-modal');
+            }
+        });
+    }
 
     /* ================================================================
-       DELETE PATIENT
+       APPROVE & REJECT ACTIONS
     ================================================================ */
-
     $(document).on('click', '.btn-approve', function () {
         var id = $(this).data('id');
         App.utils.confirm(
-            'Are you sure you want to approvve this order.',
+            'Are you sure you want to approve this order?',
             function () {
                 App.ajax({
                     url: '/doc-order/approve.php',
                     method: 'POST',
                     data: { id: id },
-                    loaderMsg: 'Deleting doctor…',
+                    loaderMsg: 'Approving order…',
                     onSuccess: function (d, msg) {
                         App.toast.success('Order Approved', msg);
                         loadOrder(currentPage);
@@ -211,9 +280,9 @@ function renderTable(patients) {
                     url: '/doc-order/reject.php',
                     method: 'POST',
                     data: { id: id },
-                    loaderMsg: 'Deleting doctor…',
+                    loaderMsg: 'Rejecting order…',
                     onSuccess: function (d, msg) {
-                        App.toast.success('Deleted', msg);
+                        App.toast.success('Rejected', msg);
                         loadOrder(currentPage);
                     }
                 });
@@ -221,14 +290,130 @@ function renderTable(patients) {
         );
     });
 
+    /* ================================================================
+       DYNAMIC ITEM MANAGEMENT METHODS
+    ================================================================ */
+    function getitems() {
+        App.ajax({
+            url: '/emp-order/item-list.php',
+            loader: false,
+            onSuccess: function (p) {
+                var rows = '<option value="null" disabled selected> Select Item</option>';
+                $.each(p, function (i, item) {
+                    rows += `<option value="${item.id}" data-name="${item.name}" data-price="${item.price}">${item.name}</option>`;
+                });
+                $("#order-items").html(rows);
+            }
+        });
+    }
 
-    
+    $('#btn-add-item').on('click', function (e) {
+        e.preventDefault();
 
-    
+        var $itemSelect = $('#order-items');
+        var $qtyInput = $('#qty');
+        var selectedOption = $itemSelect.find(':selected');
+
+        var itemId = $itemSelect.val();
+        var itemName = selectedOption.data('name');
+        var price = selectedOption.data('price');
+        var quantity = $qtyInput.val();
+
+        if (!itemId || !quantity || quantity <= 0) {
+            App.toast.warning('Input Error', 'Please select an item and enter a valid quantity.');
+            return;
+        }
+
+        var itemObj = {
+            name: itemName,
+            id: itemId,
+            price: price,
+            qty: quantity
+        };
+
+        addItem(itemObj);
+
+        // Reset sub fields
+        $itemSelect.val(null).trigger('change');
+        $qtyInput.val('');
+    });
+
+    function addItem(itemObj) {
+        if (selected_items === null) selected_items = [];
+
+        var existing = selected_items.find(item => item.id == itemObj.id);
+        if (existing) {
+            existing.qty = parseInt(existing.qty) + parseInt(itemObj.qty);
+        } else {
+            selected_items.push(itemObj);
+        }
+
+        renderOrderTable();
+    }
+
+    $(document).on('click', '.btn-remove-item', function () {
+        removeItem($(this).data('id'));
+    });
+
+    function removeItem(itemId) {
+        selected_items = selected_items.filter(item => item.id != itemId);
+        if (selected_items.length === 0) {
+            selected_items = null;
+        }
+        renderOrderTable();
+    }
+
+    function renderOrderTable() {
+        var $tbody = $('#added-items-tbody');
+        $tbody.empty();
+
+        if (!selected_items || selected_items.length === 0) {
+            $tbody.append('<tr><td colspan="6" class="text-center">No items added to order.</td></tr>');
+            $('#grand-total-display').text('$0.00');
+            return;
+        }
+
+        var grandTotal = 0;
+        var count = 1;
+
+        selected_items.forEach(function (item) {
+            var subtotal = parseFloat(item.price) * parseInt(item.qty);
+            grandTotal += subtotal;
+
+            var row = `
+            <tr>
+                <td>${count}</td>
+                <td>${item.name}</td>
+                <td>$${parseFloat(item.price).toFixed(2)}</td>
+                <td>${item.qty}</td>
+                <td>$${subtotal.toFixed(2)}</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-danger btn-remove-item" data-id="${item.id}">
+                        <i class="fa fa-trash"></i> Remove
+                    </button>
+                </td>
+            </tr>`;
+            $tbody.append(row);
+            count++;
+        });
+
+        $('#grand-total-display').text('$' + grandTotal.toFixed(2));
+    }
+
+    /* ================================================================
+       HELPERS
+    ================================================================ */
+    function resetForm() {
+        App.form.reset(document.getElementById('order-form'));
+        $('#order-id').val('');
+        editingId = null;
+        selected_items = [];
+    }
+
     /* ================================================================
        INIT — load on page ready
     ================================================================ */
     loadOrder(1);
-
+    getitems();
 
 });

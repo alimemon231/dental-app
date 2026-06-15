@@ -31,13 +31,13 @@ if ($paymentId <= 0) {
 }
 
 try {
-    // 3. Collect Isolated Master Liability Details
+    // 3. Collect Isolated Master Liability Details (Selecting text-based 'treatments' column)
     $sql = "SELECT 
                 p.id,
                 p.patient_id,
                 p.provider_id,
                 p.total_amount,
-                p.treatment_ids,
+                p.treatments,
                 p.payment_date,
                 p.status,
                 pat.name AS patient_name,
@@ -54,42 +54,12 @@ try {
         exit;
     }
 
-    // Initialize unified treatments target array container
-    $paymentData['treatment'] = [];
-    $rawIds = trim($paymentData['treatment_ids'] ?? '');
+    // 4. Backward Compatibility Mapping
+    // Pass the raw custom text directly under 'treatments' and 'treatment_names' to prevent UI rendering breakages
+    $paymentData['treatments']      = $paymentData['treatments'] ?? '';
+    $paymentData['treatment_names'] = $paymentData['treatments'] ?? '';
 
-    if (!empty($rawIds)) {
-        // Scenario A: Check if it's already a valid JSON structure
-        $decoded = json_decode($rawIds, true);
-        
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            // It's a structured JSON object/array; pass it straight through
-            $paymentData['treatments'] = $decoded;
-        } else {
-            // Scenario B: Handle legacy setups (single ID raw integers or comma-separated list values)
-            // Break down commas if multiple values are stored as a CSV string fallback
-            $individualIds = array_filter(array_map('intval', explode(',', $rawIds)));
-
-            if (!empty($individualIds)) {
-                // Generate parameterized placeholders safely (?, ?, ?) for the array length
-                $placeholders = implode(',', array_fill(0, count($individualIds), '?'));
-                
-                $treatmentSql = "SELECT id, name FROM `procedures` WHERE id IN ($placeholders)";
-                $treatmentsList = $db->query($treatmentSql, $individualIds);
-                
-                if ($treatmentsList) {
-                    foreach ($treatmentsList as $treatment) {
-                        $paymentData['treatments'][] = [
-                            'id' => (string)$treatment['id'],
-                            'name' => $treatment['name']
-                        ];
-                    }
-                }
-            }
-        }
-    }
-
-    // 4. Return Data Package Array
+    // 5. Return Data Package Array
     Api::success($paymentData, 'Master record data parsed successfully.');
 
 } catch (Exception $e) {

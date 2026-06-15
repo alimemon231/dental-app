@@ -39,26 +39,13 @@ if ($sessionOfficeId <= 0) {
 // 2. Capture and Sanitize Payload Fields
 $patientId         = (int)($_POST['patient_id'] ?? 0);
 $providerId        = (int)($_POST['provider_id'] ?? 0);
-$treatmentIdsJson  = trim($_POST['treatment_ids'] ?? ''); // Arrives as stringified JSON from frontend array
+$treatmentsText    = trim($_POST['treatments'] ?? ''); // Captures raw text description directly from frontend textarea
 $totalAmount       = (float)($_POST['total_amount'] ?? 0.00);
 $masterPaymentType = trim($_POST['master_payment_type'] ?? 'Self Pay');
 
 $txAmount          = (float)($_POST['transaction_amount'] ?? 0.00);
 $paymentMethod     = trim($_POST['payment_method'] ?? 'Cash');
 $txNotes           = trim($_POST['transaction_notes'] ?? '');
-
-// --- NEW LOGIC: Convert JSON array to comma-separated string ---
-$treatmentString = "";
-$decodedTreatments = json_decode($treatmentIdsJson, true);
-
-if (is_array($decodedTreatments)) {
-    $ids = array_map(function($item) {
-        return (int)$item['id'];
-    }, $decodedTreatments);
-    
-    // Creates the "12,15,18" format
-    $treatmentString = implode(',', $ids);
-}
 
 // 3. System Clocks & Dates
 $currentDate       = date('Y-m-d');
@@ -70,8 +57,8 @@ if ($patientId <= 0 || $providerId <= 0) {
     exit;
 }
 
-if (empty($treatmentIdsJson) || $treatmentIdsJson === '[]') {
-    Api::error('At least one treatment classification must be attached to the ledger.');
+if ($treatmentsText === '') {
+    Api::error('Please input custom treatments description text for the customer bill.');
     exit;
 }
 
@@ -96,17 +83,17 @@ try {
 
     // 7. Structure and Insert the Master Invoice (`payments` table)
     $paymentData = [
-        'office_id'     => $sessionOfficeId,
-        'patient_id'    => $patientId,
-        'provider_id'   => $providerId,
-        'treatment_ids' => $treatmentString, // Stored safely as raw JSON text
-        'total_amount'  => $totalAmount,      // Note: Cast as int/float based on your strict DB schema bounds
-        'payment_date'  => $currentDate,
-        'payment_type'  => $masterPaymentType,
-        'status'        => $paymentStatus,
-        'created_by'    => $currentUserId,
-        'edited_by'     => $currentUserId,
-        'edited_at'     => $currentDateTime
+        'office_id'    => $sessionOfficeId,
+        'patient_id'   => $patientId,
+        'provider_id'  => $providerId,
+        'treatments'   => $treatmentsText, // Saved cleanly as custom itemized literal billing text notes
+        'total_amount' => $totalAmount,    // Cast to numerical context based on DB schema definitions
+        'payment_date' => $currentDate,
+        'payment_type' => $masterPaymentType,
+        'status'       => $paymentStatus,
+        'created_by'   => $currentUserId,
+        'edited_by'    => $currentUserId,
+        'edited_at'    => $currentDateTime
     ];
 
     $paymentId = $db->insert('payments', $paymentData);

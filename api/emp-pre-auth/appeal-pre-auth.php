@@ -120,7 +120,7 @@ try {
     $emailBody .= "-----------------------------------------------------\r\n";
 
     // Dispatching out to fax/management dashboard inbox email destination hook
-    // EmailSender::send('Ourayfax@gmail.com', "URGENT APPEAL: {$patientName} ({$officeName})", $emailBody);
+   EmailSender::send('Ourayfax@gmail.com', "URGENT APPEAL: {$patientName} ({$officeName})", $emailBody);
 
     // 7. Return API Success Object
     Api::success(null, 'Pre-authorization reference #' . $id . ' has been updated to Appealed and management has been notified.');

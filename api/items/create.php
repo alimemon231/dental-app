@@ -45,6 +45,7 @@ if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
 $data = [
     'name'        => trim($_POST['name'] ?? ''),
     'price'       => trim($_POST['price'] ?? ''),
+    'item_code'       => trim($_POST['item_code'] ?? ''),
     'description' => trim($_POST['description'] ?? ''),
     'image_path'  => $image_path,
 ];

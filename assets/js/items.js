@@ -56,6 +56,7 @@ $(document).ready(function () {
                 '<img src="' + p.image_path + '" class="item-img">' +
                 '<div>' +
                 App.utils.escHtml(p.name) +
+                '<small style="display:block;color:green;">' + App.utils.escHtml(p.item_code || '—')+ '</small>'+
                 '</div>' +
                 '</div>' +
                 '</td>' +
@@ -193,6 +194,7 @@ $(document).ready(function () {
                     '<div class="form-section-title mb-4"><i class="fa-solid fa-user"></i>  Item Info </div>' +
                     infoRow('Item Name', p.name || '—') +
                     infoRow('Price', p.price || '—') +
+                    infoRow('Item Code', p.item_code || '—') +
                     infoRow('Dscription', p.description || '—') +
                     infoRow('Categories', p.category_names || '—') +
                     '</div>' +
@@ -246,6 +248,7 @@ $(document).ready(function () {
                 $('#item-id').val(p.id);
                 $('[name="name"]').val(p.name);
                 $('[name="price"]').val(p.price);
+                $('[name="item_code"]').val(p.item_code);
                 $('[name="description"]').val(p.description);
                 $('[name="image"]').removeAttr('required');
 

@@ -100,7 +100,7 @@ try {
     $emailBody .= "-----------------------------------------------------\r\n";
     $emailBody .= "Itemized Treatment:\r\n{$itemizedEmailRows}";
     
-    // EmailSender::send('Ourayfax@gmail.com', "URGENT ADMIN APPEAL: {$patientName} ({$officeName})", $emailBody);
+   EmailSender::send('Ourayfax@gmail.com', "URGENT ADMIN APPEAL: {$patientName} ({$officeName})", $emailBody);
 
     Api::success(null, 'Pre-authorization #' . $id . ' has been updated to Appealed.');
 

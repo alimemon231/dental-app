@@ -16,25 +16,76 @@ $(document).ready(function () {
     // Modal Confirmation Actions
     $(document).on('click', '#btn-confirm-complete', submitCompletion);
     $(document).on('click', '#btn-confirm-reschedule', submitReschedule);
+
+    $(document).on('click', '#btn-filter-table', function (e) {
+        e.preventDefault();
+
+        // 1. Inject the loading indicator directly into the correct scheduled table container body
+        $('#manage-appointments-tbody').html(`
+        <tr>
+            <td colspan="6" class="text-center">
+                <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>
+            </td>
+        </tr>
+    `);
+
+        // 2. Animate the button icon funnel/spinner element asset
+        var $icon = $(this).find('i');
+        $icon.addClass('fa-spin');
+
+        // 3. Force matrix hot reload jumping safely back to pagination index 1
+        if (typeof loadScheduledAppointments === 'function') {
+            loadScheduledAppointments(1);
+        }
+
+        // 4. Terminate the rotation rendering execution after a quick frame window delay
+        setTimeout(function () {
+            $icon.removeClass('fa-spin');
+        }, 600);
+    });
 });
 
 /**
- * 1. Fetch only Scheduled records for the clinic
+ * 1. Fetch only Scheduled records for the clinic with active filters
  */
-function loadScheduledAppointments(page = 1) {
+function loadScheduledAppointments(page) {
+    page = page || 1;
     currentPage = page;
 
-    // Show loading state
-    $('#manage-appointments-tbody').html('<tr><td colspan="6" class="text-center"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</td></tr>');
+    // Show smooth loading state container matching target tbody design rules
+    $('#manage-appointments-tbody').html(`
+        <tr>
+            <td colspan="6" class="text-center">
+                <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>
+            </td>
+        </tr>
+    `);
+
+    // Gather filter parameters from the exact same layout element nodes
+    var patientName = $('#filter-patient-name').val();
+    var status = $('#filter-status').val();
+    var caseId = $('#filter-case-id').val();
 
     App.ajax({
         url: '/emp-pre-auth/list-scheduled.php',
         method: 'GET',
-        data: { page: page },
+        loader: false,
+        // Pass filter constraints alongside layout pagination properties
+        data: {
+            page: page,
+            patient_name: patientName,
+            status: status,
+            case_id: caseId
+        },
         onSuccess: function (res) {
-            // Unpack envelope wrapper data response context securely
-            var dataset = res.data || res;
+            // Unpack paginated dataset records envelope safely matching both configurations
+            var dataset = (res && res.records) ? res.records : (res.data || res);
             renderManageTable(dataset);
+        },
+        onError: function () {
+            $('#manage-appointments-tbody').html(
+                '<tr><td colspan="6" class="text-center"><div class="table-empty"><i class="fa-solid fa-circle-exclamation"></i> Failed to load scheduled records.</div></td></tr>'
+            );
         }
     });
 }
@@ -150,7 +201,7 @@ function renderManageTable(records) {
 function handleViewDetails() {
     // Correctly extract the target record identification parameter context from the event target instance trigger
     const id = $(this).data('id');
-    
+
     App.ajax({
         url: '/emp-pre-auth/get.php?id=' + id,
         method: 'GET',
@@ -292,7 +343,7 @@ function handleViewDetails() {
                 ? `<span class="text-success" style="font-weight:600;"><i class="fa-solid fa-user-check"></i> ${App.utils.escHtml(r.approver_name)}</span>`
                 : '<span class="text-muted" style="font-style: italic;"><i class="fa-solid fa-hourglass-half"></i> Pending Review Evaluation</span>';
 
-            
+
 
             var editorRow = r.editor_name && r.editor_name !== '—'
                 ? `<span><i class="fa-solid fa-user-pen"></i> ${App.utils.escHtml(r.editor_name)} <small class="text-muted">(${r.formatted_edit_time || r.edit_time || ''})</small></span>`
@@ -314,7 +365,7 @@ function handleViewDetails() {
                 '<div>' +
                 '<div class="form-section-title mb-4" style="color:var(--color-primary); border-bottom:2px solid #f1f5f9; padding-bottom:5px; font-weight:700;"><i class="fa-solid fa-shield-halved"></i> Authorization & Audit</div>' +
                 infoRow('Authorized By', approverRow) +
-                infoRow('Expiration Date',r.procedures_list[0].approval_expire_date ) +
+                infoRow('Expiration Date', r.procedures_list[0].approval_expire_date) +
                 infoRow('Appointment Linked', `<span class="text-success font-bold">${App.utils.escHtml(r.procedures_list[0].appointment_date || 'None scheduled')}</span>`) +
                 infoRow('Last Edited By', editorRow) +
                 infoRow('Submitted By', App.utils.escHtml(r.creator_name || 'System') + ' <small class="text-muted">(' + (r.time_ago || '—') + ')</small>') +
@@ -356,7 +407,7 @@ function submitCompletion() {
     if (completeRequestLock) return;
     const id = $('#complete-preauth-id').val();
     completeRequestLock = true;
-    
+
     App.ajax({
         url: '/emp-pre-auth/complete-procedure.php',
         method: 'POST',
@@ -367,7 +418,7 @@ function submitCompletion() {
             App.modal.close('complete-modal');
             loadScheduledAppointments(currentPage);
         },
-        complete: function() {
+        complete: function () {
             completeRequestLock = false;
         }
     });
@@ -398,7 +449,7 @@ function submitReschedule() {
             App.modal.close('reschedule-modal');
             loadScheduledAppointments(currentPage);
         },
-        complete: function() {
+        complete: function () {
             rescheduleRequestLock = false;
         }
     });

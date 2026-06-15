@@ -14,11 +14,9 @@
       height: 40px;
     }
 
-    #selected-categories-list{
+    #selected-categories-list {
       display: flex;
     }
-
-
   </style>
 </head>
 
@@ -81,9 +79,9 @@
               <form id="item-form" novalidate>
                 <input type="hidden" name="item_id" id="item-id" value="">
 
-                <!-- Personal Info -->
                 <div class="form-section">
                   <div class="form-section-title"><i class="fa-solid fa-pills"></i> Item Information</div>
+
                   <div class="form-row">
                     <div class="form-group">
                       <label class="form-label">Item Name <span class="required">*</span></label>
@@ -91,13 +89,23 @@
                       <span class="form-error">Item name is required.</span>
                     </div>
                     <div class="form-group">
-                      <label class="form-label">Price<span class="required">*</span></label>
-                      <input type="number" name="price" id="price" class="form-control" placeholder="+1 453-545-345"
-                        step="any" required>
-                      <span class="form-error"> Item price is required.</span>
+                      <label class="form-label">Price <span class="required">*</span></label>
+                      <input type="number" name="price" id="price" class="form-control" placeholder="0.00" step="any"
+                        required>
+                      <span class="form-error">Item price is required.</span>
                     </div>
                   </div>
-                  <div class="form-row" style="grid-template-columns: repeat(1, 1fr);">
+
+                  <div class="form-row" style="grid-template-columns: repeat(1, 1fr); margin-top: 15px;">
+                    <div class="form-group">
+                      <label class="form-label">Item Code <span class="text-muted"
+                          style="font-size: 0.8rem; font-weight: normal;">(Optional)</span></label>
+                      <input type="text" name="item_code" id="item-code" class="form-control"
+                        placeholder="e.g. SKU-10024">
+                    </div>
+                  </div>
+
+                  <div class="form-row" style="grid-template-columns: repeat(1, 1fr); margin-top: 15px;">
                     <div class="form-group">
                       <label class="form-label">Description <span class="required">*</span></label>
                       <textarea name="description" id="description" placeholder="Description about item"
@@ -105,27 +113,23 @@
                       <span class="form-error">Description is required</span>
                     </div>
                   </div>
-                  <div class="form-row" style="grid-template-columns: repeat(1, 1fr);margin-top:20px;">
 
+                  <div class="form-row" style="grid-template-columns: repeat(1, 1fr); margin-top: 20px;">
                     <div class="form-group">
                       <label class="form-label">Assign Categories</label>
 
-                      <!-- Select2 Field -->
                       <select id="category-select" class="form-control">
                         <option value="" selected disabled>Search and select categories...</option>
-                        
                       </select>
 
-                      <!-- Tag/Badge Container -->
-                      <div id="selected-categories-list">
-                        <!-- Badges will appear here -->
+                      <div id="selected-categories-list" style="margin-top: 10px;">
                       </div>
                     </div>
-
                   </div>
-                  <div class="form-row" style="grid-template-columns: repeat(1, 1fr);margin-top:10px;">
+
+                  <div class="form-row" style="grid-template-columns: repeat(1, 1fr); margin-top: 10px;">
                     <div class="form-group">
-                      <label class="form-label"> Item Image<span class="required">*</span></label>
+                      <label class="form-label">Item Image <span class="required">*</span></label>
                       <input type="file" class="form-control" accept=".png, .jpg, .jpeg" name="image" id="image"
                         required>
                       <span class="form-error">Image is required</span>

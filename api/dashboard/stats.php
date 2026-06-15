@@ -19,7 +19,7 @@ if (!$officeRow) {
     Api::error("User is not assigned to any office.");
     exit;
 }
-$officeId = $officeRow['office_id'];
+$officeId = $_SESSION['office_id'];
 
 // 2. Find Budget for current month
 $budgetRow = $db->queryOne(

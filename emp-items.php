@@ -75,6 +75,7 @@
                                 <div class="detail-info">
                                     <h2 id="modal-name"></h2>
                                     <p id="modal-cats" class="text-muted small"></p>
+                                     <p id="item-code" class="text-muted small"></p>
                                     <h3 id="modal-price" class="text-primary"></h3>
                                     <p id="modal-desc"></p>
 
