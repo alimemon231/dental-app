@@ -35,6 +35,7 @@ if ($currentUser['role'] == 'admin') {
   $navSections = [
     'Main' => [
       ['label' => 'Dashboard', 'icon' => 'fa-gauge', 'href' => '/dashboard.php', 'key' => 'dashboard'],
+      ['label' => 'Payments', 'icon' => 'fa-dollar', 'href' => '/adm-payment.php', 'key' => 'dashboard'],
     ],
     'Offices Settings' => [
       ['label' => 'Offices Setting', 'icon' => 'fa-hospital', 'href' => '/offices.php', 'key' => 'offices'],
@@ -73,6 +74,7 @@ if ($currentUser['role'] == 'admin') {
     '' => [
       ['label' => 'Dashboard', 'icon' => 'fa-gauge', 'href' => '/dashboard.php', 'key' => 'dashboard'],
       ['label' => 'Patient Settings', 'icon' => 'fa-user-injured', 'href' => '/patients.php', 'key' => 'dashboard'],
+      ['label' => 'Payments', 'icon' => 'fa-dollar', 'href' => '/emp-payments.php', 'key' => 'dashboard'],
     ],
 
     'Preauth Settings' => [
@@ -106,6 +108,7 @@ if ($currentUser['role'] == 'admin') {
       ['label' => 'Orders', 'icon' => 'fa-shopping-bag', 'href' => '/doc-order.php', 'key' => 'order'],
       ['label' => 'Items', 'icon' => 'fa-pills', 'href' => '/emp-items.php', 'key' => 'dashboard'],
       ['label' => 'Patient Settings', 'icon' => 'fa-user-injured', 'href' => '/patients.php', 'key' => 'dashboard'],
+      ['label' => 'Payments', 'icon' => 'fa-dollar', 'href' => '/emp-payments.php', 'key' => 'dashboard'],
     ],
     
     // Copied from Staff over to Doctor:

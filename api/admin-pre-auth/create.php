@@ -44,6 +44,7 @@ $p_insurance     = (int)($_POST['p_insurance_plan'] ?? 0);
 $providerId      = (int)($_POST['provider'] ?? $_POST['doctor_id'] ?? 0); 
 $treatment_types = $_POST['treatment_type'] ?? []; 
 $tooth_numbers   = $_POST['tooth_numbers'] ?? [];   
+$treatment_prices = $_POST['treatment_price'] ?? []; // Captured price metrics array matching frontend select data inputs
 
 // Capture custom request date parameter inputs 
 $requestDateInput = trim($_POST['request_date'] ?? '');
@@ -54,7 +55,7 @@ if ($patientId <= 0 || $p_insurance <= 0 || empty($treatment_types) || empty($to
     exit;
 }
 
-if (count($treatment_types) !== count($tooth_numbers)) {
+if (count($treatment_types) !== count($tooth_numbers) || count($treatment_types) !== count($treatment_prices)) {
     Api::error('Structural payload mismatch detected. Procedures data matrix is uneven.');
     exit;
 }
@@ -100,8 +101,9 @@ try {
     $itemizedEmailRows = "";
     
     foreach ($treatment_types as $index => $procedureId) {
-        $procId  = (int)$procedureId;
-        $toothNo = (int)$tooth_numbers[$index];
+        $procId   = (int)$procedureId;
+        $toothNo  = (int)$tooth_numbers[$index];
+        $rowPrice = $treatment_prices[$index]; // Access the matched pricing layer value
 
         if ($procId <= 0) {
             continue; // Skip any empty validation rows safely
@@ -112,6 +114,7 @@ try {
             'case_id'              => $caseId,
             'procedure_id'         => $procId,
             'teeth_number'         => $toothNo,
+            'price'                => $rowPrice, // Injected historical pricing data key
             'p_insurance_plan'     => $p_insurance,
             'appointment_date'     => null, 
             'created_at'           => $currentTimeStamp, // Injected mixed dynamic datetime string
@@ -131,7 +134,7 @@ try {
         $procInfo = $db->queryOne("SELECT name FROM procedures WHERE id = ? LIMIT 1", [$procId]);
         $procName = $procInfo ? $procInfo['name'] : "Proc ID: #{$procId}";
         
-        $itemizedEmailRows .= "  - Tooth {$toothNo}: {$procName}\r\n";
+        $itemizedEmailRows .= "  - Tooth {$toothNo}: {$procName} ($" . number_format((float)$rowPrice, 2) . ")\r\n";
     }
 
     // Commit all operations safely to storage layers
@@ -153,7 +156,7 @@ try {
     $emailBody .= $itemizedEmailRows;
     $emailBody .= "---------------------------------------------\r\n";
 
-   EmailSender::send('Ourayfax@gmail.com', "New Case Pre-Auth: {$patientName} ({$officeName})", $emailBody);
+    EmailSender::send('Ourayfax@gmail.com', "New Case Pre-Auth: {$patientName} ({$officeName})", $emailBody);
 
     // 11. Complete Operation Status Success Payload Return
     Api::success(['case_id' => $caseId], 'Pre-Auth case metrics and itemized tracking rows split and created successfully.');

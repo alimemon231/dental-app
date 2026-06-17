@@ -41,7 +41,8 @@ $patientId       = (int)($_POST['patient_id'] ?? 0);
 $p_insurance     = (int)($_POST['p_insurance_plan'] ?? 0);
 $providerId      = (int)($_POST['provider'] ?? $_POST['doctor_id'] ?? 0); // Captures provider/doctor context from payload
 $treatment_types = $_POST['treatment_type'] ?? []; // Captured as an Array stack
-$tooth_numbers   = $_POST['tooth_numbers'] ?? [];   // Captured as an Array stack
+$tooth_numbers   = $_POST['tooth_numbers'] ?? [];
+$treatment_prices = $_POST['treatment_price'] ?? [];   // Fixed variable naming alignment here
 
 // 3. Robust Array Input Validations
 if ($patientId <= 0 || $p_insurance <= 0 || empty($treatment_types) || empty($tooth_numbers)) {
@@ -86,11 +87,13 @@ try {
 
     // 8. Process Child Loop to unroll rows directly into individual itemized `pre-auth` records
     $itemizedEmailRows = "";
+    $totalCaseValue    = 0.00;
     $currentTimeStamp  = date('Y-m-d H:i:s');
     
     foreach ($treatment_types as $index => $procedureId) {
         $procId  = (int)$procedureId;
         $toothNo = (int)$tooth_numbers[$index];
+        $treatment_price = isset($treatment_prices[$index]) ? (double)$treatment_prices[$index] : 0.00;
 
         if ($procId <= 0) {
             continue; // Skip any empty validation rows safely
@@ -101,6 +104,7 @@ try {
             'case_id'              => $caseId,
             'procedure_id'         => $procId,
             'teeth_number'         => $toothNo,
+            'price'                => $treatment_price, // Maps price directly into database target
             'p_insurance_plan'     => $p_insurance,
             'appointment_date'     => null, // Set during scheduling phase
             'created_at'           => $currentTimeStamp,
@@ -120,7 +124,9 @@ try {
         $procInfo = $db->queryOne("SELECT name FROM procedures WHERE id = ? LIMIT 1", [$procId]);
         $procName = $procInfo ? $procInfo['name'] : "Proc ID: #{$procId}";
         
-        $itemizedEmailRows .= "  - Tooth {$toothNo}: {$procName}\r\n";
+        // Build email breakdown table text and add to summation total
+        $totalCaseValue += $treatment_price;
+        $itemizedEmailRows .= "  - Tooth {$toothNo}: {$procName} (Price: \$" . number_format($treatment_price, 2) . ")\r\n";
     }
 
     // Commit all operations safely to storage layers
@@ -140,16 +146,16 @@ try {
     $emailBody .= "Itemized Treatments Matrix:\r\n";
     $emailBody .= $itemizedEmailRows;
     $emailBody .= "---------------------------------------------\r\n";
+    $emailBody .= "Total Estimated Value: $" . number_format($totalCaseValue, 2) . "\r\n";
+    $emailBody .= "---------------------------------------------\r\n";
 
-   EmailSender::send('Ourayfax@gmail.com', "New Case Pre-Auth: {$patientName} ({$officeName})", $emailBody);
+    EmailSender::send('Ourayfax@gmail.com', "New Case Pre-Auth: {$patientName} ({$officeName})", $emailBody);
 
     // 10. Complete Operation Status Success Payload Return
     Api::success(['case_id' => $caseId], 'Pre-Auth case metrics and itemized tracking rows split and created successfully.');
 
 } catch (Exception $e) {
     // Instantly roll back nested changes on exceptions to maintain absolute reference integrity
-   
-        $db->rollBack();
-    
+    $db->rollBack();
     Api::error('Database transactional operational failure: ' . $e->getMessage(), 500);
 }

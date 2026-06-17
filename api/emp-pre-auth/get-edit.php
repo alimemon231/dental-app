@@ -59,6 +59,7 @@ try {
             pa.id AS pre_auth_id,
             pa.procedure_id,
             pa.teeth_number AS tooth_number,
+            pa.price,
             pa.p_insurance_plan,
             pa.status,
             pa.notes,
@@ -71,7 +72,22 @@ try {
     $proceduresList = $db->query($proceduresSql, [$caseId]) ?: [];
 
     // 5. Structure payload to look like your legacy format, but containing all case metrics
-    $primaryItem = !empty($proceduresList) ? $proceduresList[0] : null;
+    $formattedProcedures = [];
+    foreach ($proceduresList as $item) {
+        $formattedProcedures[] = [
+            'pre_auth_id'     => (int)$item['pre_auth_id'],
+            'procedure_id'    => (int)$item['procedure_id'],
+            'procedure_name'  => $item['procedure_name'],
+            'procedure_price' => $item['price'], // Aligned to look up from pre-auth column
+            'price'           => $item['price'], // Redundant map fallback for security matching strings
+            'tooth_number'    => $item['tooth_number'],
+            'p_insurance_plan'=> (int)$item['p_insurance_plan'],
+            'status'          => $item['status'],
+            'notes'           => $item['notes']
+        ];
+    }
+
+    $primaryItem = !empty($formattedProcedures) ? $formattedProcedures[0] : null;
 
     $response = [
         'id'               => $caseId, // Assigning case_id as root identifier to preserve your framework configurations
@@ -89,7 +105,7 @@ try {
         'status'           => $primaryItem ? $primaryItem['status'] : 'Requested',
         
         // Supply full itemized list for JavaScript loop to generate dynamic rows
-        'procedures_list'  => $proceduresList
+        'procedures_list'  => $formattedProcedures
     ];
 
     Api::success($response);

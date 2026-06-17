@@ -30,6 +30,7 @@ if (!$procedure_id) {
 // Added 'status' to the data collection
 $data = [
     'name'        => trim($_POST['name'] ?? ''),
+    'cost'        => trim($_POST['price'] ?? ''),
     'description' => trim($_POST['description'] ?? ''),
     'status'      => trim($_POST['status'] ?? 'active') 
 ];

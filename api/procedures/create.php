@@ -24,6 +24,7 @@ if (Api::method() !== 'POST') {
 // 3. Collect and Validate Data
 $data = [
     'name'        => trim($_POST['name'] ?? ''),
+    'cost'        => trim($_POST['price'] ?? ''),
     'description' => trim($_POST['description'] ?? ''),
     'status'      => 'active' // Default status on creation
 ];
@@ -49,6 +50,7 @@ try {
     $newProcedure = [
         'id'          => $id,
         'name'        => $data['name'],
+        'cost'        => $data['cost'],
         'description' => $data['description'],
         'status'      => $data['status']
     ];

@@ -19,7 +19,7 @@ if (!$id) {
 // 2. Fetch Procedure Data
 // Added 'status' to the SELECT statement
 $procedure = $db->queryOne(
-    "SELECT id, name, description, status
+    "SELECT *
      FROM procedures
      WHERE id = ?",
     [$id]

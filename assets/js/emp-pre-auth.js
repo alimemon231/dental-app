@@ -48,12 +48,18 @@ $(document).ready(function () {
         FUNCTION 2: ADD N NUMBER OF TEETH & PROCEDURE ROWS
     ================================================================ */
     // Added 3rd parameter: preAuthRowId to accurately track database record keys
-    function addTreatmentRow(selectedProcedureId, selectedToothNumber, preAuthRowId) {
+    // Added 3rd parameter: preAuthRowId to accurately track database record keys
+    function addTreatmentRow(selectedProcedureId, selectedToothNumber, preAuthRowId, preAuthPrice) {
         var rowIdValue = preAuthRowId || '';
+        var currentPriceValue = preAuthPrice || '';
 
         var procedureOptions = '<option value="">-- Select Procedure --</option>';
         $.each(dropdownCache.procedures, function (i, p) {
-            procedureOptions += `<option value="${p.id}">${App.utils.escHtml(p.name)}</option>`;
+            // Safe double-precision extraction fallback to 0.00
+            var costValue = parseFloat(p.cost || 0);
+            var formattedCost = costValue.toFixed(2);
+            
+            procedureOptions += `<option value="${p.id}" data-price="${formattedCost}">${App.utils.escHtml(p.name)} - $${formattedCost}</option>`;
         });
 
         var toothOptions = '';
@@ -65,6 +71,7 @@ $(document).ready(function () {
         var newRowHtml = `
             <div class="form-row treatment-row" style="grid-template-columns: 2fr 1fr 40px; gap: var(--sp-3); align-items: flex-end;">
                 <input type="hidden" name="item_row_ids[]" value="${rowIdValue}">
+                <input type="hidden" name="treatment_price[]" class="treatment-price-hidden" value="${currentPriceValue}">
                 
                 <div class="form-group">
                     <label class="form-label">Treatment Type <span class="required">*</span></label>
@@ -96,6 +103,16 @@ $(document).ready(function () {
         toggleTrashButtons();
     }
 
+
+    // Automatically track and copy selected price points to hidden inputs
+    $(document).on('change', '.treatment-type-select', function () {
+        var $selectedOption = $(this).find('option:selected');
+        var selectedPrice = $selectedOption.data('price') || '';
+        
+        // Find the hidden input inside the exact same treatment-row block and update it
+        $(this).closest('.treatment-row').find('.treatment-price-hidden').val(selectedPrice);
+    });
+
     // Dynamic treatment block utilities
     $('#btn-add-treatment-row').on('click', function () {
         // Appends a completely brand new structural row entry on UI (Row ID is left empty)
@@ -126,10 +143,12 @@ $(document).ready(function () {
             method: 'GET',
             loader: false,
             onSuccess: function (data) {
-                dropdownCache.procedures = data;
+               dropdownCache.procedures = data;
                 var options = '<option value="">-- Select Procedure --</option>';
                 $.each(data, function (i, p) {
-                    options += `<option value="${p.id}">${App.utils.escHtml(p.name)}</option>`;
+                    var costValue = parseFloat(p.cost || 0);
+                    var formattedCost = costValue.toFixed(2);
+                    options += `<option value="${p.id}" data-price="${formattedCost}">${App.utils.escHtml(p.name)} - $${formattedCost}</option>`;
                 });
                 $('#treatment_type').html(options);
                 $('.treatment-type-select').html(options);
@@ -268,6 +287,7 @@ $(document).ready(function () {
                         <td style="vertical-align: middle; border-right: 1px solid #f1f5f9;">
                             <span class="badge bg-light text-primary border me-1">Tooth ${App.utils.escHtml(proc.tooth_number)}</span>
                             <span class="fw-500">${App.utils.escHtml(proc.procedure_name)}</span>
+                            <span class="fw-500" style="display:block;">Price : $${App.utils.escHtml(proc.procedure_price)}</span>
                         </td>
                         <td style="vertical-align: middle; text-align: center; border-right: 1px solid #f1f5f9;">
                             <span class="status-badge ${statusClass}">${App.utils.escHtml(currentStatus)}</span>
@@ -278,6 +298,7 @@ $(document).ready(function () {
                         <td style="vertical-align: middle; border-right: 1px solid #f1f5f9;">
                             <span class="text-muted">${App.utils.escHtml(r.procedure_name || '—')}</span><br>
                             <small class="text-danger">Tooth: ${App.utils.escHtml(r.tooth_numbers || '—')}</small>
+                            <small class="text-danger">Price: ${App.utils.escHtml(r.procedure_price || '—')}</small>
                         </td>
                         <td style="vertical-align: middle; text-align: center; border-right: 1px solid #f1f5f9;">
                             <span class="status-badge ${statusClass}">${App.utils.escHtml(currentStatus)}</span>
@@ -434,7 +455,7 @@ $(document).ready(function () {
                 // Check array response parameters and map procedures to layout rows
                 if (r.procedures_list && r.procedures_list.length) {
                     $.each(r.procedures_list, function (idx, entry) {
-                        addTreatmentRow(entry.procedure_id, entry.tooth_number, entry.pre_auth_id);
+                        addTreatmentRow(entry.procedure_id, entry.tooth_number, entry.pre_auth_id , entry.price);
                     });
                 } else {
                     // Safe default row mapping fallback for fresh templates
@@ -465,6 +486,7 @@ $(document).ready(function () {
                         listHtml += `<div style="padding: var(--sp-2) 0; border-bottom: 1px dashed #e2e8f0;">
                                     <i class="fa-solid fa-circle-chevron-right text-primary text-sm mr-2"></i> 
                                     <strong>Tooth ${App.utils.escHtml(item.tooth_number || '—')}:</strong> ${App.utils.escHtml(item.procedure_name)}
+                                    <small style="display:block">Price : $${item.procedure_price}  </small>
                                  </div>`;
                     });
                 } else if (r.procedure_name) {
@@ -472,6 +494,7 @@ $(document).ready(function () {
                     listHtml = `<div style="padding: var(--sp-2) 0; border-bottom: 1px dashed #e2e8f0;">
                                 <i class="fa-solid fa-circle-chevron-right text-primary text-sm mr-2"></i> 
                                 <strong>Tooth ${App.utils.escHtml(r.tooth_number || '—')}:</strong> ${App.utils.escHtml(r.procedure_name)}
+                                <small style="display:block">Price : $${r.procedure_price}  </small>
                              </div>`;
                 } else {
                     listHtml = `<div class="text-muted">No itemized treatments mapped to this pre-auth.</div>`;

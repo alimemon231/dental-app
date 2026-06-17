@@ -196,6 +196,35 @@
                     </div>
                 </div>
 
+                 <div class="grid-3 mb-4" id="price-progress-cards">
+                    <div class="sticky-side" id="card-approved-price-container">
+                        <div class="form-section-title mb-4">
+                            <i class="fa-solid fa-money-bill-wave"></i> <span>Approved Pre-Auth Value</span>
+                        </div>
+                        <div id="card-approved-price-content">
+                            <div class="text-center text-muted p-3">-- Loading Stats --</div>
+                        </div>
+                    </div>
+
+                    <div class="sticky-side" id="card-pending-price-container">
+                        <div class="form-section-title mb-4">
+                            <i class="fa-solid fa-hourglass-half"></i> <span>Pending Pre-Auth Value</span>
+                        </div>
+                        <div id="card-pending-price-content">
+                            <div class="text-center text-muted p-3">-- Loading Stats --</div>
+                        </div>
+                    </div>
+
+                    <div class="sticky-side" id="card-completed-price-container">
+                        <div class="form-section-title mb-4">
+                            <i class="fa-solid fa-circle-check"></i> <span>Completed Pre-Auth Value</span>
+                        </div>
+                        <div id="card-completed-price-content">
+                            <div class="text-center text-muted p-3">-- Loading Stats --</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="grid-3 mb-4" id="progress-cards">
                     <div class="sticky-side" id="card-approval-container">
                         <div class="form-section-title mb-4">

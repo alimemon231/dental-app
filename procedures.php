@@ -75,6 +75,13 @@
                 <span class="form-error">Procedure name is required.</span>
               </div>
 
+               <div class="form-group mb-4">
+                <label class="form-label">Price</label>
+                <input type="number" name="price" id="price" class="form-control" placeholder="e.g. 56.87 etc" >
+                <span class="form-error">Procedure Price is required.</span>
+              </div>
+
+
               <div class="form-group mb-4">
                 <label class="form-label">Description (Optional)</label>
                 <textarea name="description" id="description" class="form-control" placeholder="Brief details about the service..." rows="3"></textarea>
@@ -104,6 +111,7 @@
                 <tr>
                   <th width="50">#</th>
                   <th>Procedure Name</th>
+                  <th>Price</th>
                   <th>Description</th>
                   <th width="100">Status</th>
                   <th width="120">Actions</th>

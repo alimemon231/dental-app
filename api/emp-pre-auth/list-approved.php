@@ -127,6 +127,7 @@ try {
                         pa.case_id,
                         pa.procedure_id,
                         pa.teeth_number AS tooth_number,
+                        pa.price, -- Changed: Pulling cost context historical metrics directly from pre-auth column
                         pa.p_insurance_plan,
                         pa.appointment_date,
                         pa.created_at,
@@ -158,7 +159,9 @@ try {
             'pre_auth_id'          => (int)$item['pre_auth_id'],
             'procedure_id'         => (int)$item['procedure_id'],
             'procedure_name'       => $item['procedure_name'],
+            'procedure_price'      => $item['price'], // Sync pricing fields with custom transaction column values
             'tooth_number'         => $item['tooth_number'],
+            'price'                => $item['price'], // Secondary matching key reference for layout structures
             'p_insurance_plan'     => (int)$item['p_insurance_plan'],
             'insurance_name'       => $item['insurance_name'] ?: 'No Insurance',
             'status'               => $item['status'],
@@ -187,6 +190,7 @@ try {
         $primaryItem = $proceduresList[0];
         $names = array_column($proceduresList, 'procedure_name');
         $teeth = array_column($proceduresList, 'tooth_number');
+        $prices = array_column($proceduresList, 'price'); // Read direct value pointers mapped out above
 
         $finalResponseData[] = [
             'id'                 => $caseId,
@@ -210,6 +214,7 @@ try {
             // Imploded structural presentation mapping layouts
             'procedure_name'     => implode(', ', $names),
             'tooth_numbers'      => implode(', ', $teeth),
+            'procedure_price'    => implode(', ', $prices),
             'procedures_list'    => $proceduresList
         ];
     }

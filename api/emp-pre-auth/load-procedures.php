@@ -11,7 +11,7 @@ $auth->requireAuth();
 
 // Fetch only active procedures
 $procedures = $db->query(
-    "SELECT id, name 
+    "SELECT *
      FROM procedures 
      WHERE status = 'active' 
      ORDER BY name ASC"

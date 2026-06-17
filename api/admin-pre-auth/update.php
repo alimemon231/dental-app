@@ -56,6 +56,7 @@ $doctorId        = (int)($_POST['provider'] ?? $_POST['doctor_id'] ?? 0);
 $pInsurancePlan  = (int)($_POST['p_insurance_plan'] ?? 0);
 $treatmentTypes  = $_POST['treatment_type'] ?? []; // Dynamic standard treatment array block
 $toothNumbers    = $_POST['tooth_numbers'] ?? [];   // Dynamic target mapping array block
+$treatmentPrices = $_POST['treatment_price'] ?? []; // Tracked procedure execution cost matrix rows
 
 // CRITICAL: Item row arrays representing original pre-existing database row row key IDs
 $itemRowIds      = $_POST['item_row_ids'] ?? [];
@@ -68,7 +69,7 @@ if ($patientId <= 0 || $doctorId <= 0 || $pInsurancePlan <= 0 || empty($treatmen
     exit;
 }
 
-if (count($treatmentTypes) !== count($toothNumbers)) {
+if (count($treatmentTypes) !== count($toothNumbers) || count($treatmentTypes) !== count($treatmentPrices)) {
     Api::error('Structural processing error: Array data dimensions match alignment failure.');
     exit;
 }
@@ -108,8 +109,9 @@ try {
 
     // 8. Loop through dynamic array payload items to handle positional Updates or row Appends
     foreach ($treatmentTypes as $index => $procedureId) {
-        $procId  = (int)$procedureId;
-        $toothNo = (int)$toothNumbers[$index];
+        $procId   = (int)$procedureId;
+        $toothNo  = (int)$toothNumbers[$index];
+        $rowPrice = $treatmentPrices[$index]; // Access matched pricing row metric data
 
         if ($procId <= 0) {
             continue; // Safely bypass un-configured input fields mapping instances
@@ -123,6 +125,7 @@ try {
             $rowUpdate = [
                 'procedure_id'     => $procId,
                 'teeth_number'     => $toothNo,
+                'price'            => $rowPrice, // Sync tracking cost directly on modified items
                 'p_insurance_plan' => $pInsurancePlan,
                 'edited_by'        => $currentUserId,
                 'edit_time'        => $currentTimeStamp
@@ -136,6 +139,7 @@ try {
                 'case_id'              => $caseId,
                 'procedure_id'         => $procId,
                 'teeth_number'         => $toothNo,
+                'price'                => $rowPrice, // Injected tracking cost directly on appended items
                 'p_insurance_plan'     => $pInsurancePlan,
                 'appointment_date'     => null,
                 'created_at'           => $currentTimeStamp,

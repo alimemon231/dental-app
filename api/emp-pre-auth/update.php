@@ -53,6 +53,7 @@ $doctorId        = (int)($_POST['provider'] ?? 0);
 $pInsurancePlan  = (int)($_POST['p_insurance_plan'] ?? 0);
 $treatmentTypes  = $_POST['treatment_type'] ?? []; // Dynamic UI array stack
 $toothNumbers    = $_POST['tooth_numbers'] ?? [];   // Dynamic UI array stack
+$treatmentPrices = $_POST['treatment_price'] ?? []; // Dynamic UI pricing matrix stack
 
 // CRITICAL: Array mapping explicitly containing original item row database keys from the UI
 $itemRowIds      = $_POST['item_row_ids'] ?? [];
@@ -67,7 +68,7 @@ if (count($treatmentTypes) !== count($toothNumbers)) {
     exit;
 }
 
-
+try {
     // Start Transaction block to guarantee atomicity
     $db->beginTransaction();
 
@@ -96,6 +97,7 @@ if (count($treatmentTypes) !== count($toothNumbers)) {
     foreach ($treatmentTypes as $index => $procedureId) {
         $procId  = (int)$procedureId;
         $toothNo = trim($toothNumbers[$index]);
+        $treatmentPrice = isset($treatmentPrices[$index]) ? (double)$treatmentPrices[$index] : 0.00;
 
         if ($procId <= 0 || $toothNo === '') {
             continue; // Ignore blank structural entry lines safely
@@ -109,6 +111,7 @@ if (count($treatmentTypes) !== count($toothNumbers)) {
             $rowUpdate = [
                 'procedure_id'     => $procId,
                 'teeth_number'     => $toothNo,
+                'price'            => $treatmentPrice, // Synchronizes double-precision pricing updates
                 'p_insurance_plan' => $pInsurancePlan,
                 'edited_by'        => $currentUserId,
                 'edit_time'        => date('Y-m-d H:i:s')
@@ -121,6 +124,7 @@ if (count($treatmentTypes) !== count($toothNumbers)) {
                 'case_id'          => $caseId,
                 'procedure_id'     => $procId,
                 'teeth_number'     => $toothNo,
+                'price'            => $treatmentPrice, // Assigns baseline procedure price point dynamically
                 'p_insurance_plan' => $pInsurancePlan,
                 'status'           => 'Requested', // Default operational state assigned only to newly added lines
                 'created_by'       => $currentUserId,
@@ -145,3 +149,8 @@ if (count($treatmentTypes) !== count($toothNumbers)) {
     $db->commit();
     Api::success(null, 'Pre-Authorization profile portfolio modifications saved successfully.');
 
+} catch (Exception $e) {
+    // Instantly roll back state changes on exceptions to defend referential tracking stability
+    $db->rollBack();
+    Api::error('Database transactional operational failure: ' . $e->getMessage(), 500);
+}

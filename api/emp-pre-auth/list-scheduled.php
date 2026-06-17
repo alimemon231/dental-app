@@ -127,6 +127,7 @@ try {
                         pa.case_id,
                         pa.procedure_id,
                         pa.teeth_number AS tooth_number,
+                        pa.price, -- Changed: Pulls pricing context from pre-auth table instead of procedures
                         pa.p_insurance_plan,
                         pa.appointment_date,
                         pa.created_at,
@@ -158,7 +159,9 @@ try {
             'pre_auth_id'          => (int)$item['pre_auth_id'],
             'procedure_id'         => (int)$item['procedure_id'],
             'procedure_name'       => $item['procedure_name'],
+            'procedure_price'      => $item['price'], // Aligned: Fetches dynamic tracking price
             'tooth_number'         => $item['tooth_number'],
+            'price'                => $item['price'], // Maintained fallback key alignment
             'p_insurance_plan'     => (int)$item['p_insurance_plan'],
             'insurance_name'       => $item['insurance_name'] ?: 'No Insurance',
             'status'               => $item['status'],
@@ -188,6 +191,7 @@ try {
         $primaryItem = $proceduresList[0];
         $names = array_column($proceduresList, 'procedure_name');
         $teeth = array_column($proceduresList, 'tooth_number');
+        $prices = array_column($proceduresList, 'price'); // Read directly from matching pre-auth index pointers
 
         $finalResponseData[] = [
             'id'                 => $caseId,
@@ -213,6 +217,7 @@ try {
             // Imploded structural presentation mapping layouts
             'procedure_name'     => implode(', ', $names),
             'tooth_numbers'      => implode(', ', $teeth),
+            'procedure_price'    => implode(', ', $prices),
             'procedures_list'    => $proceduresList
         ];
     }

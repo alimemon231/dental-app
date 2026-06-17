@@ -145,6 +145,7 @@ function renderTable(records) {
                         <td style="vertical-align: middle; border-right: 1px solid #f1f5f9;">
                             <span class="badge bg-light text-primary border me-1">Tooth ${App.utils.escHtml(proc.tooth_number)}</span>
                             <span class="fw-500">${App.utils.escHtml(proc.procedure_name)}</span>
+                            <small style="display:block;">$${proc.procedure_price}</small>
                         </td>
                         <td style="vertical-align: middle; text-align: center; border-right: 1px solid #f1f5f9;">
                             <span class="status-badge ${statusClass}">${App.utils.escHtml(currentStatus)}</span>
@@ -210,6 +211,7 @@ $(document).on('click', '.btn-view', function () {
                     listHtml += `<div style="padding: var(--sp-2) 0; border-bottom: 1px dashed #e2e8f0;">
                                     <i class="fa-solid fa-circle-chevron-right text-primary text-sm mr-2"></i> 
                                     <strong>Tooth ${item.tooth_number}:</strong> ${App.utils.escHtml(item.procedure_name)}
+                                    <small style="display:block;">Price : $${item.procedure_price} </small>
                                  </div>`;
                 });
             } else {

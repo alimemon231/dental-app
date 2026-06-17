@@ -50,10 +50,12 @@ $(document).ready(function () {
             method: 'GET',
             loader: false,
             onSuccess: function (data) {
+
                 dropdownCache.procedures = data;
+
                 var options = '<option value="">-- Select Procedure --</option>';
                 $.each(data, function (i, p) {
-                    options += `<option value="${p.id}">${App.utils.escHtml(p.name)}</option>`;
+                    options += `<option value="${p.id}">${App.utils.escHtml(p.name)} - <small>$ ${p.cost}</small></option>`;
                 });
                 $('.treatment-type-select').html(options);
             }
@@ -144,12 +146,17 @@ $(document).ready(function () {
     /* ================================================================
         FUNCTION 3: TREATMENT ROW MANAGEMENT
     ================================================================ */
-    function addTreatmentRow(selectedProcedureId, selectedToothNumber, preAuthRowId) {
+    function addTreatmentRow(selectedProcedureId, selectedToothNumber, preAuthRowId, preAuthPrice) {
         var rowIdValue = preAuthRowId || '';
+        var currentPriceValue = preAuthPrice || '';
 
         var procedureOptions = '<option value="">-- Select Procedure --</option>';
         $.each(dropdownCache.procedures, function (i, p) {
-            procedureOptions += `<option value="${p.id}">${App.utils.escHtml(p.name)}</option>`;
+            // Safe double-precision extraction fallback to 0.00
+            var costValue = parseFloat(p.cost || 0);
+            var formattedCost = costValue.toFixed(2);
+
+            procedureOptions += `<option value="${p.id}" data-price="${formattedCost}">${App.utils.escHtml(p.name)} - $${formattedCost}</option>`;
         });
 
         var toothOptions = '';
@@ -159,29 +166,30 @@ $(document).ready(function () {
         }
 
         var newRowHtml = `
-            <div class="form-row treatment-row" style="grid-template-columns: 2fr 1fr 40px; gap: var(--sp-3); align-items: flex-end;">
-                <input type="hidden" name="item_row_ids[]" value="${rowIdValue}">
-                
-                <div class="form-group">
-                    <label class="form-label">Treatment Type <span class="required">*</span></label>
-                    <select name="treatment_type[]" class="form-control treatment-type-select" required>
-                        ${procedureOptions}
-                    </select>
-                    <span class="form-error">Please select a procedure.</span>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Tooth Number <span class="required">*</span></label>
-                    <select name="tooth_numbers[]" class="form-control" required>
-                        <option value="">—</option>
-                        ${toothOptions}
-                    </select>
-                </div>
-                <div class="form-group" style="display: flex; justify-content: center;">
-                    <button type="button" class="btn-remove-row" title="Delete Procedure">
-                        <i class="fa-solid fa-trash-can"></i>
-                    </button>
-                </div>
-            </div>`;
+        <div class="form-row treatment-row" style="grid-template-columns: 2fr 1fr 40px; gap: var(--sp-3); align-items: flex-end;">
+            <input type="hidden" name="item_row_ids[]" value="${rowIdValue}">
+            <input type="hidden" name="treatment_price[]" class="treatment-price-hidden" value="${currentPriceValue}">
+            
+            <div class="form-group">
+                <label class="form-label">Treatment Type <span class="required">*</span></label>
+                <select name="treatment_type[]" class="form-control treatment-type-select" required>
+                    ${procedureOptions}
+                </select>
+                <span class="form-error">Please select a procedure.</span>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Tooth Number <span class="required">*</span></label>
+                <select name="tooth_numbers[]" class="form-control" required>
+                    <option value="">—</option>
+                    ${toothOptions}
+                </select>
+            </div>
+            <div class="form-group" style="display: flex; justify-content: center;">
+                <button type="button" class="btn-remove-row" title="Delete Procedure">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+        </div>`;
 
         var $newRow = $(newRowHtml);
         $('#treatments-container').append($newRow);
@@ -192,6 +200,15 @@ $(document).ready(function () {
 
         toggleTrashButtons();
     }
+
+    // Automatically track and copy selected price points to hidden inputs
+    $(document).on('change', '.treatment-type-select', function () {
+        var $selectedOption = $(this).find('option:selected');
+        var selectedPrice = $selectedOption.data('price') || '';
+
+        // Find the hidden input inside the exact same treatment-row block and update it
+        $(this).closest('.treatment-row').find('.treatment-price-hidden').val(selectedPrice);
+    });
 
     $('#btn-add-treatment-row').on('click', function () {
         addTreatmentRow('', '', '');
@@ -347,7 +364,7 @@ $(document).ready(function () {
                         rows += `
                     <td style="vertical-align: middle; border-right: 1px solid #f1f5f9;">
                         <span class="badge bg-light text-primary border me-1">Tooth ${App.utils.escHtml(proc.tooth_number)}</span>
-                        <span class="fw-500">${App.utils.escHtml(proc.procedure_name)}</span>
+                        <span class="fw-500">${App.utils.escHtml(proc.procedure_name)} - $${App.utils.escHtml(proc.procedure_price)}</span>
                     </td>
                     <td style="vertical-align: middle; text-align: center; border-right: 1px solid #f1f5f9;">
                         <span class="status-badge ${statusClass}">${App.utils.escHtml(currentStatus)}</span>
@@ -523,7 +540,7 @@ $(document).ready(function () {
 
                 if (r.procedures_list && r.procedures_list.length) {
                     $.each(r.procedures_list, function (idx, entry) {
-                        addTreatmentRow(entry.procedure_id, entry.tooth_number, entry.pre_auth_id);
+                        addTreatmentRow(entry.procedure_id, entry.tooth_number, entry.pre_auth_id , entry.procedure_price);
                     });
                 } else {
                     addTreatmentRow('', '', '');
@@ -534,22 +551,22 @@ $(document).ready(function () {
         });
     });
 
-   // Handle DELETE Button
-$(document).on('click', '.btn-delete-item', function () {
-    const id = $(this).data('id');
-    const name = $(this).data('name') || 'this record';
+    // Handle DELETE Button
+    $(document).on('click', '.btn-delete-item', function () {
+        const id = $(this).data('id');
+        const name = $(this).data('name') || 'this record';
 
-    // 1. Configure Modal Header and Buttons
-    $('#confirm-title').text('Delete Pre-Auth Record');
-    $('#confirm-ok').text('Confirm Delete').removeClass('btn-success btn-primary').addClass('btn-danger');
+        // 1. Configure Modal Header and Buttons
+        $('#confirm-title').text('Delete Pre-Auth Record');
+        $('#confirm-ok').text('Confirm Delete').removeClass('btn-success btn-primary').addClass('btn-danger');
 
-    // 2. Adjust Modal Body Containers (Hide dynamic workflow fields if left visible)
-    $('#approval-expiry-container').hide();
-    $('#rejection-notes-container').hide(); 
-    $('#rejection-notes').val('');          
+        // 2. Adjust Modal Body Containers (Hide dynamic workflow fields if left visible)
+        $('#approval-expiry-container').hide();
+        $('#rejection-notes-container').hide();
+        $('#rejection-notes').val('');
 
-    // 3. Set Modal Body Content Matching Your Destructive Action Design System
-    $('#confirm-body-content').html(`
+        // 3. Set Modal Body Content Matching Your Destructive Action Design System
+        $('#confirm-body-content').html(`
         <div class="text-center">
             <i class="fa-solid fa-trash-can text-danger mb-3" style="font-size:3rem"></i>
             <p>Are you sure you want to delete the pre-auth for <b>${App.utils.escHtml(name)}</b>?</p>
@@ -557,24 +574,24 @@ $(document).on('click', '.btn-delete-item', function () {
         </div>
     `);
 
-    // 4. Bind the Click Event safely using off() to prevent double submission triggers
-    $('#confirm-ok').off('click').on('click', function () {
-        App.ajax({
-            url: '/admin-pre-auth/delete.php',
-            method: 'POST',
-            data: { id: id },
-            loaderMsg: 'Deleting record...',
-            onSuccess: function (d, msg) {
-                App.toast.success('Deleted', msg);
-                loadPreAuths(currentPage);
-            }
+        // 4. Bind the Click Event safely using off() to prevent double submission triggers
+        $('#confirm-ok').off('click').on('click', function () {
+            App.ajax({
+                url: '/admin-pre-auth/delete.php',
+                method: 'POST',
+                data: { id: id },
+                loaderMsg: 'Deleting record...',
+                onSuccess: function (d, msg) {
+                    App.toast.success('Deleted', msg);
+                    loadPreAuths(currentPage);
+                }
+            });
+            App.modal.close('confirm-modal');
         });
-        App.modal.close('confirm-modal');
-    });
 
-    // 5. Open the Modal
-    App.modal.open('confirm-modal');
-});
+        // 5. Open the Modal
+        App.modal.open('confirm-modal');
+    });
 
     function resetForm() {
         App.form.reset(document.getElementById('preauth-form'));
@@ -602,13 +619,13 @@ $(document).on('click', '.btn-delete-item', function () {
                     $.each(r.procedures_list, function (idx, item) {
                         listHtml += `<div style="padding: var(--sp-2) 0; border-bottom: 1px dashed #e2e8f0;">
                                     <i class="fa-solid fa-circle-chevron-right text-primary text-sm mr-2"></i> 
-                                    <strong>Tooth ${App.utils.escHtml(item.tooth_number || '—')}:</strong> ${App.utils.escHtml(item.procedure_name)}
+                                    <strong>Tooth ${App.utils.escHtml(item.tooth_number || '—')}:</strong> ${App.utils.escHtml(item.procedure_name)} <small>- $${item.procedure_price} </small>
                                  </div>`;
                     });
                 } else if (r.procedure_name) {
                     listHtml = `<div style="padding: var(--sp-2) 0; border-bottom: 1px dashed #e2e8f0;">
                                 <i class="fa-solid fa-circle-chevron-right text-primary text-sm mr-2"></i> 
-                                <strong>Tooth ${App.utils.escHtml(r.tooth_number || '—')}:</strong> ${App.utils.escHtml(r.procedure_name)}
+                                <strong>Tooth ${App.utils.escHtml(r.tooth_number || '—')}:</strong> ${App.utils.escHtml(r.procedure_name)} <small> - $${r.procedure_price} </small>
                              </div>`;
                 } else {
                     listHtml = `<div class="text-muted">No itemized treatments mapped to this pre-auth.</div>`;

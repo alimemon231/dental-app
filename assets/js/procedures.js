@@ -46,6 +46,7 @@ $(document).ready(function () {
             rows += '<tr class="' + rowClass + '">' +
                 '<td><strong>' + (i + 1) + '</strong></td>' +
                 '<td>' + App.utils.escHtml(p.name) + '</td>' +
+                 '<td>' + App.utils.escHtml(p.cost) + '</td>' +
                 '<td>' + App.utils.escHtml(p.description || '—') + '</td>' +
                 '<td>' + statusBadge + '</td>' +
                 '<td>' +
@@ -111,6 +112,7 @@ $(document).ready(function () {
                 
                 $('#procedure-id').val(p.id);
                 $('#name').val(p.name);
+                 $('#price').val(p.cost);
                 $('#description').val(p.description);
                 
                 // Set the status dropdown and show it

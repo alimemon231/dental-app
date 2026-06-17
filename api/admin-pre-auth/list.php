@@ -20,7 +20,7 @@ if ($currentUser['role'] !== 'admin') {
 }
 
 // 2. Capture and Sanitize Incoming Filter Parameters
-$limit   =90000000000000000000000 ; 
+$limit   = 100; 
 $page    = max((int) ($_GET['page'] ?? 1), 1);
 $offset  = ($page - 1) * $limit;
 
@@ -117,6 +117,7 @@ try {
                         pa.*, 
                         pa.id AS pre_auth_id,
                         pa.teeth_number AS tooth_number, 
+                        pa.price AS procedure_price, -- Changed: Pulling transaction tracking cost from pre-auth column metrics
                         pac.id AS id, 
                         pac.office_id,
                         pac.patient_id,
@@ -179,6 +180,7 @@ try {
                 'pre_auth_id'    => (int)$row['pre_auth_id'],
                 'procedure_id'   => (int)$row['procedure_id'],
                 'procedure_name' => $row['procedure_name'] ?: 'No procedure assigned',
+                'procedure_price' => $row['procedure_price'] ?: '0', // Pulls matched tracking value cleanly
                 'tooth_number'   => $row['tooth_number'] ?: '—',
                 'status'         => $row['status'] ?: 'Requested',
                 'time_ago'       => timeAgo($row['created_at'])

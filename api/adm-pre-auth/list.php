@@ -80,6 +80,7 @@ try {
                 pa.*, 
                 pa.id AS pre_auth_id,
                 pa.teeth_number AS tooth_number, 
+                pa.price, -- Changed: Pulling transaction pricing value tracking metric row
                 pac.id AS case_id,
                 pac.office_id,
                 pac.patient_id,
@@ -142,15 +143,18 @@ try {
         $r['procedure_name'] = $r['procedure_name'] ?: 'No procedure assigned'; 
         $r['tooth_numbers']  = $r['tooth_number'] ?: '—';
         $r['approver_name']  = $r['approver_name'] ?: 'Management';
+        $r['procedure_price'] = $r['price'] ?: '0'; // Structural pricing injection to outer scope
 
         // Emulate an internal itemized procedures array stack to protect frontend loops built for the old table formats
         $r['procedures_list'] = [
             [
-                'pre_auth_id'    => (int)$r['pre_auth_id'],
-                'procedure_id'   => (int)$r['procedure_id'],
-                'procedure_name' => $r['procedure_name'],
-                'tooth_number'   => $r['tooth_number'],
-                'status'         => $r['status']
+                'pre_auth_id'     => (int)$r['pre_auth_id'],
+                'procedure_id'    => (int)$r['procedure_id'],
+                'procedure_name'  => $r['procedure_name'],
+                'tooth_number'    => $r['tooth_number'],
+                'procedure_price' => $r['price'] ?: '0', // Embedded array pricing mapping key
+                'price'           => $r['price'] ?: '0', // Secondary fallback naming match 
+                'status'          => $r['status']
             ]
         ];
     }

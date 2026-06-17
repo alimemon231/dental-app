@@ -88,6 +88,7 @@ try {
                 pa.*, 
                 pa.id AS pre_auth_id,
                 pa.teeth_number AS tooth_number, -- Normalize property name mapping for front-end safety
+                pa.price, -- Changed: Pulling transaction pricing value tracking metric row
                 pac.id AS case_id,
                 pac.office_id,
                 pac.patient_id,
@@ -112,11 +113,12 @@ try {
             LEFT JOIN users doc ON pac.doctor_id = doc.user_id
             LEFT JOIN procedures proc ON pa.procedure_id = proc.id
             $whereSql
-            ORDER BY pa.id DESC";
+            ORDER BY pa.id DESC
+            LIMIT ? OFFSET ?";
 
     // Combine selection filtering parameters array with integers for pagination limits
-    
-    $records = $db->query($sql, $params) ?: [];
+    $queryData = array_merge($params, [$limit, $offset]);
+    $records = $db->query($sql, $queryData) ?: [];
 
     /**
      * 5. Total Count Generation for Pagination Footer
@@ -147,6 +149,7 @@ try {
         // Context Fallback fields for basic row templates
         $r['procedure_name'] = $r['procedure_name'] ?: 'No procedure assigned'; 
         $r['tooth_numbers']  = $r['tooth_number'] ?: '—';
+        $r['procedure_price'] = $r['price'] ?: '0'; // Outer layer property binding
 
         // Set submitter flags matching your relative session rules
         $r['submitted_by'] = ((int)$r['created_by'] === (int)$currentUserId) ? 'You' : ($r['creator_name'] ?: 'System User');
@@ -156,11 +159,13 @@ try {
         // to completely protect frontend table loop structures relying on array iterations.
         $r['procedures_list'] = [
             [
-                'pre_auth_id'    => (int)$r['pre_auth_id'],
-                'procedure_id'   => (int)$r['procedure_id'],
-                'procedure_name' => $r['procedure_name'],
-                'tooth_number'   => $r['tooth_number'],
-                'status'         => $r['status']
+                'pre_auth_id'     => (int)$r['pre_auth_id'],
+                'procedure_id'    => (int)$r['procedure_id'],
+                'procedure_name'  => $r['procedure_name'],
+                'tooth_number'    => $r['tooth_number'],
+                'procedure_price' => $r['price'] ?: '0', // Embedded structure mapping key
+                'price'           => $r['price'] ?: '0', // Secondary match naming token
+                'status'          => $r['status']
             ]
         ];
     }

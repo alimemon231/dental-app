@@ -26,6 +26,7 @@ try {
             pa.case_id,
             pa.procedure_id,
             pa.teeth_number AS tooth_number,
+            pa.price AS procedure_price, -- Changed: Pulls pricing context from pre-auth table instead of procedures
             pa.p_insurance_plan,
             pa.appointment_date,
             pa.created_at,
@@ -118,6 +119,7 @@ try {
         // Directly maps the selected single row values straight down to the frontend variables layout
         'procedure_id'     => (int)$procedureItem['procedure_id'],
         'procedure_name'   => $procedureItem['procedure_name'],
+        'procedure_price'  => $procedureItem['procedure_price'], // Included at root tier response level
         'tooth_number'     => $procedureItem['tooth_number'],
         'p_insurance_plan' => (int)$procedureItem['p_insurance_plan'],
         'insurance_name'   => $procedureItem['insurance_name'] ?: 'No Insurance',

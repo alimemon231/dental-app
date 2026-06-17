@@ -19,7 +19,7 @@ if ($search) {
     $like = '%' . $search . '%';
     // Search by procedure name or description
     $procedures = $db->query(
-        "SELECT id, name, description , status
+        "SELECT *
          FROM procedures 
          WHERE name LIKE ? OR description LIKE ?
          ORDER BY name ASC",
@@ -28,7 +28,7 @@ if ($search) {
 } else {
     // Return all procedures ordered by newest first for the management table
     $procedures = $db->query(
-        "SELECT id, name, description , status
+        "SELECT *
          FROM procedures 
          ORDER BY id DESC"
     );

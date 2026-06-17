@@ -68,6 +68,7 @@ try {
             pa.id AS pre_auth_id,
             pa.procedure_id,
             pa.teeth_number AS tooth_number,
+            pa.price, -- Changed: Pulling cost context directly from pre-auth column
             pa.p_insurance_plan,
             pa.status,
             pa.notes,
@@ -77,7 +78,23 @@ try {
         WHERE pa.case_id = ?
         ORDER BY pa.id ASC
     ";
-    $proceduresList = $db->query($proceduresSql, [$caseId]) ?: [];
+    $rawProceduresList = $db->query($proceduresSql, [$caseId]) ?: [];
+
+    // Format fields seamlessly for structural UI script processing loops
+    $proceduresList = [];
+    foreach ($rawProceduresList as $p) {
+        $proceduresList[] = [
+            'pre_auth_id'     => (int)$p['pre_auth_id'],
+            'procedure_id'    => (int)$p['procedure_id'],
+            'procedure_name'  => $p['procedure_name'],
+            'tooth_number'    => $p['tooth_number'],
+            'procedure_price' => $p['price'], // Direct data binding key
+            'price'           => $p['price'], // Fallback secondary data key
+            'p_insurance_plan'=> (int)$p['p_insurance_plan'],
+            'status'          => $p['status'],
+            'notes'           => $p['notes']
+        ];
+    }
 
     // 6. Structure payload
     $primaryItem = !empty($proceduresList) ? $proceduresList[0] : null;

@@ -122,6 +122,7 @@ function loadStaffData(page = 1) {
             renderStaffTable(response.records);
             renderPagination(response.total_records, response.total_pages, response.records.length);
             updateAuthStatsCards(response);
+            updatePriceMetricsCards(response.records)
         }
     });
 }
@@ -513,6 +514,54 @@ function updateAuthStatsCards(response) {
     // 3. Completion Card Logic: Completed records mapped against the absolute Total Sent baseline
     const completedCount = records.filter(r => ['completed', 'complete', 'done'].includes((r.status || '').toLowerCase())).length;
     renderStatCard('#card-completion-content', completedCount, totalSent, 'Completed Cases');
+}
+
+function updatePriceMetricsCards(recordsList) {
+    let approvedTotal = 0;
+    let pendingTotal = 0;
+    let completedTotal = 0;
+
+    // Loop through your response array entries
+    $.each(recordsList, function (index, row) {
+        // Safe extraction configuration fallback to 0.00
+        let itemPrice = parseFloat(row.price || row.procedure_price || 0);
+        let status = (row.status || '').toLowerCase();
+
+        if (status === 'approved') {
+            approvedTotal += itemPrice;
+        } else if (status === 'requested') {
+            pendingTotal += itemPrice;
+        } else if (status === 'completed') {
+            completedTotal += itemPrice;
+        }
+    });
+
+    // Format numbers with commas and decimal points
+    let formattedApproved = '$' + approvedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    let formattedPending = '$' + pendingTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    let formattedCompleted = '$' + completedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // Inject layout contents into HTML structures
+    $('#card-approved-price-content').html(`
+        <div class="metric-card-body text-center p-3">
+            <h2 class="text-success fw-bold m-0">${formattedApproved}</h2>
+            <small class="text-muted">Total value of ready procedures</small>
+        </div>
+    `);
+
+    $('#card-pending-price-content').html(`
+        <div class="metric-card-body text-center p-3">
+            <h2 class="text-warning fw-bold m-0">${formattedPending}</h2>
+            <small class="text-muted">Value awaiting review pipeline</small>
+        </div>
+    `);
+
+    $('#card-completed-price-content').html(`
+        <div class="metric-card-body text-center p-3">
+            <h2 class="text-primary fw-bold m-0">${formattedCompleted}</h2>
+            <small class="text-muted">Value processed and delivered</small>
+        </div>
+    `);
 }
 
 /**
