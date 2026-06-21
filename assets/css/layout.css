@@ -321,3 +321,57 @@
 .dropdown-item:hover { background: var(--color-primary-light); color: var(--color-primary); }
 .dropdown-item.danger:hover { background: var(--color-danger-bg); color: var(--color-danger); }
 .dropdown-divider { height: 1px; background: var(--color-border); margin: var(--sp-2) 0; }
+
+
+/* Custom 6-Column Responsive CSS Grid Configuration */
+.grid-6 {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--sp-4, 16px);
+}
+
+/* Minimal Metric Variant Styles */
+.minimal-metric-card {
+  padding: var(--sp-4, 16px) !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 110px;
+}
+
+.minimal-card-header {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.minimal-card-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: var(--sp-1, 4px) 0;
+  white-space: nowrap;
+}
+
+.minimal-card-sub {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #888);
+}
+
+/* Purple color context fallback utility */
+.text-purple {
+  color: #7048e8;
+}
+
+/* High-resolution responsive breakpoint tracking alterations */
+@media (max-width: 1400px) {
+  .grid-6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .grid-6 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+}

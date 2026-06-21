@@ -20,7 +20,7 @@ if ($currentUser['role'] !== 'admin') {
 }
 
 // 2. Capture and Sanitize Incoming Filter Parameters
-$limit   = 100; 
+$limit   = 25; 
 $page    = max((int) ($_GET['page'] ?? 1), 1);
 $offset  = ($page - 1) * $limit;
 

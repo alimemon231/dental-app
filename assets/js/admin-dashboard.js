@@ -1,226 +1,162 @@
 /**
- * assets/js/order.js
- * CRUD logic for the Order page.
- * This file is the template/pattern to copy when building any new module.
+ * assets/js/admin-dashboard.js
+ * Premium Administration Metrics Layout Engine
+ * Handles KPI metric updates, custom Chart.js visual clusters, and order tracking logs.
  */
 
 $(document).ready(function () {
 
-    /* ── State ── */
+    /* ── Workspace State Configuration ── */
     var currentPage = 1;
     var perPage = 20;
-    
-    /* ================================================================
-       LOAD TABLE
-    ================================================================ */
-    function loadOrder(page) {
-        page = page || 1;
-        currentPage = page;
 
+    // Track chart instances globally to safely destroy and re-render during life-cycle updates
+    var dashboardCharts = {
+        preauthStatusPie: null,
+        preauthOfficesBar: null,
+        doctorProductionBar: null,
+        patientSharePie: null
+    };
+
+    /* ================================================================
+        FUNCTION 1: REVENUE AND PIPELINE STAT CARDS (6 STATS SINGLE API)
+    ================================================================ */
+    function loadStatCards() {
         App.ajax({
-            url: '/dashboard/admin-order.php',
+            url: '/admin-dashboard/dashboard-stats.php',
             method: 'GET',
             loader: false,
-            data: {
-                page: page,
-                limit: perPage,
-            },
-            onSuccess: function (data, msg, res) {
-                renderTable(data);
-                renderPagination(res.meta || {});
-            },
-            onError: function () {
-                $('#patients-tbody').html(
-                    '<tr><td colspan="8"><div class="table-empty"><i class="fa-solid fa-circle-exclamation"></i> Failed to load patients.</div></td></tr>'
-                );
+            onSuccess: function (data) {
+                // Populate Metric Figures safely
+                $('#admin-metric-total-rev').text('$' + data.total_cost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                $('#admin-metric-preauth-total').text('$' + data.preauth_total_value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                $('#admin-metric-preauth-approved').text('$' + data.preauth_approved_value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                $('#admin-metric-preauth-pending').text('$' + data.preauth_pending_value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                $('#admin-metric-preauth-completed').text('$' + data.preauth_completed_value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                $('#admin-metric-labs-total').text('$' + data.labs_total_value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+
+                // Populate Context Counts Metadata Strings
+                $('#admin-count-preauth-total').text(data.preauth_total_count + ' Requests Total');
+                $('#admin-count-preauth-approved').text(data.preauth_approved_count + ' Approved Cases');
+                $('#admin-count-preauth-pending').text(data.preauth_pending_count + ' Cases in Review');
+                $('#admin-count-preauth-completed').text(data.preauth_completed_count + ' Cases Finalized');
+                $('#admin-count-labs-total').text(data.labs_total_count + ' Open Lab Invoices');
+                $('#cash-received').text('$' + data.raw_gross_payments.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
             }
         });
     }
 
-    function renderTable(patients) {
-        if (!patients || !patients.length) {
-            $('#order-tbody').html(
-                '<tr><td colspan="8"><div class="table-empty"><i class="fa-solid fa-bag-shopping"></i> No orders found.</div></td></tr>'
-            );
-            return;
-        }
-
-        var rows = '';
-        $.each(patients, function (i, p) {
-            rows += '<tr>' +
-                '<td><strong>#' +( i + 1) + '</strong></td>' +
-                '<td> ORD-' + App.utils.escHtml(p.id) + '</td>' +
-                '<td> ORD-' + App.utils.escHtml(p.office_name) + '</td>' +
-                '<td>' +
-                '<div class="flex flex-align gap-3">' +
-                '<div>' +
-                App.utils.escHtml(p.order_date) +
-                '</div>' +
-                '</div>' +
-                '</td>' +
-
-
-                '<td>' + App.utils.escHtml(p.expected_received_date) + '</td>' +
-                '<td>' + App.utils.escHtml(p.creator_name) + '</td>' +
-                '<td>' + App.utils.escHtml(p.approver_name) + '</td>' +
-                '<td>' + App.utils.escHtml(p.total_amount) + '</td>' +
-                '<td>' + App.utils.escHtml(p.status) + '</td>' +
-                '<td>' +
-                '<div class="actions">' +
-                '<button class="btn btn-ghost btn-sm btn-view" data-id="' + p.id + '" title="View"><i class="fa-solid fa-eye"></i></button>' +
-                '</div>' +
-                '</td>' +
-                '</tr>';
+    /* ================================================================
+        FUNCTION 2: DYNAMIC CHARTS POPULATION PIPELINE (4 SEPARATE CALLS)
+    ================================================================ */
+    function initDashboardCharts() {
+        
+        // Chart A: Pre-Auth Status Matrix (Pie)
+        App.ajax({
+            url: '/admin-dashboard/chart-preauth-status.php',
+            method: 'GET',
+            onSuccess: function (res) {
+                if (dashboardCharts.preauthStatusPie) dashboardCharts.preauthStatusPie.destroy();
+                
+                var ctx = document.getElementById('chart-preauth-status-pie').getContext('2d');
+                dashboardCharts.preauthStatusPie = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: res.labels, // Expecting ['Requested/Sent', 'Approved', 'Rejected', 'Scheduled', 'Appealed']
+                        datasets: [{
+                            data: res.values,
+                            backgroundColor: ['#f1c40f', '#2ecc71', '#e74c3c', '#3498db', '#9b59b6'],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
         });
 
-        $('#order-tbody').html(rows);
+        // Chart B: Pre-Auth Volume By Office Site (Bar)
+        App.ajax({
+            url: '/admin-dashboard/chart-office-volumes.php',
+            method: 'GET',
+            loader: false,
+            onSuccess: function (res) {
+                if (dashboardCharts.preauthOfficesBar) dashboardCharts.preauthOfficesBar.destroy();
+                
+                var ctx = document.getElementById('chart-preauth-offices-bar').getContext('2d');
+                dashboardCharts.preauthOfficesBar = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: res.labels, // Expecting ['Office A', 'Office B', 'Office C']
+                        datasets: [{
+                            label: 'Total Pre-Auth Value ($)',
+                            data: res.values,
+                            backgroundColor: '#4dabf7',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+                });
+            }
+        });
+
+        // Chart C: Production Captured By Doctor (Bar)
+        App.ajax({
+            url: '/admin-dashboard/chart-doctor-production.php',
+            method: 'GET',
+            loader: false,
+            onSuccess: function (res) {
+                if (dashboardCharts.doctorProductionBar) dashboardCharts.doctorProductionBar.destroy();
+                
+                var ctx = document.getElementById('chart-doctor-production-bar').getContext('2d');
+                dashboardCharts.doctorProductionBar = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: res.labels, // Expecting ['Dr. Name A', 'Dr. Name B']
+                        datasets: [{
+                            label: 'Gross Treatment Production ($)',
+                            data: res.values,
+                            backgroundColor: '#37b24d',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+                });
+            }
+        });
+
+        // Chart D: Active Patient Volume Share (Pie)
+        App.ajax({
+            url: '/admin-dashboard/chart-patient-share.php',
+            method: 'GET',
+            loader: false,
+            onSuccess: function (res) {
+                if (dashboardCharts.patientSharePie) dashboardCharts.patientSharePie.destroy();
+                
+                var ctx = document.getElementById('chart-patient-share-pie').getContext('2d');
+                dashboardCharts.patientSharePie = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: res.labels, // Expecting ['Office A', 'Office B']
+                        datasets: [{
+                            data: res.values,
+                            backgroundColor: ['#20c997', '#ff922b', '#f06595', '#845ef7'],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        });
     }
-
-    function renderPagination(meta) {
-        var total = meta.total || 0;
-        var pages = meta.pages || 1;
-        var current = meta.current || 1;
-        var from = total ? ((current - 1) * perPage + 1) : 0;
-        var to = Math.min(current * perPage, total);
-
-        $('#patients-info').text('Showing ' + from + '–' + to + ' of ' + total + ' patients');
-
-        var btns = '';
-        btns += '<button class="page-btn" id="pg-prev" ' + (current <= 1 ? 'disabled' : '') + '><i class="fa-solid fa-chevron-left"></i></button>';
-
-        // Show max 5 page buttons
-        var start = Math.max(1, current - 2);
-        var end = Math.min(pages, start + 4);
-        for (var i = start; i <= end; i++) {
-            btns += '<button class="page-btn ' + (i === current ? 'active' : '') + '" data-page="' + i + '">' + i + '</button>';
-        }
-
-        btns += '<button class="page-btn" id="pg-next" ' + (current >= pages ? 'disabled' : '') + '><i class="fa-solid fa-chevron-right"></i></button>';
-        $('#pagination-btns').html(btns);
-    }
-
-
-    /* Pagination */
-    $(document).on('click', '.page-btn[data-page]', function () {
-        loadPatients(parseInt($(this).data('page')));
-    });
-    $(document).on('click', '#pg-prev', function () { if (currentPage > 1) loadPatients(currentPage - 1); });
-    $(document).on('click', '#pg-next', function () { loadPatients(currentPage + 1); });
 
    
 
-    /* ================================================================
-       VIEW PATIENT
-    ================================================================ */
-    $(document).on('click', '.btn-view', function () {
-        var id = $(this).data('id');
-
-        App.ajax({
-            url: '/emp-order/get.php?id=' + id,
-            loader: false,
-            onSuccess: function (p) {
-
-                console.log(p)
-                var html =
-                    '<div>' +
-                    '<div class="form-section-title mb-4"><i class="fa-solid fa-shoping-bag"></i> Order Info</div>' +
-                    infoRow('Order Numbber', p.id || '—') +
-                    infoRow('Order Date', p.order_date || '—') +
-                    infoRow('Delivery Date', p.expected_received_date || '—') +
-                    infoRow('Total Order Amount', p.total_amount || '—') +
-                    infoRow('Created By', p.creator_name || '—') +
-                    infoRow('Approved By', p.approver_name || '—') +
-                    infoRow('Status', p.status || '—') +
-                    '</div>';
-
-                var rows = "";
-                $.each(p.items, function (index, item) {
-                    rows += '<tr>'+
-                    '<td>' + item.name + '</td>'+
-                    '<td>' + item.qty + '</td>'+
-                    '<td>' + item.price + '</td>'+
-                    '<td>' + item.subtotal + '</td>'+
-                    
-                    '</tr>';
-                });
-
-                $('#view-order-details').html(html);
-                $('#order-items-tbody').html(rows);
-                $('#order-grand-total-display').html(p.total_amount);
-                $('#btn-edit-from-view').data('id', id);
-                App.modal.open('view-order-modal');
-            }
-        });
-    });
-
-    function infoRow(label, value) {
-        return '<div class="flex-between mb-4" style="border-bottom:1px solid var(--color-border);padding-bottom:var(--sp-3)">' +
-            '<span class="text-sm text-muted">' + label + '</span>' +
-            '<span class="text-sm fw-500">' + App.utils.escHtml(String(value)) + '</span>' +
-            '</div>';
-    }
-
-    function ucFirst(str) { return str ? str.charAt(0).toUpperCase() + str.slice(1) : ''; }
-
-    $('#btn-edit-from-view').on('click', function () {
-        App.modal.close('view-patient-modal');
-        openEditModal($(this).data('id'));
-    });
-
     
 
     /* ================================================================
-       DELETE PATIENT
+        WORKSPACE INITIALIZATION RUNTIME ENGINE
     ================================================================ */
-
-    $(document).on('click', '.btn-approve', function () {
-        var id = $(this).data('id');
-        App.utils.confirm(
-            'Are you sure you want to approvve this order.',
-            function () {
-                App.ajax({
-                    url: '/doc-order/approve.php',
-                    method: 'POST',
-                    data: { id: id },
-                    loaderMsg: 'Deleting doctor…',
-                    onSuccess: function (d, msg) {
-                        App.toast.success('Order Approved', msg);
-                        loadOrder(currentPage);
-                    }
-                });
-            }
-        );
-    });
-
-    $(document).on('click', '.btn-delete', function () {
-        var id = $(this).data('id');
-        var name = $(this).data('name');
-
-        App.utils.confirm(
-            'Are you sure you want to reject "' + name + '"? This cannot be undone.',
-            function () {
-                App.ajax({
-                    url: '/doc-order/reject.php',
-                    method: 'POST',
-                    data: { id: id },
-                    loaderMsg: 'Deleting doctor…',
-                    onSuccess: function (d, msg) {
-                        App.toast.success('Deleted', msg);
-                        loadOrder(currentPage);
-                    }
-                });
-            }
-        );
-    });
-
-
-    
-
-    
-    /* ================================================================
-       INIT — load on page ready
-    ================================================================ */
-    loadOrder(1);
-
+    loadStatCards();
+    initDashboardCharts();
 
 });

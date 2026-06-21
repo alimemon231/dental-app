@@ -39,6 +39,7 @@ try {
             pa.id,
             pa.case_id,
             pa.procedure_id,
+            pa.price,
             pa.teeth_number AS tooth_number,
             pa.p_insurance_plan,
             pa.status,
@@ -123,6 +124,7 @@ try {
             'procedure_id'   => (int)$record['procedure_id'],
             'procedure_name' => $flatProcedureName,
             'tooth_number'   => $record['tooth_number'],
+            'price'        => $record['price'],
             'status'         => $record['status']
         ]
     ];
@@ -140,6 +142,7 @@ try {
         'office_id'          => (int)$record['office_id'],
         'clinic_name'        => $record['clinic_name'],
         'office_name'        => $record['office_name'],
+        'price'        => $record['price'],
         
         // Primary record attributes fallbacks
         'p_insurance_plan'   => (int)$record['p_insurance_plan'],

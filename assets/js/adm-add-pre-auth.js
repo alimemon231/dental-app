@@ -457,18 +457,41 @@ $(document).ready(function () {
         $('#preauth-tbody').html(rows);
     }
 
-    function renderPagination(totalRecords, totalPages, currentCount) {
-        $('#preauth-info').text(`Showing ${currentCount} of ${totalRecords} records`);
+    /**
+ * Custom Arrow-Based Pagination Handler
+ */
+function renderPagination(totalRecords, totalPages, currentCount) {
+    // 1. Update the informational text string panel
+    $('#preauth-info').text(`Showing ${currentCount} of ${totalRecords} records (Page ${currentPage} of ${totalPages})`);
 
-        let html = '';
-        if (totalPages > 1) {
-            for (let i = 1; i <= totalPages; i++) {
-                const activeClass = i === currentPage ? 'active' : '';
-                html += `<button class="page-link ${activeClass}" data-page="${i}">${i}</button>`;
-            }
+    let html = '';
+
+    // Only render pagination controls if there is more than 1 total page
+    if (totalPages > 1) {
+        // Calculate previous and next page numbers target markers
+        const prevPage = currentPage - 1;
+        const nextPage = currentPage + 1;
+
+        // ── LEFT ARROW (PREVIOUS) ──
+        // If we are on page 1, disable the button so the user can't click back further
+        if (currentPage <= 1) {
+            html += `<button class="page-link btn disabled" disabled><i class="fa-solid fa-chevron-left"></i></button>`;
+        } else {
+            html += `<button class="page-link btn" data-page="${prevPage}"><i class="fa-solid fa-chevron-left"></i></button>`;
         }
-        $('#pagination-btns').html(html);
+
+        // ── RIGHT ARROW (NEXT) ──
+        // If we are on the last page, disable the button so the user can't click forward further
+        if (currentPage >= totalPages) {
+            html += `<button class="page-link btn  disabled" disabled><i class="fa-solid fa-chevron-right"></i></button>`;
+        } else {
+            html += `<button class="page-link btn" data-page="${nextPage}"><i class="fa-solid fa-chevron-right"></i></button>`;
+        }
     }
+
+    // 2. Inject the updated directional markup into your DOM container layout node
+    $('#pagination-btns').html(html);
+}
 
     $(document).on('click', '.page-link', function (e) {
         e.preventDefault();

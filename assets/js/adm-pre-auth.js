@@ -9,10 +9,12 @@ $(document).ready(function () {
     // 1. Initial Load
     loadClinics();
     loadAdminData(1);
+     loadAdminDataStatics();
 
     // 2. Event Listeners
     $('#btn-search').on('click', function () {
         loadAdminData(1);
+        loadAdminDataStatics();
     });
 
     $('#btn-clear').on('click', function () {
@@ -121,8 +123,37 @@ function loadAdminData(page = 1) {
         onSuccess: function (response) {
             renderAdminTable(response.records);
             renderPagination(response.total_records, response.total_pages, response.records.length);
-            updateAuthStatsCards(response);
-            updatePriceMetricsCards(response.records)
+        }
+    });
+}
+
+/**
+ * Main data fetcher with multi-dimensional filtering
+ */
+function loadAdminDataStatics() {
+    
+
+    // Collect multi-select statuses
+    let selectedStatuses = [];
+    $('.status-checkbox:checked').each(function () {
+        selectedStatuses.push($(this).val());
+    });
+
+    const filters = {
+        patient_name: $('#filter-patient').val(),
+        clinic_id: $('#filter-clinic').val(),
+        start_date: $('#filter-start-date').val(),
+        end_date: $('#filter-end-date').val(),
+        status: selectedStatuses
+    };
+
+
+    App.ajax({
+        url: '/adm-pre-auth/list-all.php',
+        data: filters,
+        onSuccess: function (response) {
+            updateAuthStatsCards(response.metrics);
+            updatePriceMetricsCards(response.metrics)
         }
     });
 }
@@ -253,6 +284,7 @@ function renderAdminTable(records) {
                     <div class="text-xs mt-1" style="max-width:240px;">${proceduresHtml}</div>
                     <div class="text-xs mt-1 text-muted"><i class="fa-solid fa-house-medical"></i> ${App.utils.escHtml(r.clinic_name || r.office_name)}</div>
                     <div class="text-xs mt-1 text-muted"><i class="fa-solid fa-file"></i> Case No : #${App.utils.escHtml(r.case_id || r.office_name)}</div>
+                    <div class="text-xs mt-1 text-muted"><i class="fa-solid fa-dollar"></i> Price : $${App.utils.escHtml(r.price)}</div>
                 </td>
                 ${colRequested}
                 ${colSent}
@@ -270,18 +302,38 @@ function renderAdminTable(records) {
 }
 
 /**
- * Custom Pagination Handler
+ * Custom Arrow-Based Pagination Handler
  */
 function renderPagination(totalRecords, totalPages, currentCount) {
-    $('#patients-info').text(`Showing ${currentCount} of ${totalRecords} records`);
+    // 1. Update the informational text string panel
+    $('#patients-info').text(`Showing ${currentCount} of ${totalRecords} records (Page ${currentPage} of ${totalPages})`);
 
     let html = '';
+
+    // Only render pagination controls if there is more than 1 total page
     if (totalPages > 1) {
-        for (let i = 1; i <= totalPages; i++) {
-            const activeClass = i === currentPage ? 'active' : '';
-            html += `<button class="page-link ${activeClass}" data-page="${i}">${i}</button>`;
+        // Calculate previous and next page numbers target markers
+        const prevPage = currentPage - 1;
+        const nextPage = currentPage + 1;
+
+        // ── LEFT ARROW (PREVIOUS) ──
+        // If we are on page 1, disable the button so the user can't click back further
+        if (currentPage <= 1) {
+            html += `<button class="page-link btn disabled" disabled><i class="fa-solid fa-chevron-left"></i></button>`;
+        } else {
+            html += `<button class="page-link btn" data-page="${prevPage}"><i class="fa-solid fa-chevron-left"></i></button>`;
+        }
+
+        // ── RIGHT ARROW (NEXT) ──
+        // If we are on the last page, disable the button so the user can't click forward further
+        if (currentPage >= totalPages) {
+            html += `<button class="page-link btn  disabled" disabled><i class="fa-solid fa-chevron-right"></i></button>`;
+        } else {
+            html += `<button class="page-link btn" data-page="${nextPage}"><i class="fa-solid fa-chevron-right"></i></button>`;
         }
     }
+
+    // 2. Inject the updated directional markup into your DOM container layout node
     $('#pagination-btns').html(html);
 }
 
@@ -300,6 +352,7 @@ function viewLifecycleDetails(id) {
                     listHtml += `<div style="padding: var(--sp-2) 0; border-bottom: 1px dashed #e2e8f0;">
                                     <i class="fa-solid fa-circle-chevron-right text-primary text-sm mr-2"></i> 
                                     <strong>Tooth ${item.tooth_number || data.tooth_numbers || 'N/A'}:</strong> ${App.utils.escHtml(item.procedure_name || data.procedure_name)}
+                                    <small style="color:green ; display:block;"> Price : $${item.price}</small>
                                  </div>`;
                 });
             } else {
@@ -491,58 +544,43 @@ function infoRow(label, value) {
         '<span class="fw-600">' + value + '</span>' +
         '</div>';
 }
+
+
 /**
- * Main logical wrapper to parse and update downstream multi-row mathematical progress bars
+ * Main logical wrapper to update downstream multi-row mathematical progress bars
+ * Updated to take the pre-aggregated 'metrics' object directly from the backend.
  */
-function updateAuthStatsCards(response) {
-    const records = response.records || [];
-    const totalSent = response.total_records || records.length;
+function updateAuthStatsCards(metrics) {
+    const totalSent = metrics.total_sent || 0;
 
     if (totalSent === 0) {
         renderAuthEmptyCards();
         return;
     }
 
-    // 1. Approval Card Logic: Evaluated records (Excludes 'appealed' because it is back in queue awaiting re-review)
-    const evaluatedCount = records.filter(r => {
-        const status = (r.status || '').toLowerCase();
-        // Only consider a case fully evaluated if it's currently Approved, Rejected/Denied, Scheduled, or Completed
-        return ['approved', 'rejected', 'denied', 'scheduled', 'completed', 'complete', 'done'].includes(status);
-    }).length;
-    renderStatCard('#card-approval-content', evaluatedCount, totalSent, 'Approved / Evaluated');
+    // 1. Approval Card Logic: Uses pre-calculated counts directly
+    renderStatCard('#card-approval-content', metrics.count_evaluated, totalSent, 'Approved / Evaluated');
 
-    // 2. Scheduling Card Logic: Scheduled / Completed actions mapped against the absolute Total Sent baseline
-    const scheduledCount = records.filter(r => !!r.appointment_date || ['scheduled', 'completed', 'complete', 'done'].includes((r.status || '').toLowerCase())).length;
-    renderStatCard('#card-scheduled-content', scheduledCount, totalSent, 'Scheduled Cases');
+    // 2. Scheduling Card Logic: Uses pre-calculated counts directly
+    renderStatCard('#card-scheduled-content', metrics.count_scheduled, totalSent, 'Scheduled Cases');
 
-    // 3. Completion Card Logic: Completed records mapped against the absolute Total Sent baseline
-    const completedCount = records.filter(r => ['completed', 'complete', 'done'].includes((r.status || '').toLowerCase())).length;
-    renderStatCard('#card-completion-content', completedCount, totalSent, 'Completed Cases');
+    // 3. Completion Card Logic: Uses pre-calculated counts directly
+    renderStatCard('#card-completion-content', metrics.count_completed, totalSent, 'Completed Cases');
 }
 
-function updatePriceMetricsCards(recordsList) {
-    let approvedTotal = 0;
-    let pendingTotal = 0;
-    let completedTotal = 0;
-
-    // Loop through your response array entries
-    $.each(recordsList, function (index, row) {
-        // Safe extraction configuration fallback to 0.00
-        let itemPrice = parseFloat(row.price || row.procedure_price || 0);
-        let status = (row.status || '').toLowerCase();
-
-        if (status === 'approved') {
-            approvedTotal += itemPrice;
-        } else if (status === 'requested') {
-            pendingTotal += itemPrice;
-        } else if (status === 'completed') {
-            completedTotal += itemPrice;
-        }
-    });
+/**
+ * Summary Renderer for Price Metrics Cards
+ * Updated to read pre-aggregated financial figures directly.
+ */
+function updatePriceMetricsCards(metrics) {
+    // Read pre-aggregated fields from your database layer response structure
+    let approvedTotal  = metrics.total_value_approved || 0;
+    let pendingTotal   = metrics.total_value_pending || 0;
+    let completedTotal = metrics.total_value_completed || 0;
 
     // Format numbers with commas and decimal points
-    let formattedApproved = '$' + approvedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    let formattedPending = '$' + pendingTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    let formattedApproved  = '$' + approvedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    let formattedPending   = '$' + pendingTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     let formattedCompleted = '$' + completedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     // Inject layout contents into HTML structures
@@ -569,7 +607,7 @@ function updatePriceMetricsCards(recordsList) {
 }
 
 /**
- * Generic Renderer for Auth Stat Cards
+ * Generic Renderer for Auth Stat Cards (Kept exactly same)
  */
 function renderStatCard(container, count, total, label) {
     const percent = total > 0 ? Math.round((count / total) * 100) : 0;
@@ -589,7 +627,7 @@ function renderStatCard(container, count, total, label) {
 }
 
 /**
- * Dynamic Color Interpolator (Red to Green)
+ * Dynamic Color Interpolator (Red to Green) (Kept exactly same)
  */
 function getAuthProgressColor(percent) {
     let r, g, b = 0;
@@ -609,4 +647,5 @@ function getAuthProgressColor(percent) {
 function renderAuthEmptyCards() {
     const empty = '<div class="text-center text-muted p-3">No data available</div>';
     $('#card-approval-content, #card-scheduled-content, #card-completion-content').html(empty);
+    $('#card-approved-price-content, #card-pending-price-content, #card-completed-price-content').html(empty);
 }
