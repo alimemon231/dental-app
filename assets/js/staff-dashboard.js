@@ -154,30 +154,30 @@ $(document).ready(function () {
             }
         });
 
-        // // Chart 4: Lab Revenue Attributed By Provider (Bar)
-        // App.ajax({
-        //     url: '/api/staff/chart-labs-doctor-volumes.php',
-        //     method: 'GET',
-        //     loader: false,
-        //     onSuccess: function (res) {
-        //         if (staffCharts.labsDoctorBar) staffCharts.labsDoctorBar.destroy();
+        // Chart 4: Lab Revenue Attributed By Provider (Bar)
+        App.ajax({
+            url: '/staff-dashboard/chart-labs-doctor-volumes.php',
+            method: 'GET',
+            loader: false,
+            onSuccess: function (res) {
+                if (staffCharts.labsDoctorBar) staffCharts.labsDoctorBar.destroy();
                 
-        //         var ctx = document.getElementById('chart-staff-labs-doctor-bar').getContext('2d');
-        //         staffCharts.labsDoctorBar = new Chart(ctx, {
-        //             type: 'bar',
-        //             data: {
-        //                 labels: res.labels,
-        //                 datasets: [{
-        //                     label: 'Lab Value Share ($)',
-        //                     data: res.values,
-        //                     backgroundColor: '#845ef7',
-        //                     borderRadius: 4
-        //                 }]
-        //             },
-        //             options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-        //         });
-        //     }
-        // });
+                var ctx = document.getElementById('chart-staff-labs-doctor-bar').getContext('2d');
+                staffCharts.labsDoctorBar = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: res.labels,
+                        datasets: [{
+                            label: 'Lab Value Share ($)',
+                            data: res.values,
+                            backgroundColor: '#845ef7',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+                });
+            }
+        });
     }
 
     /* ================================================================

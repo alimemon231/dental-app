@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="assets/css/global.css">
     <link rel="stylesheet" href="assets/css/layout.css">
-    
+
     <style>
         /* Progress Bar Styles */
         .progress-track {
@@ -202,6 +202,35 @@
                     </div>
                 </div>
 
+                <div class="grid-3 mb-4" id="price-progress-cards">
+                    <div class="sticky-side" id="card-approved-price-container">
+                        <div class="form-section-title mb-4">
+                            <i class="fa-solid fa-money-bill-wave"></i> <span>Total Labs Value</span>
+                        </div>
+                        <div id="card-approved-price-content">
+                            <div class="text-center text-muted p-3">-- Loading Stats --</div>
+                        </div>
+                    </div>
+
+                    <div class="sticky-side" id="card-pending-price-container">
+                        <div class="form-section-title mb-4">
+                            <i class="fa-solid fa-hourglass-half"></i> <span>Scheduled Value</span>
+                        </div>
+                        <div id="card-pending-price-content">
+                            <div class="text-center text-muted p-3">-- Loading Stats --</div>
+                        </div>
+                    </div>
+
+                    <div class="sticky-side" id="card-completed-price-container">
+                        <div class="form-section-title mb-4">
+                            <i class="fa-solid fa-circle-check"></i> <span>Done Value</span>
+                        </div>
+                        <div id="card-completed-price-content">
+                            <div class="text-center text-muted p-3">-- Loading Stats --</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="grid-2 mb-4">
                     <div class="sticky-side" id="card-pipeline-container">
                         <div class="form-section-title mb-4">
@@ -264,13 +293,14 @@
                             <div id="confirm-body-content"></div>
                         </div>
                         <div class="modal-footer">
-                            <button class="btn btn-ghost" data-close-modal="confirm-modal" id="confirm-cancel">Cancel</button>
+                            <button class="btn btn-ghost" data-close-modal="confirm-modal"
+                                id="confirm-cancel">Cancel</button>
                             <button class="btn" id="confirm-ok">Proceed</button>
                         </div>
                     </div>
                 </div>
 
-                
+
             </div>
         </main>
     </div>

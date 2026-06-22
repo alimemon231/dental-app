@@ -1,7 +1,7 @@
 <?php
 /**
  * GET api/adm-labs/monitor-list.php
- * Advanced Global Monitoring for Lab Cases with multi-dimensional filtering.
+ * Advanced Global Monitoring for Lab Cases with multi-dimensional filtering and total financial summaries.
  */
 require_once __DIR__ . '/../../includes/Auth.php';
 
@@ -14,6 +14,32 @@ $currentUser = $auth->user();
 if ($currentUser['role'] !== 'admin') {
     Api::error('Unauthorized access. Admin privileges required.', 403);
     exit;
+}
+
+/**
+ * Helper function to calculate the multiplier value based on arch text format
+ */
+function calculateArchMultiplier($archValue) {
+    $archValue = trim($archValue ?? '');
+    
+    // Rule 1: If no data, value is 0
+    if ($archValue === '') {
+        return 0;
+    }
+    
+    // Rule 2: If value is 'Full', value is 1
+    if (strcasecmp($archValue, 'Full') === 0) {
+        return 1;
+    }
+    
+    // Rule 3: If it contains comma-separated tooth numbers, count them
+    $teethArray = explode(',', $archValue);
+    // Filter out any accidental empty strings from split trailing commas
+    $cleanTeethArray = array_filter(array_map('trim', $teethArray), function($val) {
+        return $val !== '';
+    });
+    
+    return count($cleanTeethArray);
 }
 
 // 2. Capture Filters & Pagination
@@ -77,7 +103,7 @@ if (!empty($statuses)) {
 
 $whereSql = implode(" AND ", $where);
 
-// 5. Total Count for Pagination (Executed early before appending pagination parameters)
+// 4. Total Count for Pagination (Executed early before appending pagination parameters)
 $countSql = "SELECT COUNT(*) as total 
              FROM labs l 
              LEFT JOIN patient p ON l.p_id = p.id 
@@ -86,7 +112,7 @@ $totalCount = $db->queryOne($countSql, $params)['total'];
 $totalPages = ceil($totalCount / $limit);
 
 /**
- * 4. Main Query (Updated with Patient Mapping table Join and SQL Pagination execution)
+ * 5. Main Query (Updated with Patient Mapping table Join and SQL Pagination execution)
  */
 $sql = "SELECT 
             l.*, 
@@ -107,8 +133,11 @@ $sql = "SELECT
 $queryData = array_merge($params, [$limit, $offset]);
 $records = $db->query($sql, $queryData);
 
+// State tracking variable for dynamic matching aggregated total evaluations
+$grandTotalValue = 0.00;
+
 /**
- * 6. Format Dates for JS Table
+ * 6. Format Dates and Evaluate Multi-Dimensional Values for JS Table
  */
 foreach ($records as &$r) {
     // Stage 1: Sent Date
@@ -128,13 +157,28 @@ foreach ($records as &$r) {
     $r['date_completed_fmt'] = !empty($r['date_complete']) 
         ? date('m/d/Y', strtotime($r['date_complete'])) 
         : null;
+
+    // Dynamic Financial Math Module Execution Row-by-Row
+    $uArchMultiplier = calculateArchMultiplier($r['u_arch']);
+    $lArchMultiplier = calculateArchMultiplier($r['l_arch']);
+    $itemBasePrice   = floatval($r['price'] ?? 0.00);
+
+    // Compute (u_arch + l_arch) * price Formula Structure
+    $totalRowValue   = ($uArchMultiplier + $lArchMultiplier) * $itemBasePrice;
+
+    // Map properties parameters back to downstream response arrays
+    $r['total_row_value'] = round($totalRowValue, 2);
+
+    // Accumulate into overall grand dataset total value
+    $grandTotalValue += $totalRowValue;
 }
 unset($r); // Clear reference pointer
 
 // 7. Standard JSON Response
 Api::success([
-    'records'       => $records,
-    'total_records' => (int)$totalCount,
-    'total_pages'   => (int)$totalPages,
-    'current_page'  => $page
+    'records'           => $records,
+    'total_records'     => (int)$totalCount,
+    'total_pages'       => (int)$totalPages,
+    'current_page'      => $page,
+    'grand_total_value' => round($grandTotalValue, 2) // Global total aggregate payload added here
 ], 'Lab cases pipeline data fetched successfully');

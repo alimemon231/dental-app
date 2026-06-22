@@ -2,7 +2,7 @@
 /**
  * API: Fetch Doctor-Specific Dashboard Metrics
  * Path: /api/doctor/dashboard-stats.php
- * Performance-optimized payload isolating production and pre-auth metrics to the individual doctor,
+ * Performance-optimized payload isolating production, pre-auth, and lab metrics to the individual doctor,
  * while maintaining shared office scope for budgets and pending operational inventory orders.
  */
 
@@ -27,6 +27,32 @@ if (!$officeId || !$doctorId) {
     exit;
 }
 
+/**
+ * Helper function to calculate the multiplier value based on arch text format
+ */
+function calculateArchMultiplier($archValue) {
+    $archValue = trim($archValue ?? '');
+    
+    // Rule 1: If no data, value is 0
+    if ($archValue === '') {
+        return 0;
+    }
+    
+    // Rule 2: If value is 'Full', value is 1
+    if (strcasecmp($archValue, 'Full') === 0) {
+        return 1;
+    }
+    
+    // Rule 3: If it contains comma-separated tooth numbers, count them
+    $teethArray = explode(',', $archValue);
+    // Filter out any accidental empty strings from split trailing commas
+    $cleanTeethArray = array_filter(array_map('trim', $teethArray), function($val) {
+        return $val !== '';
+    });
+    
+    return count($cleanTeethArray);
+}
+
 // Establish Calendar Month Timestamp Boundaries (First to Last Day)
 $currentYear = (int)date('Y');
 $currentMonth = (int)date('m');
@@ -36,7 +62,7 @@ $startDateStr = $currentYearMonth . '-01 00:00:00';
 $endDateStr   = date('Y-m-t') . ' 23:59:59';
 
 /* =================================================================
-   SECTION A: DOCTOR PRE-AUTH PIPELINE METRICS (Office & Doctor Scoped)
+    SECTION A: DOCTOR PRE-AUTH PIPELINE METRICS (Office & Doctor Scoped)
 ================================================================= */
 // Filters cases strictly belonging to this doctor at this specific office location
 $preAuthSql = "SELECT pa.`status`, pa.`price` 
@@ -88,7 +114,7 @@ $preauth_sent_value = $preauth_total_value;
 $preauth_sent_count = $preauth_total_count;
 
 /* =================================================================
-   SECTION B: TOTAL DOCTOR REVENUE (Expected Production vs Cash Collected)
+    SECTION B: TOTAL DOCTOR REVENUE (Expected Production vs Cash Collected)
 ================================================================= */
 // Step 1: Calculate Total Treatment Production Value booked by this doctor at this office location
 $paymentsSql = "SELECT SUM(`total_amount`) AS `expected_production` 
@@ -124,13 +150,33 @@ foreach ($transactionRows as $t) {
 $moneyReceived = $totalPaid - $totalRefunded;
 
 /* =================================================================
-   SECTION C: LAB LEDGER AGGREGATION (Placeholder matching unified object structure)
+    SECTION C: LAB LEDGER AGGREGATION (Office & Doctor Scoped)
 ================================================================= */
 $labs_total_value = 0.00; 
 $labs_total_count = 0;
 
+// Fetch monthly active labs records attributed directly to this doctor at this office location
+$labsSql = "SELECT `u_arch`, `l_arch`, `price` 
+            FROM `labs` 
+            WHERE `office_id` = ? 
+              AND `provider` = ? 
+              AND `date_sent` BETWEEN ? AND ?";
+$labsRows = $db->query($labsSql, [$officeId, $doctorId, $startDateStr, $endDateStr]) ?: [];
+
+foreach ($labsRows as $lab) {
+    $uArchMultiplier = calculateArchMultiplier($lab['u_arch']);
+    $lArchMultiplier = calculateArchMultiplier($lab['l_arch']);
+    $itemBasePrice   = floatval($lab['price'] ?? 0.00);
+
+    // Compute (u_arch + l_arch) * price Formula Structure
+    $totalRowValue   = ($uArchMultiplier + $lArchMultiplier) * $itemBasePrice;
+
+    $labs_total_value += $totalRowValue;
+    $labs_total_count++;
+}
+
 /* =================================================================
-   SECTION D: CLINIC OVERVIEW METRICS (Shared Office-Level Parameters)
+    SECTION D: CLINIC OVERVIEW METRICS (Shared Office-Level Parameters)
 ================================================================= */
 // 1. Total Count of Active, Pending Orders for the entire Office Location
 $orderSql = "SELECT COUNT(*) as total 
@@ -171,7 +217,7 @@ if ($budgetAmount > 0) {
 }
 
 /* =================================================================
-   SECTION E: SYSTEM RESPONSE DELIVERY
+    SECTION E: SYSTEM RESPONSE DELIVERY
 ================================================================= */
 $response = [
     'total_revenue_made'             => (float)$moneyReceived,    // Maps directly to front-end layout engine expectations
@@ -192,7 +238,8 @@ $response = [
     'preauth_completed_value'        => (float)$preauth_completed_value,
     'preauth_completed_count'        => (int)$preauth_completed_count,
 
-    'labs_total_value'               => (float)$labs_total_value,
+    // Lab assets metrics calculated for the authenticated provider
+    'labs_total_value'               => (float)round($labs_total_value, 2),
     'labs_total_count'               => (int)$labs_total_count,
 
     'pending_orders_count'           => (int)$pendingOrdersCount,

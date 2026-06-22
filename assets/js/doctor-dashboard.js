@@ -157,34 +157,34 @@ $(document).ready(function () {
             }
         });
 
-        // Chart D: Mapped Lab Revenue Trends Timeline (Line)
-        // App.ajax({
-        //     url: '/api/doctor/chart-labs-timeline.php',
-        //     method: 'GET',
-        //     loader: false,
-        //     onSuccess: function (res) {
-        //         if (doctorCharts.labsRevenueLine) doctorCharts.labsRevenueLine.destroy();
+        //Chart D: Mapped Lab Revenue Trends Timeline (Line)
+        App.ajax({
+            url: '/doctor-dashboard/chart-labs-timeline.php',
+            method: 'GET',
+            loader: false,
+            onSuccess: function (res) {
+                if (doctorCharts.labsRevenueLine) doctorCharts.labsRevenueLine.destroy();
                 
-        //         var ctx = document.getElementById('chart-doc-labs-revenue-line').getContext('2d');
-        //         doctorCharts.labsRevenueLine = new Chart(ctx, {
-        //             type: 'line',
-        //             data: {
-        //                 labels: res.labels,
-        //                 datasets: [{
-        //                     label: 'Lab Value Generated ($)',
-        //                     data: res.values,
-        //                     borderColor: '#845ef7',
-        //                     backgroundColor: 'rgba(132, 94, 247, 0.08)',
-        //                     fill: true,
-        //                     tension: 0.35,
-        //                     borderWidth: 2.5,
-        //                     pointRadius: 2
-        //                 }]
-        //             },
-        //             options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-        //         });
-        //     }
-        // });
+                var ctx = document.getElementById('chart-doc-labs-revenue-line').getContext('2d');
+                doctorCharts.labsRevenueLine = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: res.labels,
+                        datasets: [{
+                            label: 'Lab Value Generated ($)',
+                            data: res.values,
+                            borderColor: '#845ef7',
+                            backgroundColor: 'rgba(132, 94, 247, 0.08)',
+                            fill: true,
+                            tension: 0.35,
+                            borderWidth: 2.5,
+                            pointRadius: 2
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+                });
+            }
+        });
     }
 
     /* ================================================================

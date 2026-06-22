@@ -5,6 +5,32 @@ $db = new Database();
 $auth = new Auth($db);
 $auth->requireAuth();
 
+/**
+ * Helper function to calculate the multiplier value based on arch text format
+ */
+function calculateArchMultiplier($archValue) {
+    $archValue = trim($archValue ?? '');
+    
+    // Rule 1: If no data, value is 0
+    if ($archValue === '') {
+        return 0;
+    }
+    
+    // Rule 2: If value is 'Full', value is 1
+    if (strcasecmp($archValue, 'Full') === 0) {
+        return 1;
+    }
+    
+    // Rule 3: If it contains comma-separated tooth numbers, count them
+    $teethArray = explode(',', $archValue);
+    // Filter out any accidental empty strings from split trailing commas
+    $cleanTeethArray = array_filter(array_map('trim', $teethArray), function($val) {
+        return $val !== '';
+    });
+    
+    return count($cleanTeethArray);
+}
+
 $id = $_GET['id'] ?? null;
 
 if (!$id) {
@@ -47,5 +73,16 @@ $record['date_complete'] = $record['date_complete'] ? date('M d, Y', strtotime($
 $record['date_received'] = $record['date_received'] ? date('M d, Y', strtotime($record['date_received'])) : '—';
 $record['date_scheduled'] = $record['date_scheduled'] ? date('M d, Y', strtotime($record['date_scheduled'])) : '—';
 $record['edited_at'] = $record['edited_at'] && $record['edited_at'] !== '0000-00-00 00:00:00' ? date('M d, Y g:i A', strtotime($record['edited_at'])) : '—';
+
+// Ensure base price is explicitly a floating point number
+$record['price'] = floatval($record['price'] ?? 0.00);
+
+// Dynamic Financial Calculation for Single View
+$uArchMultiplier = calculateArchMultiplier($record['u_arch']);
+$lArchMultiplier = calculateArchMultiplier($record['l_arch']);
+
+// Compute total financial value structural metric
+$totalValue = ($uArchMultiplier + $lArchMultiplier) * $record['price'];
+$record['total_value'] = round($totalValue, 2);
 
 Api::success($record);

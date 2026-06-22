@@ -9,6 +9,32 @@ $db = new Database();
 $auth = new Auth($db);
 $auth->requireAuth();
 
+/**
+ * Helper function to calculate the multiplier value based on arch text format
+ */
+function calculateArchMultiplier($archValue) {
+    $archValue = trim($archValue ?? '');
+    
+    // Rule 1: If no data, value is 0
+    if ($archValue === '') {
+        return 0;
+    }
+    
+    // Rule 2: If value is 'Full', value is 1
+    if (strcasecmp($archValue, 'Full') === 0) {
+        return 1;
+    }
+    
+    // Rule 3: If it contains comma-separated tooth numbers, count them
+    $teethArray = explode(',', $archValue);
+    // Filter out any accidental empty strings from split trailing commas
+    $cleanTeethArray = array_filter(array_map('trim', $teethArray), function($val) {
+        return $val !== '';
+    });
+    
+    return count($cleanTeethArray);
+}
+
 // 1. Employee Security Check
 $currentUser = $auth->user();
 if ($currentUser['role'] !== 'doctor' && $currentUser['role'] !== 'staff') {
@@ -84,9 +110,9 @@ $whereSql = implode(" AND ", $where);
 
 // 4. Total Count for Pagination (Executed early before appending pagination parameters)
 $countSql = "SELECT COUNT(*) as total 
-             FROM labs l 
-             LEFT JOIN patient p ON l.p_id = p.id 
-             WHERE $whereSql";
+              FROM labs l 
+              LEFT JOIN patient p ON l.p_id = p.id 
+              WHERE $whereSql";
 $totalCount = $db->queryOne($countSql, $params)['total'];
 $totalPages = ceil($totalCount / $limit);
 
@@ -113,7 +139,7 @@ $queryData = array_merge($params, [$limit, $offset]);
 $records = $db->query($sql, $queryData);
 
 /**
- * 6. Format Dates for JS Table
+ * 6. Format Dates and Calculate Totals for JS Table
  */
 foreach ($records as &$r) {
     // Stage 1: Sent Date
@@ -133,6 +159,15 @@ foreach ($records as &$r) {
     $r['date_completed_fmt'] = !empty($r['date_complete']) 
         ? date('m/d/Y', strtotime($r['date_complete'])) 
         : null;
+
+    // Dynamic Financial Calculation Module Execution
+    $uArchMultiplier = calculateArchMultiplier($r['u_arch']);
+    $lArchMultiplier = calculateArchMultiplier($r['l_arch']);
+    $r['price']      = floatval($r['price'] ?? 0.00);
+
+    // Compute (u_arch + l_arch) * price Formula Structure
+    $totalRowValue   = ($uArchMultiplier + $lArchMultiplier) * $r['price'];
+    $r['total_row_value'] = round($totalRowValue, 2);
 }
 unset($r); // Clear reference pointer
 

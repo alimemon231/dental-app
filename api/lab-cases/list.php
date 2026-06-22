@@ -20,7 +20,7 @@ if ($search) {
     
     // Search by case name or target type
     $cases = $db->query(
-        "SELECT id, name, target, status
+        "SELECT *
          FROM case_type 
          WHERE name LIKE ? OR target LIKE ?
          ORDER BY name ASC",
@@ -29,7 +29,7 @@ if ($search) {
 } else {
     // Return all case types ordered by newest first for the management table
     $cases = $db->query(
-        "SELECT id, name, target, status
+        "SELECT *
          FROM case_type 
          ORDER BY id DESC"
     );

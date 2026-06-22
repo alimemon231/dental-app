@@ -52,6 +52,7 @@ $(document).ready(function () {
                 '<td><strong>' + (i + 1) + '</strong></td>' +
                 '<td>' + App.utils.escHtml(item.name) + '</td>' +
                 '<td>' + targetDisplay + '</td>' +
+                '<td>' + item.price + '</td>' +
                 '<td>' + statusBadge + '</td>' +
                 '<td>' +
                 '<div class="actions">' +
@@ -118,6 +119,7 @@ $(document).ready(function () {
                 $('#case-id').val(data.id);
                 $('#name').val(data.name);
                 $('#target').val(data.target);
+                $('#price').val(data.price);
                 
                 // Set the status dropdown and show it
                 $('#status').val(data.status || 'active');

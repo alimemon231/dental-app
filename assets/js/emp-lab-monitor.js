@@ -176,6 +176,7 @@ function renderLabTable(records) {
                     <div class="font-bold">${App.utils.escHtml(r.patient_name)}</div>
                     <div class="text-xs text-muted">${App.utils.escHtml(r.type_name)} | Dr. ${App.utils.escHtml(r.doctor_name)}</div>
                     <div class="text-xs mt-1"><i class="fa-solid fa-location-dot"></i> ${App.utils.escHtml(r.office_name)}</div>
+                    <div class="text-xs mt-1"><i class="fa-solid fa-dollar"></i> Price : $${App.utils.escHtml(r.total_row_value)}</div>
                 </td>
                 ${stage1} ${stage2} ${stage3} ${stage4}
                 <td class="text-right">
@@ -235,6 +236,8 @@ function viewLabLifecycle(id) {
                 infoRow('Impression', App.utils.escHtml(r.impression_type || '—')) +
                 infoRow('Upper Arch', App.utils.escHtml(r.u_arch || '—')) +
                 infoRow('Lower Arch', App.utils.escHtml(r.l_arch || '—')) +
+                infoRow('Unit Price', '$'+App.utils.escHtml(r.price || 0)) +
+                infoRow('Total Lab Cost', '$'+App.utils.escHtml(r.total_value || 0)) +
                 '</div>' +
 
                 // Right Column: Active Status Tracking, System Accountability and Instructions
@@ -291,21 +294,54 @@ function updateStatsCards(response) {
     }
 
     const statusWeight = {
-        'Sent': 1,
-        'Received': 2,
-        'Scheduled': 3,
-        'Done': 4
+        'sent': 1, 
+        'received': 2,  
+        'scheduled': 3,  
+        'done': 4
     };
 
-    const completedCount = records.filter(r => statusWeight[r.status] === 4).length;
+    // --- Original Count Cards Logics ---
+    const completedCount = records.filter(r => statusWeight[String(r.status).toLowerCase()] === 4).length;
     renderPipelineCard(completedCount, total);
 
-    const bookedCount = records.filter(r => statusWeight[r.status] >= 3).length;
+    const bookedCount = records.filter(r => statusWeight[String(r.status).toLowerCase()] >= 3).length;
     renderEfficiencyCard(bookedCount, total);
+
+    // --- Financial Calculations Module ---
+    let totalLabsPrice = 0;       // All loaded cases
+    let scheduledPrice = 0;       // Scheduled / Booked states (weight === 3)
+    let donePrice = 0;            // Done / Complete states (weight === 4)
+
+    records.forEach(r => {
+        // Fallback checks both total_row_value or total_value mapping keys safely
+        const rowValue = parseFloat(r.total_row_value || r.total_value || 0);
+        const weight = statusWeight[String(r.status).toLowerCase()] || 0;
+
+        // 1. Total accumulation across all records
+        totalLabsPrice += rowValue;
+
+        // 2. Scheduled states criteria
+        if (weight === 3) {
+            scheduledPrice += rowValue;
+        }
+
+        // 3. Done / Complete states criteria
+        if (weight === 4) {
+            donePrice += rowValue;
+        }
+    });
+
+    // Render properties directly to your price-progress-cards elements
+    renderPriceCard('#card-approved-price-content', totalLabsPrice, 'Global Value Balance');
+    renderPriceCard('#card-pending-price-content', scheduledPrice, 'Active Scheduled');
+    renderPriceCard('#card-completed-price-content', donePrice, 'Closed Done State');
 }
 
+/**
+ * Render Pipeline Analytics Card
+ */
 function renderPipelineCard(count, total) {
-    const percent = Math.round((count / total) * 100);
+    const percent = total > 0 ? Math.round((count / total) * 100) : 0;
     const color = getProgressColor(percent);
 
     const html = `
@@ -321,8 +357,11 @@ function renderPipelineCard(count, total) {
     $('#card-pipeline-content').html(html);
 }
 
+/**
+ * Render Efficiency/Booked Progress Card
+ */
 function renderEfficiencyCard(count, total) {
-    const percent = Math.round((count / total) * 100);
+    const percent = total > 0 ? Math.round((count / total) * 100) : 0;
     const color = getProgressColor(percent);
 
     const html = `
@@ -339,10 +378,33 @@ function renderEfficiencyCard(count, total) {
 }
 
 /**
- * Dynamic Color Interpolator
+ * Generic Reusable Price Card Rendering Engine
+ */
+function renderPriceCard(containerId, value, subtitleText) {
+    // Format to currency style ($0.00)
+    const formattedPrice = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD'
+    }).format(value);
+
+    const html = `
+        <div class="d-flex flex-column align-items-center justify-content-center p-2">
+            <h2 class="font-bold text-2xl text-dark my-1" style="font-weight: 700; font-size: 1.6rem; color: #2c3e50;">
+                ${formattedPrice}
+            </h2>
+            <div class="text-xs text-muted mt-1 text-center" style="font-size: 0.75rem; letter-spacing: 0.5px; text-transform: uppercase;">
+                ${subtitleText}
+            </div>
+        </div>
+    `;
+    $(containerId).html(html);
+}
+
+/**
+ * Dynamic Color Interpolator for progress bars
  */
 function getProgressColor(percent) {
-    let r, g, b = 0;
+    let r = 0, g = 0, b = 0;
     if (percent < 50) {
         r = 200;
         g = Math.round(5.1 * percent);
@@ -353,12 +415,22 @@ function getProgressColor(percent) {
     return `rgb(${r}, ${g}, ${b})`;
 }
 
+/**
+ * Clear tracking metric view panels completely on zero matched matrix sets
+ */
 function renderEmptyCards() {
     const empty = '<div class="text-center text-muted p-3">No data for current filters</div>';
+    const emptyPrice = '<div class="text-center text-muted p-3" style="font-weight: 700; font-size: 1.6rem; color: #7f8c8d;">$0.00</div>';
+    
+    // Count metric targets reset
     $('#card-pipeline-content').html(empty);
     $('#card-efficiency-content').html(empty);
+    
+    // Financial metrics layout targets reset
+    $('#card-approved-price-content').html(emptyPrice);
+    $('#card-pending-price-content').html(emptyPrice);
+    $('#card-completed-price-content').html(emptyPrice);
 }
-
 /**
  * Print Report Functionality
  */

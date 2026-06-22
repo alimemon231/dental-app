@@ -3,7 +3,7 @@
  * API: Fetch Global Dashboard Metrics (Staff Office Scope)
  * Path: /api/staff/dashboard-stats.php
  * Performance-optimized single payload combining payments, pre-auth pipelines,
- * pending orders, budgets, and patient counts scoped strictly to the user's office.
+ * pending orders, budgets, patient counts, and labs scoped strictly to the user's office.
  */
 
 require_once __DIR__ . '/../../includes/Auth.php';
@@ -25,6 +25,32 @@ if (!$officeId) {
     exit;
 }
 
+/**
+ * Helper function to calculate the multiplier value based on arch text format
+ */
+function calculateArchMultiplier($archValue) {
+    $archValue = trim($archValue ?? '');
+    
+    // Rule 1: If no data, value is 0
+    if ($archValue === '') {
+        return 0;
+    }
+    
+    // Rule 2: If value is 'Full', value is 1
+    if (strcasecmp($archValue, 'Full') === 0) {
+        return 1;
+    }
+    
+    // Rule 3: If it contains comma-separated tooth numbers, count them
+    $teethArray = explode(',', $archValue);
+    // Filter out any accidental empty strings from split trailing commas
+    $cleanTeethArray = array_filter(array_map('trim', $teethArray), function($val) {
+        return $val !== '';
+    });
+    
+    return count($cleanTeethArray);
+}
+
 // Establish Calendar Month Timestamp Boundaries (First to Last Day)
 $currentYear = (int)date('Y');
 $currentMonth = (int)date('m');
@@ -34,7 +60,7 @@ $startDateStr = $currentYearMonth . '-01 00:00:00';
 $endDateStr   = date('Y-m-t') . ' 23:59:59';
 
 /* =================================================================
-   SECTION A: PRE-AUTH PIPELINE METRICS & COUNTS (Scoped via Cases)
+    SECTION A: PRE-AUTH PIPELINE METRICS & COUNTS (Scoped via Cases)
 ================================================================= */
 // Connects `pre-auth` entries to `pre_auth_cases` to isolate rows by office_id
 $preAuthSql = "SELECT pa.`status`, pa.`price` 
@@ -75,7 +101,7 @@ foreach ($preAuthRows as $row) {
 }
 
 /* =================================================================
-   SECTION B: TOTAL MONTHLY REVENUE (Expected Production vs Cash Collected)
+    SECTION B: TOTAL MONTHLY REVENUE (Expected Production vs Cash Collected)
 ================================================================= */
 // Step 1: Calculate Total Treatment Production Value booked at this office location
 $paymentsSql = "SELECT SUM(`total_amount`) AS `expected_production` 
@@ -109,13 +135,32 @@ foreach ($transactionRows as $t) {
 $moneyReceived = $totalPaid - $totalRefunded;
 
 /* =================================================================
-   SECTION C: LAB LEDGER AGGREGATION
+    SECTION C: LAB LEDGER AGGREGATION (Scoped strictly via Office ID)
 ================================================================= */
 $labs_total_value = 0.00; 
 $labs_total_count = 0;
 
+// Fetch office location restricted monthly active labs records
+$labsSql = "SELECT `u_arch`, `l_arch`, `price` 
+            FROM `labs` 
+            WHERE `office_id` = ? 
+              AND `date_sent` BETWEEN ? AND ?";
+$labsRows = $db->query($labsSql, [$officeId, $startDateStr, $endDateStr]) ?: [];
+
+foreach ($labsRows as $lab) {
+    $uArchMultiplier = calculateArchMultiplier($lab['u_arch']);
+    $lArchMultiplier = calculateArchMultiplier($lab['l_arch']);
+    $itemBasePrice   = floatval($lab['price'] ?? 0.00);
+
+    // Compute (u_arch + l_arch) * price Formula Structure
+    $totalRowValue   = ($uArchMultiplier + $lArchMultiplier) * $itemBasePrice;
+
+    $labs_total_value += $totalRowValue;
+    $labs_total_count++;
+}
+
 /* =================================================================
-   SECTION D: EXTRA STRATEGIC OPERATIONAL METRICS (Orders, Budgets, Patients)
+    SECTION D: EXTRA STRATEGIC OPERATIONAL METRICS (Orders, Budgets, Patients)
 ================================================================= */
 // 1. Total Count of Active, Pending Orders for this Office Location
 $orderSql = "SELECT COUNT(*) as total 
@@ -161,7 +206,7 @@ if ($budgetAmount > 0) {
 }
 
 /* =================================================================
-   SECTION E: SYSTEM RESPONSE DELIVERY
+    SECTION E: SYSTEM RESPONSE DELIVERY
 ================================================================= */
 $response = [
     'total_cost'                    => (float)$totalMonthlyCost, 
@@ -179,7 +224,8 @@ $response = [
     'preauth_completed_value'       => (float)$preauth_completed_value,
     'preauth_completed_count'       => (int)$preauth_completed_count,
 
-    'labs_total_value'              => (float)$labs_total_value,
+    // Lab assets metrics (Injected dynamically)
+    'labs_total_value'              => (float)round($labs_total_value, 2),
     'labs_total_count'              => (int)$labs_total_count,
 
     // Custom operational parameters injected for staff panels

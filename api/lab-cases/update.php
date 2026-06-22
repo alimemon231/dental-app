@@ -30,6 +30,7 @@ if (!$case_id) {
 
 $name   = trim($_POST['name'] ?? '');
 $target = trim($_POST['target'] ?? '');
+$price = trim($_POST['price'] ?? 0);
 $status = trim($_POST['status'] ?? 'active');
 
 // Basic Validation
@@ -71,6 +72,7 @@ try {
     $data = [
         'name'   => $name,
         'target' => $target,
+        'price' => $price,
         'status' => $status
     ];
 

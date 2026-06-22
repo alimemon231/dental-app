@@ -19,7 +19,7 @@ if (!$id) {
 // 2. Fetch Case Data
 // Selecting name, target, and status from case_type table
 $case = $db->queryOne(
-    "SELECT id, name, target, status
+    "SELECT *
      FROM case_type
      WHERE id = ?",
     [$id]

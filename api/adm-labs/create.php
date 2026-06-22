@@ -2,6 +2,7 @@
 /**
  * API: Create Lab Case
  * Path: /api/emp-labs/create.php
+ *
  */
 
 require_once __DIR__ . '/../../includes/Auth.php';
@@ -28,6 +29,9 @@ $officeId        = trim($_POST['office_id'] ?? '');
 $provider_id     = trim($_POST['doctor_id'] ?? '');
 $case_type_id    = trim($_POST['case_type_id'] ?? '');
 $impression_type = trim($_POST['impression_type'] ?? '');
+
+// New Context: Capture and isolate structural price mapping parameters safely
+$price           = trim($_POST['price'] ?? '0.00');
 
 // Capture raw arch fields or fallback to JavaScript inputs
 $u_arch          = trim($_POST['u_arch_input'] ?? ($_POST['u_arch'] ?? ''));
@@ -109,6 +113,9 @@ $labData = [
     'lab_provider'    => !empty($lab_provider) ? intval($lab_provider) : null,
     'status'          => $status,
     'notes'           => $notes,
+    
+    // Explicit Dynamic Value Injection Context
+    'price'           => floatval($price),
     
     // Explicit Dates captured from the Frontend Payload
     'date_sent'       => !empty($date_sent) ? $date_sent : null,

@@ -40,6 +40,7 @@ if (!$data) {
 $editData = [
     'id'              => (int) $data['id'],
     'patient_id'      => (int) $data['p_id'],
+    'price'      => (int) $data['price'],
     'office_id'       => (int) $data['office_id'],
     'doctor_id'       => $data['provider'] ? (int) $data['provider'] : null,
     'case_type_id'    => (int) $data['case_type'],

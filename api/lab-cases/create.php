@@ -1,7 +1,7 @@
 <?php
 /**
  * POST api/lab-cases/create.php
- * Create a new Lab Case Type (e.g. Crown, Bridge) with target (Teeth/Arch).
+ * Create a new Lab Case Type (e.g. Crown, Bridge) with target (Teeth/Arch) and pricing details.
  */
 require_once __DIR__ . '/../../includes/Auth.php';
 
@@ -24,6 +24,7 @@ if (Api::method() !== 'POST') {
 // 3. Collect and Validate Data
 $name   = trim($_POST['name'] ?? '');
 $target = trim($_POST['target'] ?? ''); // 'teeth' or 'arch'
+$price  = isset($_POST['price']) ? (float)$_POST['price'] : 0.00; // Captures and casts front-end price field
 
 // Basic Validation
 if (empty($name)) {
@@ -33,6 +34,11 @@ if (empty($name)) {
 
 if (empty($target) || !in_array($target, ['teeth', 'arch'])) {
     Api::error('A valid target area (Teeth or Arch) must be selected.');
+    exit;
+}
+
+if ($price < 0) {
+    Api::error('Price cannot be a negative value.');
     exit;
 }
 
@@ -49,10 +55,11 @@ try {
     $data = [
         'name'   => $name,
         'target' => $target,
+        'price'  => $price,  // Saved to matching column lock key
         'status' => 'active' // Default status on creation
     ];
 
-    // Insert into 'lab_cases' table
+    // Insert into 'case_type' table
     $id = $db->insert('case_type', $data);
     
     if (!$id) {
@@ -64,6 +71,7 @@ try {
         'id'     => $id,
         'name'   => $name,
         'target' => $target,
+        'price'  => (float)$price, // Return precision safe type back to layout UI components
         'status' => 'active'
     ];
     

@@ -96,6 +96,8 @@ $(document).ready(function () {
                     infoRow('Impression', App.utils.escHtml(r.impression_type || '—')) +
                     infoRow('Upper Arch', App.utils.escHtml(r.u_arch || '—')) +
                     infoRow('Lower Arch', App.utils.escHtml(r.l_arch || '—')) +
+                    infoRow('Lower Arch', '$'+App.utils.escHtml(r.price || 0)) +
+                    infoRow('Lower Arch', '$'+App.utils.escHtml(r.total_value || 0)) +
                     '</div>' +
 
                     '<div>' +
@@ -170,7 +172,10 @@ function loadScheduledLabs() {
                         <td>
                             <div class="text-bold text-primary">#LAB-${r.id}</div>
                         </td>
-                        <td><strong>${App.utils.escHtml(r.patient_name || '—')}</strong></td>
+                        <td>
+                            <strong>${App.utils.escHtml(r.patient_name || '—')}</strong>
+                            <small style="display:block;">Lab Total : $${App.utils.escHtml(r.total_value || 0)} </small>
+                        </td>
                         <td>${r.fmt_scheduled_date || '—'}</td>
                         <td>Dr. ${App.utils.escHtml(r.doctor_name || '—')}</td>
                         <td>${App.utils.escHtml(r.case_type_name || '—')}</td>

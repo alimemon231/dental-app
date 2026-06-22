@@ -1,7 +1,7 @@
 <?php
 /**
  * GET api/adm-labs/get-details.php
- * Fetches single lab case lifecycle details for the Admin View Modal.
+ * Fetches single lab case lifecycle details for the Admin View Modal with pricing parameters.
  */
 require_once __DIR__ . '/../../includes/Auth.php';
 
@@ -21,6 +21,32 @@ $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
     Api::error('Invalid lab case ID.', 400);
     exit;
+}
+
+/**
+ * Helper function to calculate the multiplier value based on arch text format
+ */
+function calculateArchMultiplier($archValue) {
+    $archValue = trim($archValue ?? '');
+    
+    // Rule 1: If no data, value is 0
+    if ($archValue === '') {
+        return 0;
+    }
+    
+    // Rule 2: If value is 'Full', value is 1
+    if (strcasecmp($archValue, 'Full') === 0) {
+        return 1;
+    }
+    
+    // Rule 3: If it contains comma-separated tooth numbers, count them
+    $teethArray = explode(',', $archValue);
+    // Filter out any accidental empty strings from split trailing commas
+    $cleanTeethArray = array_filter(array_map('trim', $teethArray), function($val) {
+        return $val !== '';
+    });
+    
+    return count($cleanTeethArray);
 }
 
 /**
@@ -55,6 +81,16 @@ if (!$data) {
 }
 
 /**
+ * Dynamic Financial Math Execution for Singular Component View
+ */
+$uArchMultiplier = calculateArchMultiplier($data['u_arch']);
+$lArchMultiplier = calculateArchMultiplier($data['l_arch']);
+$itemBasePrice   = floatval($data['price'] ?? 0.00);
+
+// Compute (u_arch + l_arch) * price Formula Structure
+$totalRowValue   = ($uArchMultiplier + $lArchMultiplier) * $itemBasePrice;
+
+/**
  * 4. Data Sanitization & Formatting
  * Explicitly includes all keys required by the frontend layout template.
  */
@@ -73,6 +109,10 @@ $formattedData = [
     'l_arch'           => $data['l_arch'] ?: '—',
     'next_step_name'   => $data['next_step_name'] ?: '—',
     'lab_partner_name' => $data['lab_partner_name'] ?: '—',
+
+    // Financial parameters bundled for template mapping expressions
+    'price'            => round($itemBasePrice, 2),
+    'total_price'      => round($totalRowValue, 2),
 
     // Timeline Date Formats
     'date_sent'        => $data['date_sent'] ? date('m/d/Y', strtotime($data['date_sent'])) : 'N/A',

@@ -2,6 +2,7 @@
 /**
  * API: Create Lab Case
  * Path: /api/emp-labs/create.php
+ * * Logic to save lab case details including calculated or selected base price metrics.
  */
 
 require_once __DIR__ . '/../../includes/Auth.php';
@@ -22,7 +23,7 @@ if (Api::method() !== 'POST') {
 
 // 1. Capture Input Data
 $currentUserId   = $_SESSION['user_id'];
-$p_id            = trim($_POST['patient_id'] ?? ''); // Switched from patient_name to patient_id
+$p_id            = trim($_POST['patient_id'] ?? ''); 
 $provider_id     = trim($_POST['doctor_id'] ?? '');
 $case_type_id    = trim($_POST['case_type_id'] ?? '');
 $impression_type = trim($_POST['impression_type'] ?? '');
@@ -31,6 +32,9 @@ $l_arch          = trim($_POST['l_arch'] ?? '');
 $lab_provider    = trim($_POST['lab_provider'] ?? '');
 $next_visit      = trim($_POST['next_visit'] ?? '');
 $notes           = trim($_POST['notes'] ?? '');
+
+// CAPTURED FIELD: Read price from incoming serial data payload
+$price           = trim($_POST['price'] ?? '0.00');
 
 // 2. Validation
 if (empty($p_id) || empty($provider_id) || empty($case_type_id) || empty($next_visit)) {
@@ -56,16 +60,16 @@ $officeId   = $officeInfo['office_id'];
 $officeName = $officeInfo['office_name'];
 
 // 4. Prepare Data for Database
-// Matching requested schema fields: p_id, office_id, provider, case_type, u_arch, l_arch, impression_type, next_visit, date_sent, sent_by, status
 $labData = [
-    'p_id'            => $p_id,          // Saved explicitly into requested schema tracking slot
+    'p_id'            => $p_id,          
     'office_id'       => $officeId,
-    'provider'        => $provider_id,   // Doctor ID
-    'case_type'       => $case_type_id,  // Case Type ID
-    'u_arch'          => $u_arch,        // Full or Tooth numbers
-    'l_arch'          => $l_arch,        // Full or Tooth numbers
+    'provider'        => $provider_id,   
+    'case_type'       => $case_type_id,  
+    'price'           => floatval($price), // Saved explicitly into table data mapping row array
+    'u_arch'          => $u_arch,        
+    'l_arch'          => $l_arch,        
     'impression_type' => $impression_type,
-    'next_visit'      => $next_visit,    // Procedure ID
+    'next_visit'      => $next_visit,    
     'lab_provider'    => $lab_provider,
     'notes'           => $notes,
     'sent_by'         => $currentUserId,

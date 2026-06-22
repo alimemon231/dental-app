@@ -9,12 +9,38 @@ $db = new Database();
 $auth = new Auth($db);
 $auth->requireAuth();
 
+/**
+ * Helper function to calculate the multiplier value based on arch text format
+ */
+function calculateArchMultiplier($archValue) {
+    $archValue = trim($archValue ?? '');
+    
+    // Rule 1: If no data, value is 0
+    if ($archValue === '') {
+        return 0;
+    }
+    
+    // Rule 2: If value is 'Full', value is 1
+    if (strcasecmp($archValue, 'Full') === 0) {
+        return 1;
+    }
+    
+    // Rule 3: If it contains comma-separated tooth numbers, count them
+    $teethArray = explode(',', $archValue);
+    // Filter out any accidental empty strings from split trailing commas
+    $cleanTeethArray = array_filter(array_map('trim', $teethArray), function($val) {
+        return $val !== '';
+    });
+    
+    return count($cleanTeethArray);
+}
+
 // 1. Capture incoming filter criteria and pagination variables matching the JS parameters exactly
-$limit       = 500;
-$page        = 1;
-$offset      = ($page - 1) * $limit;
+$limit         = 500;
+$page          = 1;
+$offset        = ($page - 1) * $limit;
 $currentUserId = $_SESSION['user_id'];
-$officeId    = (int)($_SESSION['office_id'] ?? 0);
+$officeId      = (int)($_SESSION['office_id'] ?? 0);
 
 // If the user isn't assigned to an office, return error layout envelope cleanly to prevent cross-clinic data leaks
 if ($officeId <= 0) {
@@ -76,10 +102,12 @@ try {
     /**
      * 4. The Main SQL Query
      * Joins Patient (p), Users (u), Case Type (ct), Lab Steps (ls), and Labs Partner (lp)
+     * Added selection of l.price column to support dynamic financial calculations
      */
     $sql = "SELECT 
                 l.id,
                 l.p_id,
+                l.price,
                 p.name AS patient_name,
                 l.u_arch,
                 l.l_arch,
@@ -130,6 +158,15 @@ try {
             $arch_info = !empty($combined) ? implode(' | ', $combined) : "N/A";
         }
         $r['display_arch'] = $arch_info;
+
+        // Dynamic Financial Calculation
+        $uArchMultiplier = calculateArchMultiplier($r['u_arch']);
+        $lArchMultiplier = calculateArchMultiplier($r['l_arch']);
+        $r['price']      = floatval($r['price'] ?? 0.00);
+
+        // Compute total financial row structure metric: (u_arch + l_arch) * price
+        $totalRowValue   = ($uArchMultiplier + $lArchMultiplier) * $r['price'];
+        $r['total_value'] = round($totalRowValue, 2);
     }
     unset($r); // Secure processing loop reference termination safe contextually
 

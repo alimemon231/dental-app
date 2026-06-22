@@ -10,6 +10,7 @@ $(document).ready(function () {
     var perPage = 20;
     var editingId = null;
     var caseTypesCache = []; // To store case type metadata (target type)
+    var currentCasePrice = 0.00; // NEW: Runtime variable tracking the base price of the selected lab case type
 
     /* ================================================================
         FUNCTION 1: INITIALIZE PATIENT LOOKUP FROM LAB ROUTE
@@ -65,7 +66,7 @@ $(document).ready(function () {
                 caseTypesCache = data;
                 var options = '<option value="">-- Select Case Type --</option>';
                 $.each(data, function (i, c) {
-                    options += `<option value="${c.id}">${App.utils.escHtml(c.name)}</option>`;
+                    options += `<option value="${c.id}">${App.utils.escHtml(c.name)} - $${App.utils.escHtml(c.price)}</option>`;
                 });
                 $('#case_type_id').html(options);
             }
@@ -112,7 +113,14 @@ $(document).ready(function () {
         resetToothChart();
         $('#arch_selector').val('');
 
-        if (!selectedCase) return;
+        // NEW: Reset price variable if no case type is selected
+        if (!selectedCase) {
+            currentCasePrice = 0.00;
+            return;
+        }
+
+        // NEW: Sync price from the selected case type metadata cache
+        currentCasePrice = parseFloat(selectedCase.price || 0.00);
 
         // Logic based on "target" (teeth or arch)
         if (selectedCase.target === 'teeth') {
@@ -167,20 +175,20 @@ $(document).ready(function () {
     }
 
     /* ================================================================
-    LOAD TABLE GRID DATA WITH ACTIVE FILTERS
-================================================================ */
+        LOAD TABLE GRID DATA WITH ACTIVE FILTERS
+    ================================================================ */
     function loadLabCases(page) {
         page = page || 1;
         currentPage = page;
 
         // Show smooth inline loading spinner matching target tbody design metrics
         $('#lab-tbody').html(`
-        <tr>
-            <td colspan="7">
-                <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>
-            </td>
-        </tr>
-    `);
+            <tr>
+                <td colspan="7">
+                    <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>
+                </td>
+            </tr>
+        `);
 
         // 1. Gather filtered parameters directly from the DOM input control elements
         var patientName = $('#filter-patient-name').val();
@@ -209,7 +217,6 @@ $(document).ready(function () {
         });
     }
 
-
     function renderTable(records) {
         if (!records || records.length === 0) {
             $('#lab-tbody').html('<tr><td colspan="7" class="text-center text-muted">No lab cases found for this workspace.</td></tr>');
@@ -221,94 +228,85 @@ $(document).ready(function () {
             const statusLower = (r.status || 'Sent').toLowerCase();
             const statusClass = 'status-' + statusLower;
 
-            // Build conditional action buttons matrix based on status parameters
+            // Build conditional action buttons matrix based on status parameters using reliable template literals
             let actionButtonsHtml = '';
 
             if (statusLower === 'sent') {
-                // "Sent" layout: Mark Received, View, Edit, Delete
                 actionButtonsHtml = `
-                <button class="btn btn-ghost btn-sm btn-receive" data-id="${r.id}" title="Mark Received" style="color:var(--color-success)">
-                    <i class="fa-solid fa-square-check"></i>
-                </button>
-                <button class="btn btn-ghost btn-sm btn-view" data-id="${r.id}" title="View Case Details"><i class="fa-solid fa-eye"></i></button>
-                <button class="btn btn-ghost btn-sm btn-edit" data-id="${r.id}" title="Modify Entry"><i class="fa-solid fa-pen"></i></button>
-                
-            `;
+                    <button class="btn btn-ghost btn-sm btn-receive" data-id="${r.id}" title="Mark Received" style="color:var(--color-success)">
+                        <i class="fa-solid fa-square-check"></i>
+                    </button>
+                    <button class="btn btn-ghost btn-sm btn-view" data-id="${r.id}" title="View Case Details"><i class="fa-solid fa-eye"></i></button>
+                    <button class="btn btn-ghost btn-sm btn-edit" data-id="${r.id}" title="Modify Entry"><i class="fa-solid fa-pen"></i></button>
+                `;
             } else if (statusLower === 'received') {
-                // "Received" layout: View, Edit, and Calendar Button (Schedule Lab)
                 actionButtonsHtml = `
-                <button class="btn btn-ghost btn-sm btn-schedule" data-id="${r.id}" title="Schedule Lab Appointment" style="color:var(--color-primary)">
-                    <i class="fa-solid fa-calendar-days"></i>
-                </button>
-                <button class="btn btn-ghost btn-sm btn-view" data-id="${r.id}" title="View Case Details"><i class="fa-solid fa-eye"></i></button>
-                <button class="btn btn-ghost btn-sm btn-edit" data-id="${r.id}" title="Modify Entry"><i class="fa-solid fa-pen"></i></button>
-                
-            `;
+                    <button class="btn btn-ghost btn-sm btn-schedule" data-id="${r.id}" title="Schedule Lab Appointment" style="color:var(--color-primary)">
+                        <i class="fa-solid fa-calendar-days"></i>
+                    </button>
+                    <button class="btn btn-ghost btn-sm btn-view" data-id="${r.id}" title="View Case Details"><i class="fa-solid fa-eye"></i></button>
+                    <button class="btn btn-ghost btn-sm btn-edit" data-id="${r.id}" title="Modify Entry"><i class="fa-solid fa-pen"></i></button>
+                `;
             } else {
-                // Fallback default catch block for other statuses if needed
                 actionButtonsHtml = `
-                <button class="btn btn-ghost btn-sm btn-view" data-id="${r.id}" title="View Case Details"><i class="fa-solid fa-eye"></i></button>
-            `;
+                    <button class="btn btn-ghost btn-sm btn-view" data-id="${r.id}" title="View Case Details"><i class="fa-solid fa-eye"></i></button>
+                `;
             }
 
             rows += `
-        <tr style="transition: background-color 0.2s ease;">
-            <td><strong>#${r.id}</strong></td>
-            <td>
-                <div class="fw-600">${App.utils.escHtml(r.patient_name || '—')}</div>
-                <small class="text-muted"><i class="fa-regular fa-calendar"></i> Sent: ${r.formatted_date}</small>
-            </td>
-            <td>Dr. ${App.utils.escHtml(r.doctor_name || '—')}</td>
-            <td>${App.utils.escHtml(r.case_type_name || '—')}</td>
-            <td>
-                <div class="text-sm"><strong>${App.utils.escHtml(r.display_arch)}</strong></div>
-                <small class="text-muted">${App.utils.escHtml(r.impression_type || '—')}</small>
-            </td>
-            <td>
-                <div class="text-sm">${App.utils.escHtml(r.next_visit_step || '—')}</div>
-                
-            </td>
-            <td><span class="status-badge ${statusClass}">${App.utils.escHtml(r.status || 'Sent')}</span></td>
-            <td>
-                <div class="actions" style="display: flex; gap: 4px;">
-                    ${actionButtonsHtml}
-                </div>
-            </td>
-        </tr>`;
+            <tr style="transition: background-color 0.2s ease;">
+                <td><strong>#${r.id}</strong></td>
+                <td>
+                    <div class="fw-600">${App.utils.escHtml(r.patient_name || '—')}</div>
+                    <small class="text-muted"><i class="fa-regular fa-calendar"></i> Sent: ${r.formatted_date}</small>
+                    <small class="text-muted" style="display:block;"><i class="fa-regular fa-dolllar"></i> Total: $${r.total_value}</small>
+                </td>
+                <td>Dr. ${App.utils.escHtml(r.doctor_name || '—')}</td>
+                <td>${App.utils.escHtml(r.case_type_name || '—')}</td>
+                <td>
+                    <div class="text-sm"><strong>${App.utils.escHtml(r.display_arch || '—')}</strong></div>
+                    <small class="text-muted">${App.utils.escHtml(r.impression_type || '—')}</small>
+                </td>
+                <td>
+                    <div class="text-sm">${App.utils.escHtml(r.next_visit_step || '—')}</div>
+                </td>
+                <td><span class="status-badge ${statusClass}">${App.utils.escHtml(r.status || 'Sent')}</span></td>
+                <td>
+                    <div class="actions" style="display: flex; gap: 4px;">
+                        ${actionButtonsHtml}
+                    </div>
+                </td>
+            </tr>`;
         });
         $('#lab-tbody').html(rows);
     }
 
-
     /* ================================================================
-    LAB FILTER CONTROL CLICK PIPELINE HANDLER
-================================================================ */
+        LAB FILTER CONTROL CLICK PIPELINE HANDLER
+    ================================================================ */
     $(document).on('click', '#btn-filter-table', function (e) {
         e.preventDefault();
 
-        // 1. Immediately inject the smooth loading spinner row into the target lab table body
         $('#lab-tbody').html(`
-        <tr>
-            <td colspan="7">
-                <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>
-            </td>
-        </tr>
-    `);
+            <tr>
+                <td colspan="7">
+                    <div class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>
+                </td>
+            </tr>
+        `);
 
-        // 2. Animate the button filter icon itself for layout visual feedback
         var $icon = $(this).find('i');
         $icon.addClass('fa-spin');
 
-        // 3. Hot reload the runtime pipeline jumping back safely to page 1
         if (typeof loadLabCases === 'function') {
             loadLabCases(1);
         }
 
-        // 4. Remove animation class from the button once request execution begins
         setTimeout(function () {
             $icon.removeClass('fa-spin');
         }, 600);
     });
+
     /* ================================================================
          SAVE / UPDATE LAB CASE
      ================================================================ */
@@ -343,6 +341,9 @@ $(document).ready(function () {
         // Serialize form data safely
         var formData = form.serializeArray();
 
+        // NEW: Always append tracked price payload to formData array before ajax submission
+        formData.push({ name: 'price', value: currentCasePrice });
+
         // Security check: Match backend patient lookup key constraints
         var patientLookup = formData.find(item => item.name === 'patient_id');
         if (!patientLookup) {
@@ -375,7 +376,7 @@ $(document).ready(function () {
     });
 
     /* ================================================================
-        EDIT LAB CASE (Fixed Arch Selector Population)
+        EDIT LAB CASE (Fixed Arch Selector Population & Price Extraction)
     ================================================================ */
     $(document).on('click', '.btn-edit', function () {
         var id = $(this).data('id');
@@ -388,6 +389,9 @@ $(document).ready(function () {
                 resetForm();
                 editingId = r.id;
                 $('#lab-modal-title').text('Edit Lab Case');
+
+                // NEW: Load existing price from the database record into state variable
+                currentCasePrice = parseFloat(r.price || 0.00);
 
                 // 1. Basic Fields Mapping with cross-browser Select2 updates
                 if (r.p_id) {
@@ -404,7 +408,7 @@ $(document).ready(function () {
                 $('#lab_provider').val(r.lab_provider);
                 $('textarea[name="notes"]').val(r.notes);
 
-                // 2. Handle Case Type & UI Toggle (This resets arch_selector to '')
+                // 2. Handle Case Type & UI Toggle
                 $('#case_type_id').val(r.case_type).trigger('change');
 
                 // 3. Handle Tooth Chart Logic
@@ -425,7 +429,6 @@ $(document).ready(function () {
                         });
                     }
 
-                    // FIXED: Map selector using data values directly instead of checking jQuery's :visible status
                     if (r.u_arch === 'Full' && r.l_arch === 'Full') {
                         $('#arch_selector').val('both');
                     } else if (r.u_arch === 'Full') {
@@ -442,7 +445,7 @@ $(document).ready(function () {
 
     /* ================================================================
         VIEW LAB CASE DETAILS
-================================================================ */
+    ================================================================ */
     $(document).on('click', '.btn-view', function () {
         var id = $(this).data('id');
 
@@ -466,6 +469,8 @@ $(document).ready(function () {
                     infoRow('Impression', App.utils.escHtml(r.impression_type || '—')) +
                     infoRow('Upper Arch', App.utils.escHtml(r.u_arch || '—')) +
                     infoRow('Lower Arch', App.utils.escHtml(r.l_arch || '—')) +
+                    infoRow('Unit Price', '$'+App.utils.escHtml(r.price || '—')) +
+                    infoRow('Lab Total', '$'+App.utils.escHtml(r.total_value|| '—')) +
                     '</div>' +
 
                     // Right Column: Workflow Status, Timeline Logs & Follow-up
@@ -506,8 +511,6 @@ $(document).ready(function () {
             '</div>';
     }
 
-
-
     /* ================================================================
         RECEIVE LOGIC
     ================================================================ */
@@ -532,18 +535,6 @@ $(document).ready(function () {
         App.modal.open('confirm-modal');
     });
 
-    function executeDelete(id) {
-        App.ajax({
-            url: '/emp-labs/delete.php',
-            method: 'POST',
-            data: { id: id },
-            onSuccess: function (d, msg) {
-                App.toast.success('Deleted', msg);
-                loadLabCases(currentPage);
-            }
-        });
-    }
-
     function executeReceive(id) {
         App.ajax({
             url: '/emp-labs/received.php',
@@ -556,7 +547,7 @@ $(document).ready(function () {
         });
     }
 
-    // Open Schedule Modal (Kept Unchanged)
+    // Open Schedule Modal 
     $(document).on('click', '.btn-schedule', function () {
         const id = $(this).data('id');
         $('#schedule-lab-id').val(id);
@@ -564,7 +555,7 @@ $(document).ready(function () {
         App.modal.open('schedule-modal');
     });
 
-    // Confirm Schedule Action (Kept Unchanged)
+    // Confirm Schedule Action
     $('#btn-confirm-schedule').on('click', function () {
         const form = $('#schedule-form');
         if (!App.form.validate(form)) return;
@@ -577,7 +568,7 @@ $(document).ready(function () {
             onSuccess: function (d, msg) {
                 App.toast.success('Scheduled', msg);
                 App.modal.close('schedule-modal');
-                loadLabCases(currentPage)
+                loadLabCases(currentPage);
             }
         });
     });
@@ -601,6 +592,7 @@ $(document).ready(function () {
         $('#arch_selector').val('');
         $('#lab-modal-title').text('Create Lab Case');
         editingId = null;
+        currentCasePrice = 0.00; // NEW: Reset localized price context state
     }
 
     /* ================================================================

@@ -87,6 +87,12 @@
                 <span class="form-error">Please select a target area.</span>
               </div>
 
+              <div class="form-group mb-4">
+                <label class="form-label"> Price <span class="required">*</span></label>
+                <input type="number" name="price" id="price" class="form-control" placeholder="e.g. 23.0" required>
+                <span class="form-error">Price is required.</span>
+              </div>
+
               <div class="form-group mb-4" id="status-group" style="display: none;">
                 <label class="form-label">Status</label>
                 <select name="status" id="status" class="form-control">
@@ -113,6 +119,7 @@
                   <th width="50">#</th>
                   <th>Case Name</th>
                   <th>Target</th>
+                   <th>Price</th>
                   <th width="100">Status</th>
                   <th width="120">Actions</th>
                 </tr>

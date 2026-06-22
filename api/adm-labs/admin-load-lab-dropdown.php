@@ -20,7 +20,7 @@ $offices = $db->query("SELECT id, office_name AS name FROM offices ORDER BY offi
 
 // 4. Fetch Case Types along with target metadata (Corresponds to /lab-cases/list.php)
 // Including the 'target' field is critical so the JS tooth chart vs arch toggle functions properly
-$case_types = $db->query("SELECT id, name, target FROM case_type ORDER BY name ASC");
+$case_types = $db->query("SELECT * FROM case_type ORDER BY name ASC");
 
 // 5. Output structure as a clean unified JSON response array
 Api::success([
