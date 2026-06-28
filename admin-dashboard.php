@@ -31,6 +31,12 @@
   </div>
 
   <div class="stat-card minimal-metric-card">
+    <div class="minimal-card-header text-muted">Scheduled Pre-Auth Value</div>
+    <div class="minimal-card-value text-purple" id="admin-metric-preauth-scheduled">$0.00</div>
+    <div class="minimal-card-sub" id="admin-count-preauth-scheduled">0 Cases Scheduled</div>
+  </div>
+
+  <div class="stat-card minimal-metric-card">
     <div class="minimal-card-header text-muted">Completed Pre-Auth Value</div>
     <div class="minimal-card-value text-info" id="admin-metric-preauth-completed">$0.00</div>
     <div class="minimal-card-sub" id="admin-count-preauth-completed">0 Cases Finalized</div>
@@ -41,6 +47,8 @@
     <div class="minimal-card-value text-purple" id="admin-metric-labs-total">$0.00</div>
     <div class="minimal-card-sub" id="admin-count-labs-total">0 Open Lab Invoices</div>
   </div>
+
+  
 </div>
 
 <div class="grid-2 mb-8" style="gap: var(--sp-6);">

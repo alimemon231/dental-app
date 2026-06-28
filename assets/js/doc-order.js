@@ -55,7 +55,7 @@ $(document).ready(function () {
 
             // Show Edit, Approve and Reject options if the status is NOT approved
             if (orderStatus !== 'approved') {
-                actionButtonsHtml += 
+                actionButtonsHtml +=
                     '<button class="btn btn-ghost btn-sm btn-edit" data-id="' + p.id + '" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>' +
                     '<button class="btn btn-ghost btn-sm btn-approve" data-id="' + p.id + '" title="Approve"><i class="fa-solid fa-check"></i> Approve</button>' +
                     '<button class="btn btn-ghost btn-sm btn-delete" data-id="' + p.id + '" data-name="ORD-' + App.utils.escHtml(p.id) + '" title="Reject" style="color:var(--color-danger)"><i class="fa-solid fa-trash"></i> Rej</button>';
@@ -73,7 +73,7 @@ $(document).ready(function () {
                 '</td>' +
                 '<td>' + App.utils.escHtml(p.expected_received_date) + '</td>' +
                 '<td>' + App.utils.escHtml(p.creator_name) + '</td>' +
-                '<td>' + App.utils.escHtml(p.approver_name || '—') + '</td>' + 
+                '<td>' + App.utils.escHtml(p.approver_name || '—') + '</td>' +
                 '<td>$' + parseFloat(p.total_amount).toFixed(2) + '</td>' +
                 '<td>' + App.utils.escHtml(p.status) + '</td>' +
                 '<td>' +
@@ -183,18 +183,23 @@ $(document).ready(function () {
 
                 var rows = "";
                 $.each(p.items, function (index, item) {
-                    rows += '<tr>'+
-                    '<td>' + item.name + ' <small style="display:block;color:green;">' + (item.item_code || '-') + '</small></td>'+
-                    '<td>' + item.qty + '</td>'+
-                    '<td>' + parseFloat(item.price).toFixed(2) + '</td>'+
-                    '<td>' + parseFloat(item.subtotal).toFixed(2) + '</td>'+
-                    '</tr>';
+                    rows += '<tr>' +
+                        '<td>' +
+                        '<a href="javascript:void(0);" class="btn-view-item-detail" data-item-id="' + item.id + '" style="text-decoration: none; color: inherit; display: block;">' +
+                        '<strong>' + App.utils.escHtml(item.name) + '</strong>' +
+                        '<small style="display:block;color:green;margin-top:2px;">' + App.utils.escHtml(item.item_code || '-') + '</small>' +
+                        '</a>' +
+                        '</td>' +
+                        '<td>' + item.qty + '</td>' +
+                        '<td>' + parseFloat(item.price).toFixed(2) + '</td>' +
+                        '<td>' + parseFloat(item.subtotal).toFixed(2) + '</td>' +
+                        '</tr>';
                 });
 
                 $('#view-order-details').html(html);
                 $('#order-items-tbody').html(rows);
                 $('#order-grand-total-display').html(parseFloat(p.total_amount).toFixed(2));
-                
+
                 // Keep modal button visibility synced to status context rules
                 if ((p.status || '').toLowerCase() === 'approved') {
                     $('#btn-edit-from-view').hide();
@@ -203,6 +208,40 @@ $(document).ready(function () {
                 }
 
                 App.modal.open('view-order-modal');
+            }
+        });
+    });
+
+
+    /* ================================================================
+       VIEW PRODUCT ITEM DETAIL
+    ================================================================ */
+    $(document).on('click', '.btn-view-item-detail', function (e) {
+        e.preventDefault();
+        var itemId = $(this).data('item-id');
+
+        App.ajax({
+            url: '/items/get.php?id=' + itemId,
+            loader: false,
+            onSuccess: function (p) {
+                var html =
+                    '<div class="grid-2" style="gap:var(--sp-8)">' +
+                        '<div>' +
+                            '<div class="form-section-title mb-4"><i class="fa-solid fa-box"></i> Item Info </div>' +
+                            infoRow('Item Name', p.name || '—') +
+                            infoRow('Price', p.price || '—') +
+                            infoRow('Item Code', p.item_code || '—') +
+                            infoRow('Description', p.description || '—') +
+                            infoRow('Categories', p.category_names || '—') +
+                        '</div>' +
+                        '<div>' +
+                            '<img src="' + (p.image_path || '/assets/img/placeholder.jpg') + '" class="main-item-image" style="width:100%; border-radius:var(--radius-md); max-height:250px; object-fit:cover;">' +
+                        '</div>' +
+                    '</div>';
+
+                $('#view-items-body').html(html);
+                $('#btn-edit-from-view').data('id', p.id);
+                App.modal.open('view-item-modal');
             }
         });
     });
@@ -240,7 +279,7 @@ $(document).ready(function () {
                 $('[name="o_date"]').val(p.order_date);
                 $('[name="r_date"]').val(p.expected_received_date);
                 selected_items = p.items;
-                
+
                 renderOrderTable();
                 App.modal.open('order-modal');
             }
@@ -385,7 +424,14 @@ $(document).ready(function () {
                 <td>${count}</td>
                 <td>${item.name}</td>
                 <td>$${parseFloat(item.price).toFixed(2)}</td>
-                <td>${item.qty}</td>
+                <td>
+                    <input type="number" 
+                           class="form-control btn-update-qty" 
+                           data-id="${item.id}" 
+                           value="${item.qty}" 
+                           min="1" 
+                           style="width: 80px; padding: var(--sp-1) var(--sp-2); text-align: center;" />
+                </td>
                 <td>$${subtotal.toFixed(2)}</td>
                 <td>
                     <button type="button" class="btn btn-sm btn-danger btn-remove-item" data-id="${item.id}">
@@ -400,6 +446,38 @@ $(document).ready(function () {
         $('#grand-total-display').text('$' + grandTotal.toFixed(2));
     }
 
+
+    /* Inline Quantity Change Listener */
+    $(document).on('change keyup', '.btn-update-qty', function () {
+        var itemId = $(this).data('id');
+        var newQty = parseInt($(this).val());
+
+        // Validate that quantity is a real positive number
+        if (isNaN(newQty) || newQty <= 0) {
+            newQty = 1;
+            $(this).val(1);
+        }
+
+        // Find the specific item object and update its state parameters
+        if (selected_items && selected_items.length > 0) {
+            var item = selected_items.find(item => item.id == itemId);
+            if (item) {
+                item.qty = newQty;
+
+                // Recalculate totals and line sub-totals dynamically without rebuilding focus away
+                var subtotal = parseFloat(item.price) * newQty;
+                $(this).closest('tr').find('td:nth-child(5)').text('$' + subtotal.toFixed(2));
+
+                // Update Grand Total calculation container
+                var grandTotal = 0;
+                selected_items.forEach(function (el) {
+                    grandTotal += parseFloat(el.price) * parseInt(el.qty);
+                });
+                $('#grand-total-display').text('$' + grandTotal.toFixed(2));
+            }
+        }
+    });
+
     /* ================================================================
        HELPERS
     ================================================================ */
@@ -409,6 +487,9 @@ $(document).ready(function () {
         editingId = null;
         selected_items = [];
     }
+
+
+
 
     /* ================================================================
        INIT — load on page ready

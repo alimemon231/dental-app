@@ -62,11 +62,13 @@ $preauth_total_value     = 0.0;
 $preauth_approved_value  = 0.0;
 $preauth_pending_value   = 0.0;
 $preauth_completed_value = 0.0;
+$preauth_scheduled_value = 0.0; // Added tracking metric container
 
 $preauth_total_count     = 0;
 $preauth_approved_count  = 0;
 $preauth_pending_count   = 0;
 $preauth_completed_count = 0;
+$preauth_scheduled_count = 0; // Added volume counter metrics
 
 foreach ($preAuthRows as $row) {
     $price = (float)($row['price'] ?? 0.0);
@@ -84,6 +86,9 @@ foreach ($preAuthRows as $row) {
     } elseif ($status === 'completed' || $status === 'finalized') {
         $preauth_completed_value += $price;
         $preauth_completed_count++;
+    } elseif ($status === 'scheduled') { // Isolated mapping match condition
+        $preauth_scheduled_value += $price;
+        $preauth_scheduled_count++;
     }
 }
 
@@ -171,6 +176,10 @@ $response = [
     
     'preauth_completed_value'   => (float)$preauth_completed_value,
     'preauth_completed_count'   => (int)$preauth_completed_count,
+
+    // Scheduled Pre-auth extensions (Exposed targets)
+    'preauth_scheduled_value'   => (float)$preauth_scheduled_value,
+    'preauth_scheduled_count'   => (int)$preauth_scheduled_count,
 
     // Lab assets integration arrays (Populated dynamically)
     'labs_total_value'          => (float)round($labs_total_value, 2),

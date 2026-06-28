@@ -267,6 +267,7 @@
                                 <th class="text-center">3. Decision</th>
                                 <th class="text-center">4. Booking</th>
                                 <th class="text-center">5. Result</th>
+                                <th>Client Notes</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -297,6 +298,31 @@
                         </div>
                         <div class="modal-footer">
                             <button class="btn btn-ghost" data-close-modal="view-modal">Close Window</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-backdrop" id="client-notes-modal">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <div class="modal-title">Add Client Notes</div>
+                            <button class="modal-close" data-close-modal="client-notes-modal">&#x2715;</button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="client-notes-form">
+                                <input type="hidden" id="notes-target-id" value="">
+
+                                <div class="form-group mb-0">
+                                    <label for="modal-client-notes" class="form-label mb-2">Notes Matrix</label>
+                                    <textarea id="modal-client-notes" class="form-control" rows="5"
+                                        placeholder="Enter your administrative client notes here..."></textarea>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-ghost"
+                                data-close-modal="client-notes-modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="btn-save-client-notes">Save Notes</button>
                         </div>
                     </div>
                 </div>

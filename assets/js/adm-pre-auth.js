@@ -9,7 +9,7 @@ $(document).ready(function () {
     // 1. Initial Load
     loadClinics();
     loadAdminData(1);
-     loadAdminDataStatics();
+    loadAdminDataStatics();
 
     // 2. Event Listeners
     $('#btn-search').on('click', function () {
@@ -76,6 +76,71 @@ $(document).ready(function () {
         const id = $(this).data('id');
         viewLifecycleDetails(id);
     });
+
+
+    /* ================================================================
+    CLIENT NOTES LIFECYCLE MANAGEMENT
+================================================================ */
+
+    // 1. Trigger Modal Open on Click
+    $(document).on('click', '.btn-add-client-notes', function (e) {
+        e.preventDefault();
+
+        // Extract ID and existing notes from data attributes on the clicked button
+        var targetId = $(this).data('id');
+        var existingNotes = $(this).data('notes') || '';
+
+        // Reset form elements and populate data parameters
+        $('#notes-target-id').val(targetId);
+        $('#modal-client-notes').val(existingNotes);
+
+        // Clear validation issues if any exist from App framework parameters
+        if (App.form && typeof App.form.clearErrors === 'function') {
+            App.form.clearErrors($('#client-notes-form'));
+        }
+
+        // Open the Modal container safely using the layout engine
+        App.modal.open('client-notes-modal');
+    });
+
+    // 2. Form Submission Action Event Handler
+    $('#btn-save-client-notes').on('click', function (e) {
+        e.preventDefault();
+
+        var recordId = $('#notes-target-id').val();
+        var notesContent = $('#modal-client-notes').val();
+
+        // Structural enforcement check wrapper parameters
+        if (!recordId) {
+            App.toast.warning('Context Exception', 'Unable to resolve targeted record ID parameters.');
+            return;
+        }
+
+        // Dispatch payload data matrix downstream
+        App.ajax({
+            url: '/adm-pre-auth/update-client-notes.php', // Adjust this target path to your actual PHP controller
+            method: 'POST',
+            data: {
+                id: recordId,
+                client_notes: notesContent
+            },
+            btn: $('#btn-save-client-notes'),
+            loaderMsg: 'Adding CLient Notes...',
+            onSuccess: function (data, msg) {
+                // Close standard wrapper modal layout window elements
+                App.modal.close('client-notes-modal');
+
+                // Dispatch success completion toast status alerts
+                App.toast.success('Client notes updated successfully.');
+                loadAdminData();
+
+
+            },
+            onError: function (err) {
+                App.toast.error('Transaction Failed', 'Unable to commit internal client note structural dependencies.');
+            }
+        });
+    });
 });
 
 /**
@@ -131,7 +196,7 @@ function loadAdminData(page = 1) {
  * Main data fetcher with multi-dimensional filtering
  */
 function loadAdminDataStatics() {
-    
+
 
     // Collect multi-select statuses
     let selectedStatuses = [];
@@ -208,7 +273,7 @@ function printPipelineTable() {
 }
 
 function renderAdminTable(records) {
-   if (!records || records.length === 0) {
+    if (!records || records.length === 0) {
         // Updated colspan to 7 to match the new 5-stage pipeline + context column + action column layout
         $('#staff-tbody').html('<tr><td colspan="7" class="table-empty">No records found matching your filters.</td></tr>');
         return;
@@ -291,9 +356,13 @@ function renderAdminTable(records) {
                 ${colDecision}
                 ${colBooked}
                 ${colCompleted}
+               <td>${r.admin_notes ? App.utils.escHtml(r.admin_notes) : '-'}</td>
                 <td>
                     <button class="btn btn-sm btn-ghost btn-view" data-id="${r.id}" title="View Timeline Lifecycle">
                         <i class="fa-solid fa-eye"></i>
+                    </button>
+                    <button class="btn btn-sm btn-ghost btn-add-client-notes" data-id="${r.id}" title="Add Notes">
+                       <i class="fa fa-sticky-note" aria-hidden="true"></i>
                     </button>
                 </td>
             </tr>`;
@@ -574,13 +643,13 @@ function updateAuthStatsCards(metrics) {
  */
 function updatePriceMetricsCards(metrics) {
     // Read pre-aggregated fields from your database layer response structure
-    let approvedTotal  = metrics.total_value_approved || 0;
-    let pendingTotal   = metrics.total_value_pending || 0;
+    let approvedTotal = metrics.total_value_approved || 0;
+    let pendingTotal = metrics.total_value_pending || 0;
     let completedTotal = metrics.total_value_completed || 0;
 
     // Format numbers with commas and decimal points
-    let formattedApproved  = '$' + approvedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    let formattedPending   = '$' + pendingTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    let formattedApproved = '$' + approvedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    let formattedPending = '$' + pendingTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     let formattedCompleted = '$' + completedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     // Inject layout contents into HTML structures

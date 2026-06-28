@@ -20,10 +20,10 @@ $(document).ready(function () {
         currentPage = page;
 
         // Gather advanced filter variables from your search/filter UI elements
-        var searchVal   = $('#search-order').val();
-        var officeId    = $('#filter-office').val();
-        var startDate   = $('#filter-start-date').val();
-        var endDate     = $('#filter-end-date').val();
+        var searchVal = $('#search-order').val();
+        var officeId = $('#filter-office').val();
+        var startDate = $('#filter-start-date').val();
+        var endDate = $('#filter-end-date').val();
 
         App.ajax({
             url: '/admin-order/list.php',
@@ -49,7 +49,7 @@ $(document).ready(function () {
         });
     }
 
-   function renderTable(orders) {
+    function renderTable(orders) {
         if (!orders || !orders.length) {
             $('#admin-order-tbody').html(
                 '<tr><td colspan="10"><div class="table-empty"><i class="fa-solid fa-bag-shopping"></i> No orders found matching the filter criteria.</div></td></tr>'
@@ -190,7 +190,7 @@ $(document).ready(function () {
             loader: false,
             onSuccess: function (res) {
                 // Access the inner 'data' object wrapper from your API payload
-                var o = res.data || res; 
+                var o = res.data || res;
 
                 // Dynamic office lookup fallback from the form options array since office_name isn't in get.php payload
                 var officeText = 'Unassigned';
@@ -218,9 +218,15 @@ $(document).ready(function () {
                         var quantity = parseInt(item.qty || item.quantity || 0);
                         var priceVal = parseFloat(item.price || 0);
                         var sub = priceVal * quantity;
+                        var targetItemId = item.id || item.item_id;
 
                         rows += '<tr>' +
-                            '<td>' + App.utils.escHtml(item.name) + ' <small style="display:block;color:dimgray;">' + (item.item_code || '-') + '</small></td>' +
+                            '<td>' +
+                            '<a href="javascript:void(0);" class="btn-view-item-detail" data-item-id="' + targetItemId + '" style="text-decoration: none; color: inherit; display: block;">' +
+                            '<strong>' + App.utils.escHtml(item.name) + '</strong>' +
+                            '<small style="display:block;color:dimgray;margin-top:2px;">' + App.utils.escHtml(item.item_code || '-') + '</small>' +
+                            '</a>' +
+                            '</td>' +
                             '<td>' + quantity + '</td>' +
                             '<td>$' + priceVal.toFixed(2) + '</td>' +
                             '<td>$' + sub.toFixed(2) + '</td>' +
@@ -234,9 +240,42 @@ $(document).ready(function () {
                 $('#view-order-details-pane').html(html);
                 $('#view-order-items-tbody').html(rows);
                 $('#view-order-grand-total').html('$' + parseFloat(o.total_amount || 0).toFixed(2));
-                
+
                 $('#btn-edit-from-view').data('id', id);
                 App.modal.open('view-order-modal');
+            }
+        });
+    });
+
+     /* ================================================================
+       VIEW PRODUCT ITEM DETAIL
+    ================================================================ */
+    $(document).on('click', '.btn-view-item-detail', function (e) {
+        e.preventDefault();
+        var itemId = $(this).data('item-id');
+
+        App.ajax({
+            url: '/items/get.php?id=' + itemId,
+            loader: false,
+            onSuccess: function (p) {
+                var html =
+                    '<div class="grid-2" style="gap:var(--sp-8)">' +
+                        '<div>' +
+                            '<div class="form-section-title mb-4"><i class="fa-solid fa-box"></i> Item Info </div>' +
+                            infoRow('Item Name', p.name || '—') +
+                            infoRow('Price', p.price || '—') +
+                            infoRow('Item Code', p.item_code || '—') +
+                            infoRow('Description', p.description || '—') +
+                            infoRow('Categories', p.category_names || '—') +
+                        '</div>' +
+                        '<div>' +
+                            '<img src="' + (p.image_path || '/assets/img/placeholder.jpg') + '" class="main-item-image" style="width:100%; border-radius:var(--radius-md); max-height:250px; object-fit:cover;">' +
+                        '</div>' +
+                    '</div>';
+
+                $('#view-items-body').html(html);
+                $('#btn-edit-from-view').data('id', p.id);
+                App.modal.open('view-item-modal');
             }
         });
     });
@@ -269,7 +308,7 @@ $(document).ready(function () {
                 $('[name="o_date"]').val(o.order_date);
                 $('[name="r_date"]').val(o.expected_received_date);
                 $('[name="status"]').val(o.status); // Admins can manually toggle statuses
-                
+
                 selected_items = o.items || [];
                 renderOrderTable();
                 App.modal.open('order-modal');
@@ -365,41 +404,79 @@ $(document).ready(function () {
     }
 
     function renderOrderTable() {
-        // FIXED: Aligned target tbody insertion anchor points with standard element structure ('manifest-items-tbody')
         var $tbody = $('#manifest-items-tbody');
         $tbody.empty();
 
         if (!selected_items || selected_items.length === 0) {
-            $tbody.append('<tr><td colspan="6" class="text-center">No structural line items defined inside this configuration view.</td></tr>');
+            $tbody.append('<tr><td colspan="6" class="text-center">No items added to order.</td></tr>');
+            $('#grand-total-display').text('$0.00');
             return;
         }
 
         var grandTotal = 0;
         var count = 1;
+
         selected_items.forEach(function (item) {
             var subtotal = parseFloat(item.price) * parseInt(item.qty);
             grandTotal += subtotal;
 
             var row = `
-                <tr class="added-item-row">
-                    <td>${count}</td>
-                    <td>${App.utils.escHtml(item.name)}</td>
-                    <td>$${parseFloat(item.price).toFixed(2)}</td>
-                    <td>${parseInt(item.qty)}</td>
-                    <td>$${subtotal.toFixed(2)}</td>
-                    <td style="text-align: center;">
-                        <button type="button" class="btn btn-sm btn-danger btn-remove-item" data-id="${item.id}">
-                            <i class="fa fa-trash"></i> Remove
-                        </button>
-                    </td>
-                </tr>
-            `;
+            <tr>
+                <td>${count}</td>
+                <td>${item.name}</td>
+                <td>$${parseFloat(item.price).toFixed(2)}</td>
+                <td>
+                    <input type="number" 
+                           class="form-control btn-update-qty" 
+                           data-id="${item.id}" 
+                           value="${item.qty}" 
+                           min="1" 
+                           style="width: 80px; padding: var(--sp-1) var(--sp-2); text-align: center;" />
+                </td>
+                <td>$${subtotal.toFixed(2)}</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-danger btn-remove-item" data-id="${item.id}">
+                        <i class="fa fa-trash"></i> Remove
+                    </button>
+                </td>
+            </tr>`;
             $tbody.append(row);
             count++;
         });
 
         $('#grand-total-display').text('$' + grandTotal.toFixed(2));
     }
+
+    /* Inline Quantity Change Listener */
+    $(document).on('change keyup', '.btn-update-qty', function () {
+        var itemId = $(this).data('id');
+        var newQty = parseInt($(this).val());
+
+        // Validate that quantity is a real positive number
+        if (isNaN(newQty) || newQty <= 0) {
+            newQty = 1;
+            $(this).val(1);
+        }
+
+        // Find the specific item object and update its state parameters
+        if (selected_items && selected_items.length > 0) {
+            var item = selected_items.find(item => item.id == itemId);
+            if (item) {
+                item.qty = newQty;
+
+                // Recalculate totals and line sub-totals dynamically without rebuilding focus away
+                var subtotal = parseFloat(item.price) * newQty;
+                $(this).closest('tr').find('td:nth-child(5)').text('$' + subtotal.toFixed(2));
+
+                // Update Grand Total calculation container
+                var grandTotal = 0;
+                selected_items.forEach(function (el) {
+                    grandTotal += parseFloat(el.price) * parseInt(el.qty);
+                });
+                $('#grand-total-display').text('$' + grandTotal.toFixed(2));
+            }
+        }
+    });
 
 
     /* ================================================================
@@ -426,7 +503,7 @@ $(document).ready(function () {
             onSuccess: function (offices) {
                 var filterOptions = '<option value="" selected>All Offices</option>';
                 var formOptions = '<option value="null" disabled selected>Select Target Office Source</option>';
-                
+
                 $.each(offices, function (i, off) {
                     var chunk = '<option value="' + off.id + '">' + off.office_name + '</option>';
                     filterOptions += chunk;

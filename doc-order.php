@@ -209,6 +209,24 @@
     </main>
   </div>
 
+   <div class="modal-backdrop" id="view-item-modal" style="z-index:9999;">
+          <div class="modal modal-lg">
+            <div class="modal-header">
+              <div class="modal-title">Item Details</div>
+              <button class="modal-close" data-close-modal="view-item-modal">&#x2715;</button>
+            </div>
+            <div class="modal-body" id="view-items-body">
+              Loading…
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-ghost" data-close-modal="view-item-modal">Close</button>
+              <button class="btn btn-primary" id="btn-edit-from-view">
+                <i class="fa-solid fa-pen"></i> Edit
+              </button>
+            </div>
+          </div>
+        </div>
+
   <!-- Reusable confirm modal -->
   <div class="modal-backdrop" id="confirm-modal">
     <div class="modal modal-sm">

@@ -98,6 +98,71 @@ $(document).ready(function () {
 
         App.modal.open('confirm-modal');
     });
+
+     /* ================================================================
+    CLIENT NOTES LIFECYCLE MANAGEMENT
+================================================================ */
+
+    // 1. Trigger Modal Open on Click
+    $(document).on('click', '.btn-add-client-notes', function (e) {
+        e.preventDefault();
+
+        // Extract ID and existing notes from data attributes on the clicked button
+        var targetId = $(this).data('id');
+        var existingNotes = $(this).data('notes') || '';
+
+        // Reset form elements and populate data parameters
+        $('#notes-target-id').val(targetId);
+        $('#modal-client-notes').val(existingNotes);
+
+        // Clear validation issues if any exist from App framework parameters
+        if (App.form && typeof App.form.clearErrors === 'function') {
+            App.form.clearErrors($('#client-notes-form'));
+        }
+
+        // Open the Modal container safely using the layout engine
+        App.modal.open('client-notes-modal');
+    });
+
+    // 2. Form Submission Action Event Handler
+    $('#btn-save-client-notes').on('click', function (e) {
+        e.preventDefault();
+
+        var recordId = $('#notes-target-id').val();
+        var notesContent = $('#modal-client-notes').val();
+
+        // Structural enforcement check wrapper parameters
+        if (!recordId) {
+            App.toast.warning('Context Exception', 'Unable to resolve targeted record ID parameters.');
+            return;
+        }
+
+        // Dispatch payload data matrix downstream
+        App.ajax({
+            url: '/adm-labs/update-client-notes.php', // Adjust this target path to your actual PHP controller
+            method: 'POST',
+            data: {
+                id: recordId,
+                client_notes: notesContent
+            },
+            btn: $('#btn-save-client-notes'),
+            loaderMsg: 'Adding CLient Notes...',
+            onSuccess: function (data, msg) {
+                // Close standard wrapper modal layout window elements
+                App.modal.close('client-notes-modal');
+
+                // Dispatch success completion toast status alerts
+                App.toast.success('Client notes updated successfully.');
+                 loadLabMonitor();
+
+
+            },
+            onError: function (err) {
+                App.toast.error('Transaction Failed', 'Unable to commit internal client note structural dependencies.');
+            }
+        });
+    });
+
 });
 
 function executeDelete(id) {
@@ -244,7 +309,11 @@ function renderLabTable(records) {
                     <div class="text-xs mt-1"><i class="fa-solid fa-dollar"></i> Lab Total : ${App.utils.escHtml(r.total_row_value)}</div>
                 </td>
                 ${stage1} ${stage2} ${stage3} ${stage4}
+                <td>${r.admin_notes ? App.utils.escHtml(r.admin_notes) : '-'}</td>
                 <td class="text-right">
+                <button class="btn btn-sm btn-ghost btn-add-client-notes" data-id="${r.id}" title="Add Notes">
+                       <i class="fa fa-sticky-note" aria-hidden="true"></i>
+                    </button>
                     <button class="btn btn-sm btn-ghost btn-view" data-id="${r.id}">
                         <i class="fa-solid fa-eye"></i>
                     </button>

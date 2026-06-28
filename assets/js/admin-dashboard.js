@@ -32,6 +32,7 @@ $(document).ready(function () {
                 $('#admin-metric-preauth-total').text('$' + data.preauth_total_value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
                 $('#admin-metric-preauth-approved').text('$' + data.preauth_approved_value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
                 $('#admin-metric-preauth-pending').text('$' + data.preauth_pending_value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                $('#admin-metric-preauth-scheduled').text('$' + data.preauth_scheduled_value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
                 $('#admin-metric-preauth-completed').text('$' + data.preauth_completed_value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
                 $('#admin-metric-labs-total').text('$' + data.labs_total_value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
 
@@ -39,6 +40,7 @@ $(document).ready(function () {
                 $('#admin-count-preauth-total').text(data.preauth_total_count + ' Requests Total');
                 $('#admin-count-preauth-approved').text(data.preauth_approved_count + ' Approved Cases');
                 $('#admin-count-preauth-pending').text(data.preauth_pending_count + ' Cases in Review');
+                $('#admin-count-preauth-scheduled').text(data.preauth_scheduled_count + ' Cases Schaduled');
                 $('#admin-count-preauth-completed').text(data.preauth_completed_count + ' Cases Finalized');
                 $('#admin-count-labs-total').text(data.labs_total_count + ' Open Lab Invoices');
                 $('#cash-received').text('$' + data.raw_gross_payments.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
