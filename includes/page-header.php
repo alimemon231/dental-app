@@ -36,6 +36,7 @@ if ($currentUser['role'] == 'admin') {
     'Main' => [
       ['label' => 'Dashboard', 'icon' => 'fa-gauge', 'href' => '/dashboard.php', 'key' => 'dashboard'],
       ['label' => 'Payments', 'icon' => 'fa-dollar', 'href' => '/adm-payment.php', 'key' => 'dashboard'],
+     ['label' => 'Custom Statics', 'icon' => 'fa-solid fa-chart-simple', 'href' => '/adm-statics.php', 'key' => 'dashboard'],
     ],
     'Offices Settings' => [
       ['label' => 'Offices Setting', 'icon' => 'fa-hospital', 'href' => '/offices.php', 'key' => 'offices'],

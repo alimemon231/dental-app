@@ -16,7 +16,7 @@
     <?php require_once "includes/page-header.php"; ?>
     
     <main class="main-content">
-      <div class="page-wrapper">
+      <div class="page-wrapper" style="max-width:1240px;">
 
         <div class="page-header">
           <div class="page-header-left">
